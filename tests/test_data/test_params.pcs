@@ -1,0 +1,15 @@
+luby {on,off}[off]
+rinc [1.1,4][2]
+cla-decay [0.9,0.99999][0.999]l
+phase-saving [0,2][2]i
+strFlips {-2,-1,0,500000000,1000000000,100000000}[500000000] # flips for sparrow.  -2 => CPsparrow, -1 => Sparrow, 0 => Riss427, >0 => SparrowToRiss
+strSseconds {10,50,100,150,200,250,290}[150]
+minLBDMinimizingClause [3,20][6]i
+pr-viviL      [5000000,7500000][5000000]il
+
+
+rinc | luby in {on, off}
+strSseconds | chanseok in {on}
+minLBDMinimizingClause  | strFlips in {-2,-1,500000000,1000000000,100000000}
+SPARROW--luby_base  | SPARROW--luby in {1}
+{cla-decay =0.99 , phase-saving=2, luby=on}

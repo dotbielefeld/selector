@@ -1,0 +1,11 @@
+algo = python3 -u ./target_algorithms/sat/glucose-syrup-41/wrapper.py --mem-limit 3000 --sat-checker ./target_algorithms/sat/tools/SAT --sol-file ./instances/sat/sets/IBM-CSSC14/solubility.txt
+execdir = .
+deterministic = 0
+run_obj = runtime # comment
+overall_obj = mean10
+cutoff_time = 300
+instance_file = ./tests/testdata/test_training.txt
+test_instance_file = ./tests/testdata/test_test.txt
+feature_file = ./tests/testdata/test_features.txt
+paramfile = ./tests/testdata/test_params.pcs
+wallclock_limit = 172800
