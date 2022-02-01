@@ -1,1 +1,0 @@
-instances/sat/data/7sat90/7sat90.train/unif-k7-r85.00-v90-c7650-S1423318360.cnf
