@@ -52,7 +52,7 @@ class Scenario:
 
         # read in
         if "paramfile" in scenario:
-            scenario["parameter"], scenario["no_goods"] = get_ta_arguemnts_from_pcs(scenario["paramfile"])
+            scenario["parameter"], scenario["no_goods"] = get_ta_arguments_from_pcs(scenario["paramfile"])
         else:
             raise ValueError("Please provide a file with the target algorithm parameters")
 
@@ -140,7 +140,7 @@ def parse_args():
     """
 
     parser = argparse.ArgumentParser()
-    hp = parser.add_argument_group("Hyperparameter of selector")
+    hp = parser.add_argument_group("Hyperparameters of selector")
     so = parser.add_argument_group("Scenario options")
 
     hp.add_argument('--selector', type=str)
