@@ -3,9 +3,9 @@ from selector.pool import Parameter
 
 import numpy as np
 
-def get_ta_arguemnts_from_pcs(para_file):
+def get_ta_arguments_from_pcs(para_file):
     """
-     Read in a file that contains the target algorithm parameters. The file is .pcs and adheres to the strcutoe of
+     Read in a file that contains the target algorithm parameters. The file is .pcs and adheres to the structure of
      AClib.
     :param para_file: str. Path to the .pcs file
     :return: list, list. A list containing information on the parameters of the target algorithm & a list containing
@@ -24,27 +24,25 @@ def get_ta_arguemnts_from_pcs(para_file):
             if line == "":
                 continue
 
-            line_split = line.split(" " ,1)
+            line_split = line.split(" ", 1) # TODO should be whitespace, as the pcs could have a tab, etc.
             param_name = line_split[0]
-            param_info = line_split[1]
-            param_info = re.sub(' +', ' ', param_info)
+            param_info = line_split[1] # TODO This will error if forbidden params do not have any spaces
+            param_info = re.sub('\s+', ' ', param_info) # TODO not sure why we need to do this; check
 
             if "|" not in param_info:
 
                 # cat
-                if re.search(r'\{', param_info):
+                if re.search(r'\{', param_info): # TODO change to not use re module
                     type , bounds, defaults = get_categorical(param_name, param_info)
-                    parameters.append(Parameter(param_name ,type , bounds, defaults, {}, ''))
-
+                    parameters.append(Parameter(param_name, type, bounds, defaults, {}, ''))
                 # forbidden
                 elif  re.search(r'\{', param_name):
                     no_good = get_no_goods(line)
                     no_goods.append(no_good)
-
                 # cont.
                 elif re.search(r'\[', param_info):
                     type, bounds, defaults, scale = get_continuous(param_name, param_info)
-                    parameters.append(Parameter(param_name ,type , bounds, defaults, {}, scale))
+                    parameters.append(Parameter(param_name, type, bounds, defaults, {}, scale))
 
             # conditionals
             elif "|" in param_info:
@@ -57,7 +55,7 @@ def get_ta_arguemnts_from_pcs(para_file):
 
             else:
                 raise ValueError("The parameter file contains unreadable elements. Check that the structure adheres"
-                                 "to AClib")
+                                 "to AClib") # TODO Specify more clearly where we have an issue
 
     # adding conditionals to parameters
 
@@ -83,23 +81,21 @@ def get_categorical(param_name, param_info):
     :return: type , bounds, defaults of the parameter
     """
 
-    bounds = re.search(r'.*?\{(.*)\}', param_info).group().strip("{ }").split(",")
+    bounds = re.search(r'.*\{(.*)\}', param_info).group().strip("{ }").split(",") # Remove first .* in re?
 
     defaults = re.findall(r'\[(.*)\]*]', param_info)
 
-    if bounds[0] in ["yes", "no", "on", "off"]:
-        type = "boolean"
+    if bounds[0] in ["yes", "no", "on", "off"]: # TODO need to ensure bounds[1] is also reasonable, also len(bounds) == 2
+        type = "boolean" # TODO should just be cat
 
         if defaults[0] in ["on", "yes"]:
             defaults = True
-
         elif defaults[0] in [ "no", "off"]:
             defaults = False
-
         else:
             raise ValueError(f"For parameter {param_name} the parsed defaults are not within [yes, no, on, off]")
 
-        bounds = [True if b in ["on", "yes"] else False for b in bounds]
+        bounds = [b in ["on", "yes"] for b in bounds]
 
     elif isinstance(float(bounds[0]), float):
         type = "cat."
@@ -170,13 +166,9 @@ def get_conditional(param_name, param_info):
     condition_param = re.search(r'.+?(?=in)', param_info).group()
 
     if condition[0] in ["yes", "no", "on", "off"]:
-
-        condition = [True if c in ["on", "yes"] else False for c in condition]
-
+        condition = [c in ["on", "yes"] for c in condition]
     elif isinstance(float(condition[0]), float):
-
-        condition = [float(c) for c in condition]
-
+        condition = [float(c) for c in condition]    
     else:
         raise ValueError(f"For parameter {param_name} the parsed conditions could not be read")
 
