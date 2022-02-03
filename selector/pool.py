@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 
 from typing import Dict
+from enum import Enum
 
 
 @dataclass
@@ -16,6 +17,11 @@ class Parameter:
     default: int
     condition: list
     scale: str
+
+class Parameter_Typ(Enum):
+    categorical = 1
+    continuous = 2
+    integer = 3
 
 
 def init_pool():
