@@ -1,6 +1,6 @@
 import re
 import warnings
-from selector.pool import Parameter, Parameter_Typ
+from selector.pool import Parameter, ParamType
 
 import numpy as np
 
@@ -95,7 +95,7 @@ def get_categorical(param_name, param_info):
         type, bounds, defaults = None, None, None
 
     elif bounds[0] in ["yes", "no", "on", "off"] and  bounds[1] in ["yes", "no", "on", "off"]:
-        type = Parameter_Typ.categorical
+        type = ParamType.categorical
 
         if defaults[0] in ["on", "yes"]:
             defaults = True
@@ -107,7 +107,7 @@ def get_categorical(param_name, param_info):
         bounds = [b in ["on", "yes"] for b in bounds]
 
     elif isinstance(float(bounds[0]), float):
-        type = Parameter_Typ.categorical
+        type = ParamType.categorical
 
         if isinstance(float(defaults[0]), float):
             defaults = float(defaults[0])
@@ -137,7 +137,7 @@ def get_continuous(param_name, param_info):
 
     # checking for set scale
     if scale and "i" in scale.group():
-        type = Parameter_Typ.integer
+        type = ParamType.integer
         scale = scale.group().strip("i")
 
         if isinstance(int(defaults), int):
@@ -147,7 +147,7 @@ def get_continuous(param_name, param_info):
         bounds = [int(b) for b in bounds]
 
     else:
-        type = Parameter_Typ.continuous
+        type = ParamType.continuous
 
         if isinstance(float(defaults), float):
             defaults = float(defaults)
