@@ -18,7 +18,7 @@ class Parameter:
     condition: list
     scale: str
 
-class Parameter_Typ(Enum):
+class ParamType(Enum):
     categorical = 1
     continuous = 2
     integer = 3
