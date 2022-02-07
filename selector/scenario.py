@@ -1,9 +1,13 @@
-from selector.read_files import get_ta_arguemnts_from_pcs, read_instance_paths, read_instance_features
-
-
 import os
 import warnings
 import argparse
+
+import sys
+sys.path.append(os.getcwd())
+
+from selector.read_files import get_ta_arguments_from_pcs, read_instance_paths, read_instance_features
+
+
 
 class Scenario:
 
@@ -163,5 +167,6 @@ if __name__ == "__main__":
 
     parser = parse_args()
 
-    s = Scenario("./input/scenarios/example_scenario.txt", parser)
+    s = Scenario("./selector/input/scenarios/example_scenario.txt", parser)
+    print("done")
 
