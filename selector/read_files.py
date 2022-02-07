@@ -4,10 +4,9 @@ from selector.pool import Parameter, ParamType
 
 import numpy as np
 
-
-boolean_options = ["yes", "no", "on", "off"]
 boolean_yes = ["on", "yes"]
 boolean_no = [ "no", "off"]
+boolean_options = boolean_yes + boolean_no
 
 def get_ta_arguments_from_pcs(para_file):
     """
