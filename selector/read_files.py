@@ -32,12 +32,12 @@ def get_ta_arguments_from_pcs(para_file):
             if "|" not in param_info:
 
                 # cat
-                if r'{' in  param_info:
+                if '{' in  param_info:
                     type , bounds, defaults = get_categorical(param_name, param_info)
                     if type != None:
                         parameters.append(Parameter(param_name, type, bounds, defaults, {}, ''))
                 # forbidden
-                elif  '{' in param_name:
+                elif '{' in param_name:
                     no_good = get_no_goods(line)
                     no_goods.append(no_good)
                 # cont.
@@ -46,7 +46,7 @@ def get_ta_arguments_from_pcs(para_file):
                     parameters.append(Parameter(param_name, type, bounds, defaults, {}, scale))
 
             # conditionals
-            elif "|" in param_info:
+            elif '|' in param_info:
                 condition_param, condition = get_conditional(param_name, param_info)
 
                 if param_name not in conditionals:
