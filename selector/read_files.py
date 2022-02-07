@@ -4,6 +4,11 @@ from selector.pool import Parameter, ParamType
 
 import numpy as np
 
+
+boolean_options = ["yes", "no", "on", "off"]
+boolean_yes = ["on", "yes"]
+boolean_no = [ "no", "off"]
+
 def get_ta_arguments_from_pcs(para_file):
     """
      Read in a file that contains the target algorithm parameters. The file is .pcs and adheres to the structure of
@@ -33,17 +38,17 @@ def get_ta_arguments_from_pcs(para_file):
 
                 # cat
                 if '{' in  param_info:
-                    type , bounds, defaults = get_categorical(param_name, param_info)
-                    if type != None:
-                        parameters.append(Parameter(param_name, type, bounds, defaults, {}, ''))
+                    param_type , bounds, defaults = get_categorical(param_name, param_info)
+                    if param_type != None:
+                        parameters.append(Parameter(param_name, param_type, bounds, defaults, {}, ''))
                 # forbidden
                 elif '{' in param_name:
                     no_good = get_no_goods(line)
                     no_goods.append(no_good)
                 # cont.
                 elif '[' in param_info:
-                    type, bounds, defaults, scale = get_continuous(param_name, param_info)
-                    parameters.append(Parameter(param_name, type, bounds, defaults, {}, scale))
+                    param_type, bounds, defaults, scale = get_continuous(param_name, param_info)
+                    parameters.append(Parameter(param_name, param_type, bounds, defaults, {}, scale))
 
             # conditionals
             elif '|' in param_info:
@@ -80,7 +85,7 @@ def get_categorical(param_name, param_info):
     For a categorical parameter: check if its parsed attributes are valid and extract information on the parameter
     :param param_name: name of the parameter
     :param param_info: raw parameter information
-    :return: type , bounds, defaults of the parameter
+    :return: param_type , bounds, defaults of the parameter
     """
 
     bounds = re.search(r'\{(.*)\}', param_info).group().strip("{ }").split(",")
@@ -92,22 +97,22 @@ def get_categorical(param_name, param_info):
         warnings.warn(f"For parameter {param_name} bounds of length 1 were passed. The parameter will "
                       f"be ignored for configuration.")
 
-        type, bounds, defaults = None, None, None
+        param_type, bounds, defaults = None, None, None
 
-    elif bounds[0] in ["yes", "no", "on", "off"] and  bounds[1] in ["yes", "no", "on", "off"]:
-        type = ParamType.categorical
+    elif bounds[0] in boolean_options and  bounds[1] in boolean_options:
+        param_type = ParamType.categorical
 
-        if defaults[0] in ["on", "yes"]:
+        if defaults[0] in boolean_yes:
             defaults = True
-        elif defaults[0] in [ "no", "off"]:
+        elif defaults[0] in boolean_no:
             defaults = False
         else:
             raise ValueError(f"For parameter {param_name} the parsed defaults are not within [yes, no, on, off]")
 
-        bounds = [b in ["on", "yes"] for b in bounds]
+        bounds = [b in boolean_yes for b in bounds]
 
     elif isinstance(float(bounds[0]), float):
-        type = ParamType.categorical
+        param_type = ParamType.categorical
 
         if isinstance(float(defaults[0]), float):
             defaults = float(defaults[0])
@@ -119,7 +124,7 @@ def get_categorical(param_name, param_info):
     else:
         raise ValueError(f"For parameter {param_name} the parsed bounds were not boolean or categorical")
 
-    return type, bounds, defaults
+    return param_type, bounds, defaults
 
 
 def get_continuous(param_name, param_info):
@@ -127,7 +132,7 @@ def get_continuous(param_name, param_info):
     For a continuous parameter: check if its parsed attributes are valid and extract information on the parameter
     :param param_name: name of the parameter
     :param param_info: raw parameter information
-    :return: type , bounds, defaults,scale of the parameter
+    :return: param_type , bounds, defaults,scale of the parameter
     """
 
     scale = re.search(r'[a-zA-Z]+', param_info)
@@ -137,7 +142,7 @@ def get_continuous(param_name, param_info):
 
     # checking for set scale
     if scale and "i" in scale.group():
-        type = ParamType.integer
+        param_type = ParamType.integer
         scale = scale.group().strip("i")
 
         if isinstance(int(defaults), int):
@@ -147,7 +152,7 @@ def get_continuous(param_name, param_info):
         bounds = [int(b) for b in bounds]
 
     else:
-        type = ParamType.continuous
+        param_type = ParamType.continuous
 
         if isinstance(float(defaults), float):
             defaults = float(defaults)
@@ -160,7 +165,7 @@ def get_continuous(param_name, param_info):
         else:
             scale = scale.group()
 
-    return type, bounds, defaults, scale
+    return param_type, bounds, defaults, scale
 
 def get_conditional(param_name, param_info):
     """
@@ -174,8 +179,8 @@ def get_conditional(param_name, param_info):
     condition = re.search(r'\{(.*)\}', param_info).group().strip("{ }").split(",")
     condition_param = re.search(r'.+?(?=in)', param_info).group()
 
-    if condition[0] in ["yes", "no", "on", "off"]:
-        condition = [c in ["on", "yes"] for c in condition]
+    if condition[0] in boolean_options:
+        condition = [c in boolean_yes for c in condition]
     elif isinstance(float(condition[0]), float):
         condition = [float(c) for c in condition]    
     else:
@@ -198,9 +203,9 @@ def get_no_goods(no_good):
         param = param.strip()
         value = value.strip()
 
-        if value in ["yes", "on"]:
+        if value in boolean_yes:
             value = True
-        elif value in ["no", "off"]:
+        elif value in boolean_no:
             value = False
         elif isinstance(float(value), float):
             value = float(value)
