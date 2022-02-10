@@ -20,6 +20,6 @@ class Random_Pointselector_Test(unittest.TestCase):
         iteration = 1
         selector = RandomSelector()
         selected_ids = selector.select_points(self.pool, 2, iteration)
-        # selected are [3, 1]
-        self.assertEqual(selected_ids[0], 3)
-        self.assertEqual(selected_ids[1], 1)
+        # selected are [1, 2]
+        self.assertEqual(selected_ids[0], 1)
+        self.assertEqual(selected_ids[1], 2)
