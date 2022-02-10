@@ -24,7 +24,7 @@ class RandomSelector(PointSelector):
         :return: list. Ids of configurations from pool that are selected
         """
 
-        selected_ids = np.random.choice(list(pool), number_of_points)
+        selected_ids = np.random.choice(list(pool), number_of_points, replace=False)
         self.selection_history[iteration] = selected_ids
 
         return selected_ids
