@@ -6,6 +6,7 @@ import sys
 sys.path.append(os.getcwd())
 
 from selector.read_files import get_ta_arguments_from_pcs, read_instance_paths, read_instance_features
+from selector import random_point_generator as rpg
 
 
 
@@ -56,7 +57,7 @@ class Scenario:
 
         # read in
         if "paramfile" in scenario:
-            scenario["parameter"], scenario["no_goods"] = get_ta_arguments_from_pcs(scenario["paramfile"])
+            scenario["parameter"], scenario["no_goods"], scenario["conditionals"] = get_ta_arguments_from_pcs(scenario["paramfile"])
         else:
             raise ValueError("Please provide a file with the target algorithm parameters")
 
@@ -167,6 +168,6 @@ if __name__ == "__main__":
 
     parser = parse_args()
 
-    s = Scenario("./selector/input/scenarios/example_scenario.txt", parser)
-    print("done")
+    s = Scenario("./test_data/test_scenario.txt", parser)
 
+    print('\n Configuration:\n\n',rpg.generate(s),'\n')
