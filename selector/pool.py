@@ -7,6 +7,7 @@ from typing import Dict
 class Configuration:
     id: int
     conf: dict
+    gender: str
 
 @dataclass
 class Parameter:

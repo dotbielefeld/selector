@@ -1,9 +1,9 @@
 import unittest
 import numpy as np
 
-from selector.scenario import Scenario, parse_args
-#from selector.scenario import Scenario, parse_args
-#from selector.selector.scenario import Scenario, parse_args
+from selector.scenario import Scenario
+from selector.pool import ParamType
+
 
 
 
@@ -145,7 +145,3 @@ class Scenario_Test(unittest.TestCase):
     def test_instance_file_avail(self):
         with self.assertRaises(FileExistsError):
             _ = Scenario(self.scenario_dict, cmd={'check_path': True})
-
-
-
-

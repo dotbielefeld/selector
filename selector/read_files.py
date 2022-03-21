@@ -70,7 +70,7 @@ def get_ta_arguments_from_pcs(para_file):
             raise ValueError("A condition was parsed that does not correspond to a read parameter of the"
                              " target algorithm")
 
-    return parameters,  no_goods
+    return parameters,  no_goods, conditionals
 
 
 def get_categorical(param_name, param_info):
