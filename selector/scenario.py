@@ -148,7 +148,20 @@ def parse_args():
     so = parser.add_argument_group("Scenario options")
 
     hp.add_argument('--selector', type=str)
+    hp.add_argument('--number_iterations', type=str)
+    hp.add_argument('--winners_per_tournament', type=str)
+
     hp.add_argument('--check_path', default=False)
+    hp.add_argument('--seed', default=False)
+    hp.add_argument('--ta_run_type',type=str, default="import_wrapper")
+
+    hp.add_argument('--winners_per_tournament', type=int)
+    hp.add_argument('--tournament_size', type=int)
+    hp.add_argument('--number_tournaments', type=int)
+    hp.add_argument('--total_tournament_number', type=int)
+
+    hp.add_argument('--initial_instance_set_size', type=int)
+    hp.add_argument('--instance_set_size', type=int)
 
     so.add_argument('--ta_cmd', type=str)
     so.add_argument('--deterministic', type=str)
@@ -168,5 +181,7 @@ if __name__ == "__main__":
     parser = parse_args()
 
     s = Scenario("./selector/input/scenarios/example_scenario.txt", parser)
+    print(s.parameter)
+    print(s.no_goods)
     print("done")
 
