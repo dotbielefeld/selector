@@ -2,14 +2,14 @@ import numpy as np
 
 
 class InstanceSet:
-    def __init__(self, instance_set, start_instance_size, max_set_size=None):
+    def __init__(self, instance_set, start_instance_size,set_size=None):
         self.instance_set = instance_set
         self.start_instance_size = start_instance_size
         self.instance_sets = {}
-        if max_set_size:
-            self.max_set_size = max_set_size
+        if set_size:
+            self.set_size = set_size
         else:
-            self.max_set_size = len(instance_set)
+            self.set_size = len(instance_set)
 
 
     def compute_next_set(self, id):
@@ -28,10 +28,10 @@ class InstanceSet:
             else:
                 self.instance_sets[1]  = np.random.choice(self.instance_set, self.start_instance_size, replace=False)
         # If we have seen instances before are still allowed to choose instances we do so
-        elif len(seen_instances) < self.max_set_size:
+        elif len(seen_instances) < self.set_size:
             # We either sample as many instances as the slope tells us or the last remainder set to full instance sice
             number_to_sample = int(min(np.floor(len(self.instance_set)/self.start_instance_size),
-                                       self.max_set_size - len(seen_instances)))
+                                       self.set_size - len(seen_instances)))
             # We can only select instances not chosen before
             possible_instances = [i for i in self.instance_set if i not in seen_instances]
             self.instance_sets[id] = np.random.choice(possible_instances, number_to_sample, replace=False)
