@@ -1,0 +1,112 @@
+import numpy as np
+import ray
+import pickle
+
+def get_conf_time_out(results, configuration_id, instances_set):
+    """
+    Determine if a configuration timed out on any instance in a set
+    :param results:  dic. Run results of configuration
+    :param configuration_id: int.
+    :param instances_set: Set of instances.
+    :return: None if no results are present, True if conf timed out on any instance, False if it dit not.
+    """
+    if configuration_id in list(results.keys()):
+        conf_results_all_instances = results[configuration_id]
+        conf_results_instances = [conf_results_all_instances[instance] for instance in
+                                  conf_results_all_instances if instance in instances_set]
+        if np.isnan(conf_results_instances).any():
+            return True
+        else:
+            return False
+    else:
+        return None
+
+
+def get_total_runtime_for_instance_set(results, configuration_id, instances_set):
+    """
+    For a configuration compute the total runtime needed only for instances in a set. If there are not results for the
+    conf return 0
+    :param results: Dic of results: {conf_id: {instance: runtime}}
+    :param configuration_id: Id of the configuration
+    :param instances_set: List of instances
+    :return: Runtime of the configuration on instances
+    """
+    if configuration_id in results.keys():
+        conf_results_all_instances = results[configuration_id]
+        conf_results_instances = [conf_results_all_instances[instance] for instance in
+                                  conf_results_all_instances if instance in instances_set]
+        runtime = np.nansum(list(conf_results_instances))
+
+    return runtime
+
+def get_total_runtime_of_configuration(results, configuration_id):
+    """
+    Get total runtime of a conf not conditioned on an instance set
+    :param results: Dic of results: {conf_id: {instance: runtime}}
+    :param configuration_id: Id of the configuration
+    :return:
+    """
+    if configuration_id in results.keys():
+        conf_results = results[configuration_id]
+        runtime = np.nansum(list(conf_results.values()))
+    return runtime
+
+def get_instances_no_results(results, configuration_id, instance_set):
+    """
+    For a configuration get a list of instances we have no results for yet
+    :param results: Dic of results: {conf_id: {instance: runtime}}
+    :param configuration_id: Id of the configuration
+    :param instance_set: List of instances
+    :return: List of configuration the conf has not been run on
+    """
+    not_run_on = instance_set.copy()
+
+    if configuration_id in results.keys():
+        configuration_results = results[configuration_id]
+
+        instances_run_on = configuration_results.keys()
+
+        for iro in instances_run_on:
+            if iro in not_run_on:
+                not_run_on.remove(iro)
+
+    return not_run_on
+
+def overall_best_update(cache):
+    """
+    Over all tournaments get the best finisher with the most instance runs and shortest runtime and save that conf
+    to a file.
+    :param cache:
+    :return:
+    """
+
+    tournaments = ray.get(cache.get_tournament_history.remote())
+    results = ray.get(cache.get_results.remote())
+
+    number_of_instances_run = {}
+    runtime = {}
+    confs = {}
+    # For each tournament get the best finisher
+    for _, t in tournaments.items():
+        if t.best_finisher:
+            best_winner = t.best_finisher[0]
+            number_of_instances_run[best_winner.id] = len(results[best_winner.id])
+            runtime[best_winner.id] = get_total_runtime_of_configuration(results, best_winner.id)
+            confs[best_winner.id] = best_winner
+    # If we have any best finisher we get those which ran on the most instances and then get the conf with the
+    # shortest runtime on those
+    if confs:
+        max_number_instances = max(list(number_of_instances_run.values()))
+        conf_with_max_number = [k for k, v in number_of_instances_run.items() if v == max_number_instances]
+
+        conf_r_w_max_i = {k: runtime[k] for k in conf_with_max_number}
+        conf_with_min_runtime = min(list(conf_r_w_max_i.values()))
+        conf_with_min_runtime = [k for k, v in conf_r_w_max_i.items() if v == conf_with_min_runtime]
+
+
+        with open("selector/output/best_conf.txt", 'wb') as fp:
+            pickle.dump(confs[conf_with_min_runtime[0]], fp)
+
+
+
+
