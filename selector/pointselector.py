@@ -27,5 +27,5 @@ class RandomSelector(PointSelector):
         selected_ids = np.random.choice(list(pool), number_of_points, replace=False)
         self.selection_history[iteration] = selected_ids
 
-        return selected_ids
+        return selected_ids.tolist()
 
