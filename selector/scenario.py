@@ -180,7 +180,5 @@ if __name__ == "__main__":
     parser = parse_args()
 
     s = Scenario("./selector/input/scenarios/example_scenario.txt", parser)
-    print(s.parameter)
-    print(s.no_goods)
-    print("done")
+
 
