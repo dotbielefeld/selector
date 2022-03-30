@@ -3,8 +3,9 @@ import numpy as np
 
 class PointSelector:
 
-    def __init__(self):
+    def __init__(self, features=None):
         self.selection_history = {}
+        self.features = features
 
     def select_points(self, pool, number_of_points, iteration):
         pass
