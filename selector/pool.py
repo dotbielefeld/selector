@@ -8,7 +8,6 @@ from enum import Enum
 class Configuration:
     id: int
     conf: dict
-    gender: str
 
 @dataclass
 class Parameter:
