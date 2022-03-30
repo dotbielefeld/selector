@@ -149,19 +149,18 @@ def parse_args():
 
     hp.add_argument('--selector', type=str)
     hp.add_argument('--number_iterations', type=str)
-    hp.add_argument('--winners_per_tournament', type=str)
 
     hp.add_argument('--check_path', default=False)
     hp.add_argument('--seed', default=False)
     hp.add_argument('--ta_run_type',type=str, default="import_wrapper")
 
-    hp.add_argument('--winners_per_tournament', type=int)
-    hp.add_argument('--tournament_size', type=int)
-    hp.add_argument('--number_tournaments', type=int)
-    hp.add_argument('--total_tournament_number', type=int)
+    hp.add_argument('--winners_per_tournament', type=int, default=1)
+    hp.add_argument('--tournament_size', type=int, default=5 )
+    hp.add_argument('--number_tournaments', type=int, default=2)
+    hp.add_argument('--total_tournament_number', type=int, default=4)
 
-    hp.add_argument('--initial_instance_set_size', type=int)
-    hp.add_argument('--instance_set_size', type=int)
+    hp.add_argument('--initial_instance_set_size', type=int, default=2)
+    hp.add_argument('--instance_set_size', type=int, default=10)
 
     so.add_argument('--ta_cmd', type=str)
     so.add_argument('--deterministic', type=str)
