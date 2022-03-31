@@ -5,59 +5,64 @@ class InstanceSet:
     def __init__(self, instance_set, start_instance_size,set_size=None):
         self.instance_set = instance_set
         self.start_instance_size = start_instance_size
-        self.instance_sets = {}
+        self.instance_sets = {0:[]}
+        self.subset_counter = 0
+
         if set_size:
             self.set_size = set_size
         else:
             self.set_size = len(instance_set)
 
+        self.instance_increment_size = len(self.instance_set) / np.floor(len(self.instance_set)/self.start_instance_size)
 
-    def compute_next_set(self, id):
+
+    def next_set(self):
         """
         Create a new instance set with instances not included in any created set before
         :param id: int. Id of the new instance set. If it is the first set id will be 1.
         """
-
+        self.subset_counter += 1
         # Get instances that were already chosen
-        seen_instances = [i for v in self.instance_sets.values() for i in v]
-
+        seen_instances = self.instance_sets[self.subset_counter - 1 ]
         # If we have not chosen any instance before we create a first set
         if not self.instance_sets:
             if self.start_instance_size > len(self.instance_set):
                 raise ValueError("The number of instances provided is smaller than the initial instance set size")
             else:
-                self.instance_sets[1]  = np.random.choice(self.instance_set, self.start_instance_size, replace=False)
-        # If we have seen instances before are still allowed to choose instances we do so
-        elif len(seen_instances) < self.set_size:
+                new_subset = np.random.choice(self.instance_set, self.start_instance_size, replace=False).tolist()
+                self.instance_sets[self.subset_counter]  = new_subset
+        # If we have seen instances before and are still allowed to choose instances we do so
+        elif len(seen_instances) <= self.set_size:
             # We either sample as many instances as the slope tells us or the last remainder set to full instance sice
-            number_to_sample = int(min(np.floor(len(self.instance_set)/self.start_instance_size),
-                                       self.set_size - len(seen_instances)))
+            number_to_sample = int(min(self.instance_increment_size, self.set_size - len(seen_instances)))
             # We can only select instances not chosen before
             possible_instances = [i for i in self.instance_set if i not in seen_instances]
-            self.instance_sets[id] = np.random.choice(possible_instances, number_to_sample, replace=False)
+            new_subset = np.random.choice(possible_instances, number_to_sample, replace=False).tolist()
+            self.instance_sets[self.subset_counter] = self.instance_sets[self.subset_counter - 1 ] + new_subset
+        # In case we have chosen all instances but still tournaments to run we use the full set of instances for all
+        # following tournaments
+        else:
+            self.instance_sets[self.subset_counter] = self.instance_sets[self.subset_counter - 1 ]
 
 
-    def get_instance_sub_set(self, previous_set_id):
+
+
+    def get_subset(self, set_id_previous_tournament):
         """
         Create an instance set for the next tournament. The set contains all instances that were included in the
         previous sets as well as a new subset of instances.
-        :param previous_set_id: int. Id of the subset of instances used before.
+        :param set_id_previous_tournament: int. Id of the subset of instances used in the tournament before.
         :return: id of the instances set, list containing instances and previous instances of the subset
         """
-        next_set_id = previous_set_id + 1
+        next_tournament_set_id = set_id_previous_tournament + 1
         # If we have already created the required subset we return it
-        if next_set_id in self.instance_sets:
-            next_set = [i for id in range(1,next_set_id+1) for i in self.instance_sets[id]]
+        if next_tournament_set_id in self.instance_sets:
+            next_set = self.instance_sets[next_tournament_set_id]
         # In case we have not, we create the next instance subset
         else:
-            self.compute_next_set(next_set_id)
-            # We have to make sure that when creating the instance set only the subsets with an id less or equal
-            # to the next id are included.
-            if next_set_id+1 in self.instance_sets.keys():
-                next_set = [i for id in range(1,next_set_id+1) for i in self.instance_sets[id]]
-            else:
-                next_set = [i for id in range(1, len(self.instance_sets.keys()) + 1) for i in self.instance_sets[id]]
-        return next_set_id, next_set
+            self.next_set()
+            next_set = self.instance_sets[next_tournament_set_id]
+        return next_tournament_set_id, next_set
 
 
 

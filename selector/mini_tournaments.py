@@ -42,7 +42,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
         generated_points = [generate(scenario) for _ in range(scenario.tournament_size*5)]
         points_to_run = point_selector.select_points(generated_points, scenario.tournament_size, tournament_counter)
 
-        instance_id, instances = instance_selector.get_instance_sub_set(0)
+        instance_id, instances = instance_selector.get_subset(0)
         tournament, initial_assignments = tournament_dispatcher.init_tournament(global_cache, points_to_run,
                                                                                 instances, instance_id)
         tournaments.append(tournament)
@@ -98,7 +98,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             points_to_run = points_to_run + [result_tournament.best_finisher[0]]
 
             # Get the instances for the new tournament
-            instance_id, instances = instance_selector.get_instance_sub_set(result_tournament.instance_set_id)
+            instance_id, instances = instance_selector.get_subset(result_tournament.instance_set_id)
 
             # Create new tournament
             new_tournament, initial_assignments_new_tournament = tournament_dispatcher.init_tournament(global_cache,
