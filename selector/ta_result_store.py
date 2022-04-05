@@ -3,7 +3,7 @@ import logging
 
 
 @ray.remote(num_cpus=1)
-class Target_Algorithm_Observer:
+class TargetAlgorithmObserver:
 
     def __init__(self):
         self.intermediate_output = {}
@@ -12,6 +12,7 @@ class Target_Algorithm_Observer:
         self.tournament_history = {}
         self.read_from = {"conf id":1 , "instance_id":1 , "index":1 }
 
+        # todo logging dic should be provided somewhere else -> DOTAC-37
         logging.basicConfig(filename='./selector/logs/Target_Algorithm_Cache.log', level=logging.INFO,
                             format='%(asctime)s %(message)s')
 

@@ -1,5 +1,5 @@
 import os
-from ta_execution import target_algorithm_execution_from_cmd_wrapper
+from ta_execution import tae_from_cmd_wrapper
 
 def get_tournament_membership(tournaments, conf):
     """
@@ -40,7 +40,7 @@ def update_tasks(tasks, next_task, tournament, global_cache, ta_wrapper, scenari
     for t in next_task:
         if t[1] is not None:
             # TODO need to change the wrapper to something more generic here
-            task = target_algorithm_execution_from_cmd_wrapper.remote(t[0], t[1], global_cache, ta_wrapper, scenario)
+            task = tae_from_cmd_wrapper.remote(t[0], t[1], global_cache, ta_wrapper, scenario)
             tasks.append(task)
             # We also add the ray object id to the tournament to latter map the id back
             if t[0].id not in tournament.ray_object_store.keys():

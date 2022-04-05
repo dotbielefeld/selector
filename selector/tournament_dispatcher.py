@@ -95,13 +95,13 @@ class MiniTournamentDispatcher:
                         tournament.best_finisher.insert(bfi, finished_conf)
                         if finished_conf in tournament.worst_finisher:
                             tournament.worst_finisher.remove(finished_conf)
-                        # If we have to many best finisher we cut of the excess
+                        # If we have too many best finishers we cut off the excess
                         if len(tournament.best_finisher) > number_winner:
                             transition =  number_winner - len(tournament.best_finisher)
                             tournament.worst_finisher = tournament.worst_finisher + tournament.best_finisher[transition:]
                             tournament.best_finisher = tournament.best_finisher[: transition]
                             break
-                    # We also add a conf to best finisher if we have not enough
+                    # We also add a conf to best finishers if we have not enough
                     elif len(tournament.best_finisher) < number_winner:
                         tournament.best_finisher.append(finished_conf)
                         break

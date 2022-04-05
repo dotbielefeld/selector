@@ -10,7 +10,7 @@ import ray
 from scenario import Scenario
 from pool import Configuration
 from pointselector import RandomSelector
-from ta_result_store import Target_Algorithm_Observer
+from ta_result_store import TargetAlgorithmObserver
 from generator import generate
 
 from tournament_dispatcher import MiniTournamentDispatcher
@@ -29,7 +29,7 @@ from instance_sets import InstanceSet
 def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     point_selector = RandomSelector()
     tournament_dispatcher = MiniTournamentDispatcher()
-    global_cache = Target_Algorithm_Observer.remote()
+    global_cache = TargetAlgorithmObserver.remote()
 
     instance_selector = InstanceSet(scenario.instance_set, scenario.initial_instance_set_size)
 
@@ -56,7 +56,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     logger.info(f"Initial Tournaments {tournaments}")
     logger.info(f"Initial Tasks, {[get_tasks(o.ray_object_store, tasks) for o in tournaments]}")
 
-
+    # TODO other convergence criteria DOTAC-36
     while tournament_counter < scenario.total_tournament_number:
         logger.info("Starting main loop")
         winner, not_ready = ray.wait(tasks)

@@ -17,7 +17,7 @@ def enqueue_output(out, queue):
     out.close()
 
 @ray.remote(num_cpus=1)
-def target_algorithm_execution_from_cmd_wrapper(conf, instance_path, cache, ta_command_creator, scenario):
+def tae_from_cmd_wrapper(conf, instance_path, cache, ta_command_creator, scenario):
     """
     Execute the target algorithm with a given conf/instance pair by calling a user provided Wrapper that created a cmd
     line argument that can be executed
@@ -27,13 +27,13 @@ def target_algorithm_execution_from_cmd_wrapper(conf, instance_path, cache, ta_c
     :param ta_command_creator: Wrapper that creates a
     :return:
     """
-
+    # todo logging dic should be provided somewhere else -> DOTAC-37
     logging.basicConfig(filename=f'./selector/logs/wrapper_log_for{conf.id}.log', level=logging.INFO,
                         format='%(asctime)s %(message)s')
 
     try:
         logging.info(f"Starting ta execution {conf}, {instance_path}")
-        runargs = {'instance': f'{instance_path}', 'seed': scenario.seed if scenario.seed else 42}
+        runargs = {'instance': f'{instance_path}', 'seed': scenario.seed if scenario.seed else -1}
 
         cmd = ta_command_creator.get_command_line_args(runargs, conf.conf)
         start = time.time()
@@ -78,7 +78,7 @@ def target_algorithm_execution_from_cmd_wrapper(conf, instance_path, cache, ta_c
 
 
 @ray.remote(num_cpus=1)
-def target_algorithm_execution_from_aclib(conf, instance, cache, ta_exc):
+def tae_from_aclib(conf, instance, cache, ta_exc):
     pass
 # TODO
 
