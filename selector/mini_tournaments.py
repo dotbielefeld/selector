@@ -39,7 +39,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
 
     # creating the first tournaments and adding first conf/instance pairs to ray tasks
     for _ in range(scenario.number_tournaments):
-        generated_points = [generate(scenario) for _ in range(scenario.tournament_size*5)]
+        generated_points = [generate(scenario) for _ in range(scenario.tournament_size * scenario.generator_multiple)]
         points_to_run = point_selector.select_points(generated_points, scenario.tournament_size, tournament_counter)
 
         instance_id, instances = instance_selector.get_subset(0)
@@ -62,12 +62,12 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
         winner, not_ready = ray.wait(tasks)
         tasks = not_ready
         result = ray.get(winner)[0]
-        result_conf, result_instance = result[0], result[1]
+        result_conf, result_instance, cancel_flag = result[0], result[1], result[2]
         result_tournament = get_tournament_membership(tournaments, result_conf)
 
         # Check whether we canceled a task or if the TA terminated regularly
         # In case we canceled a task, we need to remove it from the ray tasks
-        if len(result) == 3:
+        if cancel_flag:
             if result_tournament.ray_object_store[result_conf.id][result_instance] in tasks:
                 tasks.remove(result_tournament.ray_object_store[result_conf.id][result_instance])
             logger.info(f"Canceled TA: {result_conf.id}, {result_instance}")
@@ -93,7 +93,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             tournament_counter += 1
 
             # Generate and select
-            generated_points = [generate(scenario) for _ in range(scenario.tournament_size*5)]
+            generated_points = [generate(scenario) for _ in range(scenario.tournament_size * scenario.generator_multiple)]
             points_to_run = point_selector.select_points(generated_points, scenario.tournament_size-1, tournament_counter)
             points_to_run = points_to_run + [result_tournament.best_finisher[0]]
 
@@ -145,7 +145,8 @@ if __name__ == "__main__":
 
 
     parser = {"check_path": False, "seed": 42, "ta_run_type": "import_wrapper", "winners_per_tournament" : 1,
-            "initial_instance_set_size": 2, "tournament_size": 2, "number_tournaments": 1, "total_tournament_number":2 }
+            "initial_instance_set_size": 2, "tournament_size": 2, "number_tournaments": 1, "total_tournament_number":2,
+              "generator_multiple" : 5 }
 
     scenario = Scenario("./selector/input/scenarios/test_example.txt", parser)
 

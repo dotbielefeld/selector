@@ -149,6 +149,7 @@ def parse_args():
 
     hp.add_argument('--selector', type=str)
     hp.add_argument('--number_iterations', type=str)
+    hp.add_argument('--generator_multiple', type=int, default=5)
 
     hp.add_argument('--check_path', default=False)
     hp.add_argument('--seed', default=False)

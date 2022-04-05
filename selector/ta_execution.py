@@ -61,7 +61,7 @@ def tae_from_cmd_wrapper(conf, instance_path, cache, ta_command_creator, scenari
 
         cache.put_result.remote(conf.id, instance_path, time.time() - start)
         logging.info(f"ta execution finished {conf}, {instance_path}")
-        return  conf, instance_path
+        return  conf, instance_path, False
 
     except KeyboardInterrupt:
         logging.info(f" Killing: {conf.id} {instance_path} ")
@@ -74,7 +74,7 @@ def tae_from_cmd_wrapper(conf, instance_path, cache, ta_command_creator, scenari
         #    pass
         logging.info(f"Killing status: {p.poll()} {conf.id} {instance_path}")
 
-        return  conf, instance_path
+        return  conf, instance_path, True
 
 
 @ray.remote(num_cpus=1)
