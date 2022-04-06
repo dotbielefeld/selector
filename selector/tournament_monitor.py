@@ -4,7 +4,7 @@ import time
 import numpy as np
 
 
-from tournament_performance import get_total_runtime_for_instance_set,get_conf_time_out
+from tournament_performance import get_censored_runtime_for_instance_set,get_conf_time_out
 
 @ray.remote(num_cpus=1)
 def monitor(sleep_time, tournaments, cache, number_of_finisher):
@@ -21,26 +21,34 @@ def monitor(sleep_time, tournaments, cache, number_of_finisher):
     """
     logging.basicConfig(filename=f'./selector/logs/monitor.log', level=logging.INFO,
                         format='%(asctime)s %(message)s')
-    logging.info("starting monitor")
+    logging.info("Starting monitor")
     try:
         while True:
+            # Todo mesure time here
+            start = time.time()
             results = ray.get(cache.get_results.remote())
+            dur = time.time() - start
+            logging.info(f"Monitor getting results {dur}")
+
             # get starting times for each conf/instance
+            start = time.time()
             start_time = ray.get(cache.get_start.remote())
+            dur = time.time() - start
+            logging.info(f"Monitor getting start {dur}")
 
             for t in tournaments:
                 # We can only start canceling runs if there are enough winners already
                 if len(t.best_finisher) == number_of_finisher:
                     # Compare runtime to the worst best finisher
                     worst_best_finisher = t.best_finisher[-1]
-                    runtime_worst_best_finisher = get_total_runtime_for_instance_set(results, worst_best_finisher.id,
-                                                                                     t.instance_set)
+                    runtime_worst_best_finisher = get_censored_runtime_for_instance_set(results, worst_best_finisher.id,
+                                                                                        t.instance_set)
                     # We need to compare each configuration that is still in the running to the worst finisher
                     for conf in t.configurations:
                         # Here we figured out which instances the conf is still running and which one it already finished
                         if conf.id in list(results.keys()):
                             instances_conf_finished = list(results[conf.id].keys())
-                            conf_runtime_f = get_total_runtime_for_instance_set(results, conf.id, t.instance_set)
+                            conf_runtime_f = get_censored_runtime_for_instance_set(results, conf.id, t.instance_set)
                         else:
                             instances_conf_finished = []
                             conf_runtime_f = 0
@@ -65,7 +73,7 @@ def monitor(sleep_time, tournaments, cache, number_of_finisher):
                         # We also kill in case there has been a time out recorded for the conf
                         if conf_runtime > runtime_worst_best_finisher or conf_time_out:
                             for i in instances_conf_still_runs:
-                                logging.info(f"Monitor is killing: {conf.id} with id: {t.ray_object_store[conf.id][i]}")
+                                logging.info(f"Monitor is killing: {conf} {i} with id: {t.ray_object_store[conf.id][i]}")
                                 print(f"Monitor is killing:{time.ctime()} {t.ray_object_store[conf.id][i]}")
                                 [ray.cancel(t.ray_object_store[conf.id][i])]
                                 cache.put_result.remote(conf.id, i, np.nan)

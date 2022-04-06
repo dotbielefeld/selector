@@ -4,7 +4,7 @@ import uuid
 import time
 
 from selector.pool import Tournament
-from selector.tournament_performance import get_total_runtime_for_instance_set, get_instances_no_results, get_conf_time_out
+from selector.tournament_performance import get_censored_runtime_for_instance_set, get_instances_no_results, get_conf_time_out
 
 class MiniTournamentDispatcher:
 
@@ -80,15 +80,15 @@ class MiniTournamentDispatcher:
         if set(evaluated_instances) == set(tournament.instance_set):
             # We can than remove the conf from further consideration
             tournament.configurations.remove(finished_conf)
-            finished_conf_runtime = get_total_runtime_for_instance_set(results, finished_conf.id,
-                                                                       tournament.instance_set)
+            finished_conf_runtime = get_censored_runtime_for_instance_set(results, finished_conf.id,
+                                                                          tournament.instance_set)
 
             # If there are already some best finisher we need to compare the conf to them
             if len(tournament.best_finisher) > 0:
                 # We assume that the finishers in the set are ordered according to their runtime
                 for bfi in range(len(tournament.best_finisher)):
-                    bfr = get_total_runtime_for_instance_set(results, tournament.best_finisher[bfi].id,
-                                                             tournament.instance_set)
+                    bfr = get_censored_runtime_for_instance_set(results, tournament.best_finisher[bfi].id,
+                                                                tournament.instance_set)
 
                     # If the conf is better than one best finisher we insert it
                     if finished_conf_runtime <= bfr and not conf_time_out:

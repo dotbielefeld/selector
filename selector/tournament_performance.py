@@ -22,10 +22,10 @@ def get_conf_time_out(results, configuration_id, instances_set):
         return None
 
 
-def get_total_runtime_for_instance_set(results, configuration_id, instances_set):
+def get_censored_runtime_for_instance_set(results, configuration_id, instances_set):
     """
-    For a configuration compute the total runtime needed only for instances in a set. If there are not results for the
-    conf return 0
+    For a configuration compute the total runtime needed only for instances in a set. If there are no results for the
+    conf return 0. Note that runs that were canceled by the monitor are not included since we count them as nan's
     :param results: Dic of results: {conf_id: {instance: runtime}}
     :param configuration_id: Id of the configuration
     :param instances_set: List of instances
@@ -39,9 +39,10 @@ def get_total_runtime_for_instance_set(results, configuration_id, instances_set)
 
     return runtime
 
-def get_total_runtime_of_configuration(results, configuration_id):
+def get_censored_runtime_of_configuration(results, configuration_id):
     """
-    Get total runtime of a conf not conditioned on an instance set
+    Get total runtime of a conf not conditioned on an instance set. Note that runs that were canceled by the monitor
+    are not included since we count them as nan's
     :param results: Dic of results: {conf_id: {instance: runtime}}
     :param configuration_id: Id of the configuration
     :return:
@@ -91,7 +92,7 @@ def overall_best_update(cache):
         if t.best_finisher:
             best_winner = t.best_finisher[0]
             number_of_instances_run[best_winner.id] = len(results[best_winner.id])
-            runtime[best_winner.id] = get_total_runtime_of_configuration(results, best_winner.id)
+            runtime[best_winner.id] = get_censored_runtime_of_configuration(results, best_winner.id)
             confs[best_winner.id] = best_winner
     # If we have any best finisher we get those which ran on the most instances and then get the conf with the
     # shortest runtime on those
