@@ -76,7 +76,7 @@ def get_ta_arguments_from_pcs(para_file):
             warnings.warn(f"Condition {pc}|{conditionals[pc]} will be dropped since either {pc} is "
                           f"not configurable or does not exist")
 
-    return parameters,  no_goods, conditionals
+    return parameters, no_goods, conditionals
 
 
 def get_categorical(param_name, param_info):
