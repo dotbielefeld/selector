@@ -1,7 +1,12 @@
 import re
-from selector.pool import Parameter
+import warnings
+from selector.pool import Parameter, ParamType
 
 import numpy as np
+
+boolean_yes = ["on", "yes"]
+boolean_no = [ "no", "off"]
+boolean_options = boolean_yes + boolean_no
 
 def get_ta_arguments_from_pcs(para_file):
     """
@@ -24,28 +29,28 @@ def get_ta_arguments_from_pcs(para_file):
             if line == "":
                 continue
 
-            line_split = line.split(" ", 1) # TODO should be whitespace, as the pcs could have a tab, etc.
+            line_split = line.split(None, 1)
             param_name = line_split[0]
             param_info = line_split[1] # TODO This will error if forbidden params do not have any spaces
-            param_info = re.sub('\s+', ' ', param_info) # TODO not sure why we need to do this; check
 
             if "|" not in param_info:
 
                 # cat
-                if re.search(r'\{', param_info): # TODO change to not use re module
-                    type , bounds, defaults = get_categorical(param_name, param_info)
-                    parameters.append(Parameter(param_name, type, bounds, defaults, {}, ''))
+                if '{' in  param_info:
+                    param_type , bounds, defaults = get_categorical(param_name, param_info)
+                    if param_type != None:
+                        parameters.append(Parameter(param_name, param_type, bounds, defaults, {}, ''))
                 # forbidden
-                elif  re.search(r'\{', param_name):
+                elif '{' in param_name:
                     no_good = get_no_goods(line)
                     no_goods.append(no_good)
                 # cont.
-                elif re.search(r'\[', param_info):
-                    type, bounds, defaults, scale = get_continuous(param_name, param_info)
-                    parameters.append(Parameter(param_name, type, bounds, defaults, {}, scale))
+                elif '[' in param_info:
+                    param_type, bounds, defaults, scale = get_continuous(param_name, param_info)
+                    parameters.append(Parameter(param_name, param_type, bounds, defaults, {}, scale))
 
             # conditionals
-            elif "|" in param_info:
+            elif '|' in param_info:
                 condition_param, condition = get_conditional(param_name, param_info)
 
                 if param_name not in conditionals:
@@ -54,8 +59,8 @@ def get_ta_arguments_from_pcs(para_file):
                     conditionals[param_name].update({condition_param: condition})
 
             else:
-                raise ValueError("The parameter file contains unreadable elements. Check that the structure adheres"
-                                 "to AClib") # TODO Specify more clearly where we have an issue
+                raise ValueError(f"The parameter file {para_file} contains unreadable elements. Check that"
+                                 f" the structure adheres to AClib")
 
     # adding conditionals to parameters
 
@@ -65,10 +70,11 @@ def get_ta_arguments_from_pcs(para_file):
             if pc in parameter.name:
                 parameter.condition.update(conditionals[pc])
                 condition_found = True
-
+        # This should only be a warning: We may have conditions for cat. parameters that are not configurable.
+        # We ignore these.
         if not condition_found:
-            raise ValueError("A condition was parsed that does not correspond to a read parameter of the"
-                             " target algorithm")
+            warnings.warn(f"Condition {pc}|{conditionals[pc]} will be dropped since either {pc} is "
+                          f"not configurable or does not exist")
 
     return parameters,  no_goods, conditionals
 
@@ -78,27 +84,34 @@ def get_categorical(param_name, param_info):
     For a categorical parameter: check if its parsed attributes are valid and extract information on the parameter
     :param param_name: name of the parameter
     :param param_info: raw parameter information
-    :return: type , bounds, defaults of the parameter
+    :return: param_type , bounds, defaults of the parameter
     """
 
-    bounds = re.search(r'.*\{(.*)\}', param_info).group().strip("{ }").split(",") # Remove first .* in re?
-
+    bounds = re.search(r'\{(.*)\}', param_info).group().strip("{ }").split(",")
     defaults = re.findall(r'\[(.*)\]*]', param_info)
 
-    if bounds[0] in ["yes", "no", "on", "off"]: # TODO need to ensure bounds[1] is also reasonable, also len(bounds) == 2
-        type = "boolean" # TODO should just be cat
+    # When len(bounds) ==1: The parameter can not be configured. Later we have to also raise a warning that conditions
+                                                                # on it are ignored
+    if len(bounds) == 1:
+        warnings.warn(f"For parameter {param_name} bounds of length 1 were passed. The parameter will "
+                      f"be ignored for configuration.")
 
-        if defaults[0] in ["on", "yes"]:
+        param_type, bounds, defaults = None, None, None
+
+    elif bounds[0] in boolean_options and  bounds[1] in boolean_options:
+        param_type = ParamType.categorical
+
+        if defaults[0] in boolean_yes:
             defaults = True
-        elif defaults[0] in [ "no", "off"]:
+        elif defaults[0] in boolean_no:
             defaults = False
         else:
             raise ValueError(f"For parameter {param_name} the parsed defaults are not within [yes, no, on, off]")
 
-        bounds = [b in ["on", "yes"] for b in bounds]
+        bounds = [b in boolean_yes for b in bounds]
 
     elif isinstance(float(bounds[0]), float):
-        type = "cat."
+        param_type = ParamType.categorical
 
         if isinstance(float(defaults[0]), float):
             defaults = float(defaults[0])
@@ -110,14 +123,15 @@ def get_categorical(param_name, param_info):
     else:
         raise ValueError(f"For parameter {param_name} the parsed bounds were not boolean or categorical")
 
-    return type , bounds, defaults
+    return param_type, bounds, defaults
+
 
 def get_continuous(param_name, param_info):
     """
     For a continuous parameter: check if its parsed attributes are valid and extract information on the parameter
     :param param_name: name of the parameter
     :param param_info: raw parameter information
-    :return: type , bounds, defaults,scale of the parameter
+    :return: param_type , bounds, defaults,scale of the parameter
     """
 
     scale = re.search(r'[a-zA-Z]+', param_info)
@@ -127,18 +141,17 @@ def get_continuous(param_name, param_info):
 
     # checking for set scale
     if scale and "i" in scale.group():
-        type = "int"
+        param_type = ParamType.integer
         scale = scale.group().strip("i")
 
         if isinstance(int(defaults), int):
             defaults = int(defaults)
         else:
             raise ValueError(f"For parameter {param_name} the parsed defaults are not integer")
-
         bounds = [int(b) for b in bounds]
 
     else:
-        type = "cont."
+        param_type = ParamType.continuous
 
         if isinstance(float(defaults), float):
             defaults = float(defaults)
@@ -151,7 +164,7 @@ def get_continuous(param_name, param_info):
         else:
             scale = scale.group()
 
-    return type, bounds, defaults, scale
+    return param_type, bounds, defaults, scale
 
 def get_conditional(param_name, param_info):
     """
@@ -165,8 +178,8 @@ def get_conditional(param_name, param_info):
     condition = re.search(r'\{(.*)\}', param_info).group().strip("{ }").split(",")
     condition_param = re.search(r'.+?(?=in)', param_info).group()
 
-    if condition[0] in ["yes", "no", "on", "off"]:
-        condition = [c in ["on", "yes"] for c in condition]
+    if condition[0] in boolean_options:
+        condition = [c in boolean_yes for c in condition]
     elif isinstance(float(condition[0]), float):
         condition = [float(c) for c in condition]    
     else:
@@ -189,9 +202,9 @@ def get_no_goods(no_good):
         param = param.strip()
         value = value.strip()
 
-        if value in ["yes", "on"]:
+        if value in boolean_yes:
             value = True
-        elif value in ["no", "off"]:
+        elif value in boolean_no:
             value = False
         elif isinstance(float(value), float):
             value = float(value)

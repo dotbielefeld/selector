@@ -11,7 +11,7 @@ class Scenario_Test(unittest.TestCase):
 
     def setUp(self):
         self.scenario_dict = {'ta_cmd': 'echo test',
-                                   'paramfile': './test_data/test_params.pcs',
+                                   'paramfile': './test/test_data/test_params.pcs',
                                    'execdir': '.',
                                    'deterministic': 0,
                                    'run_obj': 'runtime',
@@ -19,11 +19,11 @@ class Scenario_Test(unittest.TestCase):
                                    'cutoff_time': 300,
                                    'wallclock_limit': 172800,
                                    'instance_file':
-                                       './test_data/test_training.txt',
+                                       './test/test_data/test_training.txt',
                                    'test_instance_file':
-                                       './test_data/test_test.txt',
+                                       './test/test_data/test_test.txt',
                                    'feature_file':
-                                       './test_data/test_features.txt',
+                                       './test/test_data/test_features.txt',
                                    'output_dir':
                                        'placeholder'}
 
@@ -34,7 +34,7 @@ class Scenario_Test(unittest.TestCase):
 
 
     def test_scenario_from_sting(self):
-        scenario = Scenario('./test_data/test_scenario.txt')
+        scenario = Scenario('./test/test_data/test_scenario.txt')
 
         self.assertEqual(scenario.ta_cmd, 'echo test')
         self.assertEqual(scenario.execdir, '.')
@@ -43,10 +43,10 @@ class Scenario_Test(unittest.TestCase):
         self.assertEqual(scenario.overall_obj, 'mean10')
         self.assertEqual(scenario.cutoff_time, '300')
         self.assertEqual(scenario.wallclock_limit, '172800')
-        self.assertEqual(scenario.instance_file, './test_data/test_training.txt')
-        self.assertEqual(scenario.test_instance_file, './test_data/test_test.txt')
-        self.assertEqual(scenario.feature_file, './test_data/test_features.txt')
-        self.assertEqual(scenario.paramfile,'./test_data/test_params.pcs')
+        self.assertEqual(scenario.instance_file, './test/test_data/test_training.txt')
+        self.assertEqual(scenario.test_instance_file, './test/test_data/test_test.txt')
+        self.assertEqual(scenario.feature_file, './test/test_data/test_features.txt')
+        self.assertEqual(scenario.paramfile,'./test/test_data/test_params.pcs')
         self.assertEqual(scenario.instance_set,['./test/test_data/instances/test_instance_1.cnf'])
         self.assertEqual(scenario.test_instances, ['./test/test_data/instances/test_instance_2.cnf'])
         self.assertEqual(scenario.feature_names, ['feature_1', ' feature_2'])
@@ -67,10 +67,10 @@ class Scenario_Test(unittest.TestCase):
         self.assertEqual(scenario.overall_obj, 'mean10')
         self.assertEqual(scenario.cutoff_time, 300)
         self.assertEqual(scenario.wallclock_limit, 172800)
-        self.assertEqual(scenario.instance_file,'./test_data/test_training.txt')
-        self.assertEqual(scenario.test_instance_file,'./test_data/test_test.txt')
-        self.assertEqual(scenario.feature_file,'./test_data/test_features.txt')
-        self.assertEqual(scenario.paramfile,'./test_data/test_params.pcs')
+        self.assertEqual(scenario.instance_file,'./test/test_data/test_training.txt')
+        self.assertEqual(scenario.test_instance_file,'./test/test_data/test_test.txt')
+        self.assertEqual(scenario.feature_file,'./test/test_data/test_features.txt')
+        self.assertEqual(scenario.paramfile,'./test/test_data/test_params.pcs')
         self.assertEqual(scenario.instance_set,['./test/test_data/instances/test_instance_1.cnf'])
         self.assertEqual(scenario.test_instances, ['./test/test_data/instances/test_instance_2.cnf'])
         self.assertEqual(scenario.feature_names, ['feature_1', ' feature_2'])
@@ -83,7 +83,7 @@ class Scenario_Test(unittest.TestCase):
 
 
     def test_parameter_from_file(self):
-        scenario_file = Scenario('./test_data/test_scenario.txt')
+        scenario_file = Scenario('./test/test_data/test_scenario.txt')
         scenario_dic = Scenario(self.scenario_dict)
 
         for scenario in [scenario_file,scenario_dic ]:
@@ -93,7 +93,7 @@ class Scenario_Test(unittest.TestCase):
 
             # test luby
             self.assertEqual(test_parameter_list[0].name, 'luby')
-            self.assertEqual(test_parameter_list[0].type, 'boolean')
+            self.assertEqual(test_parameter_list[0].type, ParamType.categorical)
             self.assertEqual(test_parameter_list[0].bound, [True, False])
             self.assertEqual(test_parameter_list[0].default, False)
             self.assertEqual(test_parameter_list[0].condition, {})
@@ -101,7 +101,7 @@ class Scenario_Test(unittest.TestCase):
 
             # test rinc
             self.assertEqual(test_parameter_list[1].name, 'rinc')
-            self.assertEqual(test_parameter_list[1].type, 'cont.')
+            self.assertEqual(test_parameter_list[1].type, ParamType.continuous)
             self.assertEqual(test_parameter_list[1].bound, [1.1, 4.0])
             self.assertEqual(test_parameter_list[1].default, 2)
             self.assertEqual(test_parameter_list[1].condition, {'luby ': [True, False]})
@@ -109,7 +109,7 @@ class Scenario_Test(unittest.TestCase):
 
             # test cla-decay
             self.assertEqual(test_parameter_list[2].name, 'cla-decay')
-            self.assertEqual(test_parameter_list[2].type, 'cont.')
+            self.assertEqual(test_parameter_list[2].type, ParamType.continuous)
             self.assertEqual(test_parameter_list[2].bound, [0.9, 0.99999])
             self.assertEqual(test_parameter_list[2].default, 0.999)
             self.assertEqual(test_parameter_list[2].condition, {})
@@ -117,7 +117,7 @@ class Scenario_Test(unittest.TestCase):
 
             # test phase-saving
             self.assertEqual(test_parameter_list[3].name, 'phase-saving')
-            self.assertEqual(test_parameter_list[3].type, 'int')
+            self.assertEqual(test_parameter_list[3].type, ParamType.integer)
             self.assertEqual(test_parameter_list[3].bound, [0, 2])
             self.assertEqual(test_parameter_list[3].default, 2)
             self.assertEqual(test_parameter_list[3].condition, {})
@@ -125,7 +125,7 @@ class Scenario_Test(unittest.TestCase):
 
             # test strSseconds
             self.assertEqual(test_parameter_list[4].name, 'strSseconds')
-            self.assertEqual(test_parameter_list[4].type, 'cat.')
+            self.assertEqual(test_parameter_list[4].type, ParamType.categorical)
             self.assertEqual(test_parameter_list[4].bound, [10.0, 50.0, 100.0, 150.0, 200.0, 250.0, 290.0])
             self.assertEqual(test_parameter_list[4].default, 150)
             self.assertEqual(test_parameter_list[4].condition, {'luby ': [True], 'cla-decay ': [0.92, 0.93]})
@@ -133,7 +133,7 @@ class Scenario_Test(unittest.TestCase):
 
             # test bce-limit
             self.assertEqual(test_parameter_list[5].name, 'bce-limit')
-            self.assertEqual(test_parameter_list[5].type, 'int')
+            self.assertEqual(test_parameter_list[5].type, ParamType.integer)
             self.assertEqual(test_parameter_list[5].bound,[100000,200000000])
             self.assertEqual(test_parameter_list[5].default, 100000000)
             self.assertEqual(test_parameter_list[5].condition, {})
