@@ -1,7 +1,7 @@
 import os
 import warnings
 import argparse
-import random_point_generator as rpg
+import selector.random_point_generator as rpg
 
 import sys
 sys.path.append(os.getcwd())
