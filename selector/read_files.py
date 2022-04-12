@@ -5,7 +5,7 @@ from selector.pool import Parameter, ParamType
 import numpy as np
 
 boolean_yes = ["on", "yes"]
-boolean_no = [ "no", "off"]
+boolean_no = ["no", "off"]
 boolean_options = boolean_yes + boolean_no
 
 def get_ta_arguments_from_pcs(para_file):
@@ -30,7 +30,7 @@ def get_ta_arguments_from_pcs(para_file):
                 continue
 
             line_split = line.split(None, 1)
-            param_name = line_split[0]
+            param_name = line_split[0].replace(" ", "")
             param_info = line_split[1] # TODO This will error if forbidden params do not have any spaces
 
             if "|" not in param_info:
@@ -176,7 +176,7 @@ def get_conditional(param_name, param_info):
     param_info = param_info.strip(" | ")
 
     condition = re.search(r'\{(.*)\}', param_info).group().strip("{ }").split(",")
-    condition_param = re.search(r'.+?(?=in)', param_info).group()
+    condition_param = re.search(r'.+?(?=in)', param_info).group().replace(" ", "")
 
     if condition[0] in boolean_options:
         condition = [c in boolean_yes for c in condition]
