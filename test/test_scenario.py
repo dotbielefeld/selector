@@ -104,7 +104,7 @@ class Scenario_Test(unittest.TestCase):
             self.assertEqual(test_parameter_list[1].type, ParamType.continuous)
             self.assertEqual(test_parameter_list[1].bound, [1.1, 4.0])
             self.assertEqual(test_parameter_list[1].default, 2)
-            self.assertEqual(test_parameter_list[1].condition, {'luby ': [True, False]})
+            self.assertEqual(test_parameter_list[1].condition, {'luby': [True, False]})
             self.assertEqual(test_parameter_list[1].scale, '')
 
             # test cla-decay
@@ -128,7 +128,7 @@ class Scenario_Test(unittest.TestCase):
             self.assertEqual(test_parameter_list[4].type, ParamType.categorical)
             self.assertEqual(test_parameter_list[4].bound, [10.0, 50.0, 100.0, 150.0, 200.0, 250.0, 290.0])
             self.assertEqual(test_parameter_list[4].default, 150)
-            self.assertEqual(test_parameter_list[4].condition, {'luby ': [True], 'cla-decay ': [0.92, 0.93]})
+            self.assertEqual(test_parameter_list[4].condition, {'luby': [True], 'cla-decay': [0.92, 0.93]})
             self.assertEqual(test_parameter_list[4].scale, '')
 
             # test bce-limit
