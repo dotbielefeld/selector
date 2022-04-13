@@ -9,6 +9,7 @@ sys.path.append(os.getcwd())
 from selector.read_files import get_ta_arguments_from_pcs, read_instance_paths, read_instance_features
 from selector.point_gen import PointGen
 from selector.random_point_generator import random_point
+from selector.default_point_generator import default_point
 
 
 
@@ -188,4 +189,8 @@ if __name__ == "__main__":
 
     random_generator = PointGen(s, random_point)
 
-    print('\n Configuration:\n\n', random_generator.point_generator(), '\n')
+    default_generator = PointGen(s, default_point)
+
+    print('\n Random configuration:\n\n', random_generator.point_generator(), '\n')
+
+    print('\n Default configuration:\n\n', default_generator.point_generator(), '\n')
