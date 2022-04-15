@@ -74,6 +74,7 @@ def tae_from_cmd_wrapper(conf, instance_path, cache, ta_command_creator, scenari
         #    os.killpg(p.pid, signal.SIGTERM)
         #except ProcessLookupError:
         #    pass
+        cache.put_result.remote(conf.id, instance_path, np.nan)
         logging.info(f"Killing status: {p.poll()} {conf.id} {instance_path}")
         return  conf, instance_path, True
 
