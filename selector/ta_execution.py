@@ -61,6 +61,7 @@ def tae_from_cmd_wrapper(conf, instance_path, cache, ta_command_creator, scenari
                 logging.info(f"Wrapper TAE intermediate feedback {conf}, {instance_path} {line}")
 
         cache.put_result.remote(conf.id, instance_path, time.time() - start)
+        time.sleep(0.2)
         logging.info(f"Wrapper TAE end {conf}, {instance_path}")
         return  conf, instance_path, False
 
