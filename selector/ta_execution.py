@@ -32,9 +32,10 @@ def tae_from_cmd_wrapper(conf, instance_path, cache, ta_command_creator, scenari
                         format='%(asctime)s %(message)s')
 
     try:
-        logging.info(f"Starting ta execution {conf}, {instance_path}")
-        runargs = {'instance': f'{instance_path}', 'seed': scenario.seed if scenario.seed else -1}
+        logging.info(f"Wrapper TAE start {conf}, {instance_path}")
+        runargs = {'instance': f'{instance_path}', 'seed': scenario.seed if scenario.seed else -1, "id":f"{conf.id}"}
 
+        # TODO should i also measure the time from the main thread to here?
         cmd = ta_command_creator.get_command_line_args(runargs, conf.conf)
         start = time.time()
         cache.put_start.remote(conf.id, instance_path, start)
@@ -57,14 +58,15 @@ def tae_from_cmd_wrapper(conf, instance_path, cache, ta_command_creator, scenari
                 pass
             else:
                 cache.put_intermediate_output.remote(conf.id, instance_path, line)
-                logging.info(f"ta feedback: {time.asctime(time.localtime())}, {line}")
+                logging.info(f"Wrapper TAE intermediate feedback {conf}, {instance_path} {line}")
 
         cache.put_result.remote(conf.id, instance_path, time.time() - start)
-        logging.info(f"ta execution finished {conf}, {instance_path}")
+        logging.info(f"Wrapper TAE end {conf}, {instance_path}")
         return  conf, instance_path, False
 
     except KeyboardInterrupt:
-        logging.info(f" Killing: {conf.id} {instance_path} ")
+        logging.info(f" Killing: {conf}, {instance_path} ")
+        # TODO add a type check for p since we might kill before p is up
         p.terminate()
         time.sleep(1)
         p.kill()
@@ -73,7 +75,6 @@ def tae_from_cmd_wrapper(conf, instance_path, cache, ta_command_creator, scenari
         #except ProcessLookupError:
         #    pass
         logging.info(f"Killing status: {p.poll()} {conf.id} {instance_path}")
-
         return  conf, instance_path, True
 
 

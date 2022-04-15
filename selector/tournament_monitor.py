@@ -21,8 +21,8 @@ def monitor(sleep_time, tournaments, cache, number_of_finisher):
     """
     logging.basicConfig(filename=f'./selector/logs/monitor.log', level=logging.INFO,
                         format='%(asctime)s %(message)s')
-    logging.info("Starting monitor")
     try:
+        logging.info("Starting monitor")
         while True:
             # Todo mesure time here
             start = time.time()

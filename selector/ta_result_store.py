@@ -17,6 +17,7 @@ class TargetAlgorithmObserver:
                             format='%(asctime)s %(message)s')
 
     def put_intermediate_output(self, conf_id, instance_id, value):
+        logging.info(f"Getting intermediate_output: {conf_id}, {instance_id}, {value} ")
 
         if conf_id not in self.intermediate_output:
             self.intermediate_output[conf_id] = {}
@@ -32,20 +33,19 @@ class TargetAlgorithmObserver:
         return self.intermediate_output
 
     def put_result(self,conf_id, instance_id, result):
+        logging.info(f"Getting final result: {conf_id}, {instance_id}, {result} ")
         if conf_id not in self.results:
             self.results[conf_id] = {}
 
         if instance_id not in self.results[conf_id]:
             self.results[conf_id][instance_id] = result
 
-        logging.info(f"Putting results: {conf_id}, {instance_id}, {result} ")
-        logging.info(f"current results: {self.results}")
-
     def get_results(self):
+        logging.info(f"Publishing results")
         return self.results
 
     def put_start(self,conf_id, instance_id, start):
-
+        logging.info(f"Getting start: {conf_id}, {instance_id}, {start} ")
         if conf_id not in self.start_time:
             self.start_time[conf_id] = {}
 
@@ -53,7 +53,7 @@ class TargetAlgorithmObserver:
             self.start_time[conf_id][instance_id] = start
 
     def get_start(self):
-        logging.info(f"Monitor getting start")
+        logging.info(f"Publishing start")
         return self.start_time
 
     def put_tournament_history(self, tournament):
