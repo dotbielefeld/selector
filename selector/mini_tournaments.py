@@ -65,7 +65,12 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
         logger.info("Starting main loop")
         winner, not_ready = ray.wait(tasks)
         tasks = not_ready
-        result = ray.get(winner)[0]
+        try:
+            result = ray.get(winner)[0]
+        except ray.exceptions.WorkerCrashedError as e:
+            logger.info('Crashed TA worker',time.ctime(), winner, e)
+            continue
+
         result_conf, result_instance, cancel_flag = result[0], result[1], result[2]
         result_tournament = get_tournament_membership(tournaments, result_conf)
 
