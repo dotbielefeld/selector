@@ -12,7 +12,9 @@ from scenario import Scenario
 from pool import Configuration
 from pointselector import RandomSelector
 from ta_result_store import TargetAlgorithmObserver
-from generator import generate
+
+from selector.point_gen import PointGen
+from selector.random_point_generator import random_point
 
 from tournament_dispatcher import MiniTournamentDispatcher
 from tournament_bookkeeping import get_tournament_membership, update_tasks, get_tasks, clear_logs
@@ -31,6 +33,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     point_selector = RandomSelector()
     tournament_dispatcher = MiniTournamentDispatcher()
     global_cache = TargetAlgorithmObserver.remote()
+    random_generator = PointGen(scenario, random_point)
 
     instance_selector = InstanceSet(scenario.instance_set, scenario.initial_instance_set_size, scenario.set_size)
 
@@ -40,7 +43,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
 
     # creating the first tournaments and adding first conf/instance pairs to ray tasks
     for _ in range(scenario.number_tournaments):
-        generated_points = [generate(scenario) for _ in range(scenario.tournament_size * scenario.generator_multiple)]
+        generated_points = [random_generator.point_generator() for _ in range(scenario.tournament_size * scenario.generator_multiple)]
         points_to_run = point_selector.select_points(generated_points, scenario.tournament_size, tournament_counter)
 
         instance_id, instances = instance_selector.get_subset(0)
@@ -102,7 +105,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             tournament_counter += 1
 
             # Generate and select
-            generated_points = [generate(scenario) for _ in range(scenario.tournament_size * scenario.generator_multiple)]
+            generated_points = [random_generator.point_generator() for _ in range(scenario.tournament_size * scenario.generator_multiple)]
             points_to_run = point_selector.select_points(generated_points, scenario.tournament_size-1, tournament_counter)
             points_to_run = points_to_run + [result_tournament.best_finisher[0]]
 
