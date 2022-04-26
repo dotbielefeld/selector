@@ -11,6 +11,7 @@ class TargetAlgorithmObserver:
         self.start_time = {}
         self.tournament_history = {}
         self.ta_termination = {}
+        self.tournaments = []
         self.read_from = {"conf id":1 , "instance_id":1 , "index":1 }
 
         # todo logging dic should be provided somewhere else -> DOTAC-37
@@ -63,14 +64,8 @@ class TargetAlgorithmObserver:
     def get_tournament_history(self):
         return self.tournament_history
 
-    def put_ta_termination(self, conf_id, instance_id):
-        if conf_id not in self.ta_termination:
-            self.ta_termination[conf_id] = []
+    def put_tournament_update(self, tournaments):
+        self.tournaments = tournaments
 
-        if instance_id not in self.ta_termination[conf_id]:
-            self.ta_termination[conf_id].append(instance_id)
-        else:
-            logging.info(f"This should not happen: we kill something we already killed")
-
-    def get_ta_termination(self):
-        return self.ta_termination
+    def get_tournament(self):
+        return self.tournaments
