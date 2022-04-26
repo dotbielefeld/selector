@@ -57,11 +57,10 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     logger.info(f"Initial Tournaments {tournaments}")
     logger.info(f"Initial Tasks, {[get_tasks(o.ray_object_store, tasks) for o in tournaments]}")
 
-    # TODO other convergence criteria DOTAC-36
     main_loop_start = time.time()
-    elapsed_time = 0
+    # TODO other convergence criteria DOTAC-36
     #while tournament_counter < scenario.total_tournament_number:
-    while elapsed_time < 120:
+    while time.time() - main_loop_start < 1300:
         logger.info("Starting main loop")
         winner, not_ready = ray.wait(tasks)
         tasks = not_ready
@@ -99,7 +98,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
                     f", Remaining configurations: {[c.id for c in result_tournament.configurations]} {tournament_stop}")
 
         if tournament_stop:
-            print("Iteration:", elapsed_time, tournament_counter)
+            print("Iteration:", time.time() - main_loop_start, tournament_counter)
             tournament_counter += 1
 
             # Generate and select
@@ -137,7 +136,6 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
         monitor_task = monitor.remote(1, tournaments, global_cache, scenario.winners_per_tournament)
         tasks.insert(0, monitor_task)
         overall_best_update(global_cache)
-        elapsed_time =   time.time() - main_loop_start
 
 
     print("DONE")
