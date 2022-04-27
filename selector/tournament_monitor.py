@@ -6,13 +6,21 @@ import numpy as np
 
 from tournament_performance import get_censored_runtime_for_instance_set,get_conf_time_out
 
+def termination_check(conf_id, instance, termination_history):
+    if conf_id not in termination_history:
+        return True
+    elif instance not in termination_history[conf_id]:
+        return True
+    else:
+        return False
+
 @ray.remote(num_cpus=1)
 def monitor(sleep_time, tournaments, cache, number_of_finisher):
     """
     Monitor whether the live total runtime of a running conf is exceeding the accumulated runtime of the worst finisher,
-     given that we have already enough finisher. Note that we only kill one conf/instance at a time. In case a conf
-     exceed the runtime of another and runs multiple instances currently, we only kill it on one instance and restart the
-     monitor to kill it on the next instance. This makes bookkeeping easier.
+     given that we have already enough finisher. While up the monitor may kill multiple conf/instance pairs. Since the
+     monitor itself may be canceled in case the main loop receives some ta results we need to store what we have already
+     killed to avoid kill a conf/instance twice.
     :param sleep_time: Int. Wake up and check whether runtime is exceeded
     :param tournaments: List with the current tournaments
     :param cache: Ray cache
@@ -21,8 +29,8 @@ def monitor(sleep_time, tournaments, cache, number_of_finisher):
     """
     logging.basicConfig(filename=f'./selector/logs/monitor.log', level=logging.INFO,
                         format='%(asctime)s %(message)s')
-    logging.info("Starting monitor")
     try:
+        logging.info("Starting monitor")
         while True:
             # Todo mesure time here
             start = time.time()
@@ -35,6 +43,8 @@ def monitor(sleep_time, tournaments, cache, number_of_finisher):
             start_time = ray.get(cache.get_start.remote())
             dur = time.time() - start
             logging.info(f"Monitor getting start {dur}")
+
+            termination_history = ray.get(cache.get_ta_termination.remote())
 
             for t in tournaments:
                 # We can only start canceling runs if there are enough winners already
@@ -68,16 +78,19 @@ def monitor(sleep_time, tournaments, cache, number_of_finisher):
                         logging.info(f"Monitor kill check,{conf.id} {conf_runtime}, {runtime_worst_best_finisher}"
                                      f"{worst_best_finisher.id,},{conf_time_out}, {[m. id for m in t.configurations]}")
 
-                        # We kill only one instance the conf is still running on. In case the conf runs on multiple
-                        # instances we need to restart the monitor
+                        # In one loop we only kill one instance the conf is still running on. In case the conf runs on multiple
+                        # instances we sleep and then kill
                         # We also kill in case there has been a time out recorded for the conf
                         if conf_runtime > runtime_worst_best_finisher or conf_time_out:
                             for i in instances_conf_still_runs:
-                                logging.info(f"Monitor is killing: {conf} {i} with id: {t.ray_object_store[conf.id][i]}")
-                                print(f"Monitor is killing:{time.ctime()} {t.ray_object_store[conf.id][i]}")
-                                [ray.cancel(t.ray_object_store[conf.id][i])]
-                                cache.put_result.remote(conf.id, i, np.nan)
-                                return conf, i, True
+                                tc = termination_check(conf.id, i, termination_history)
+                                if tc:
+                                    logging.info(f"Monitor is killing: {conf} {i} with id: {t.ray_object_store[conf.id][i]}")
+                                    print(f"Monitor is killing:{time.ctime()} {t.ray_object_store[conf.id][i]}")
+                                    cache.put_ta_termination.remote(conf.id, i)
+                                    [ray.cancel(t.ray_object_store[conf.id][i])]
+                                else:
+                                    continue
             time.sleep(sleep_time)
     except KeyboardInterrupt:
         logging.info("Monitor is killed")
