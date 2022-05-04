@@ -36,10 +36,10 @@ def get_ta_arguments_from_pcs(para_file):
             if "|" not in param_info:
 
                 # cat
-                if '{' in  param_info:
-                    param_type , bounds, defaults = get_categorical(param_name, param_info)
+                if '{' in param_info:
+                    param_type, bounds, defaults, original_bound = get_categorical(param_name, param_info)
                     if param_type != None:
-                        parameters.append(Parameter(param_name, param_type, bounds, defaults, {}, ''))
+                        parameters.append(Parameter(param_name, param_type, bounds, defaults, {}, '', original_bound))
                 # forbidden
                 elif '{' in param_name:
                     no_good = get_no_goods(line)
@@ -47,7 +47,7 @@ def get_ta_arguments_from_pcs(para_file):
                 # cont.
                 elif '[' in param_info:
                     param_type, bounds, defaults, scale = get_continuous(param_name, param_info)
-                    parameters.append(Parameter(param_name, param_type, bounds, defaults, {}, scale))
+                    parameters.append(Parameter(param_name, param_type, bounds, defaults, {}, scale, []))
 
             # conditionals
             elif '|' in param_info:
@@ -89,6 +89,7 @@ def get_categorical(param_name, param_info):
 
     bounds = re.search(r'\{(.*)\}', param_info).group().strip("{ }").split(",")
     defaults = re.findall(r'\[(.*)\]*]', param_info)
+    original_bound = []
 
     # When len(bounds) ==1: The parameter can not be configured. Later we have to also raise a warning that conditions
                                                                 # on it are ignored
@@ -98,8 +99,9 @@ def get_categorical(param_name, param_info):
 
         param_type, bounds, defaults = None, None, None
 
-    elif bounds[0] in boolean_options and  bounds[1] in boolean_options:
+    elif bounds[0] in boolean_options and bounds[1] in boolean_options:
         param_type = ParamType.categorical
+        original_bound = bounds
 
         if defaults[0] in boolean_yes:
             defaults = True
@@ -120,10 +122,13 @@ def get_categorical(param_name, param_info):
 
         bounds = [float(b) for b in bounds]
 
+        if defaults not in bounds:
+            raise ValueError(f"For parameter {param_name} the default value is not within the range of the bounds")
+
     else:
         raise ValueError(f"For parameter {param_name} the parsed bounds were not boolean or categorical")
 
-    return param_type, bounds, defaults
+    return param_type, bounds, defaults, original_bound
 
 
 def get_continuous(param_name, param_info):
@@ -163,6 +168,10 @@ def get_continuous(param_name, param_info):
             scale = ''
         else:
             scale = scale.group()
+
+    if not bounds[0] <= defaults <= bounds[1]:
+        raise ValueError(f"For parameter {param_name} the default value is not within the range of the bounds")
+
 
     return param_type, bounds, defaults, scale
 
