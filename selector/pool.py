@@ -17,6 +17,7 @@ class Parameter:
     default: int
     condition: list
     scale: str
+    original_bound: list
 
 @dataclass
 class Tournament:
@@ -38,7 +39,6 @@ class ParamType(Enum):
 class TaskType(Enum):
     target_algorithm = 1
     monitor = 2
-
 
 
 
