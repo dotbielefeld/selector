@@ -9,7 +9,7 @@ def get_tournament_membership(tournaments, conf):
     :return:
     """
     for t in tournaments:
-        if conf.id in t.configuration_ids:
+        if conf.id in t.configuration_ids or conf.id in t.worst_finisher or conf.id in t.best_finisher:
             return t
 
 def get_tasks(taskdic, tasks):

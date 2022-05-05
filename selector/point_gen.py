@@ -2,6 +2,7 @@
 
 import uuid
 from selector.random_point_generator import random_point
+import numpy as np
 
 
 class PointGen:
@@ -15,7 +16,6 @@ class PointGen:
         : param gm: point generating method to use
         """
         self.s = scenario
-        self.id = uuid.uuid4()
         self.gen_method = gm
         self.meta = meta
 
@@ -29,5 +29,8 @@ class PointGen:
             configuration = self.gen_method(self.s, self.id, self.meta)
         else:
             configuration = self.gen_method(self.s, self.id)
+
+        self.id = uuid.uuid4()
+        configuration = self.gen_method(self.s, self.id)
 
         return configuration

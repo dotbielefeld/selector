@@ -61,10 +61,10 @@ class MiniTournamentDispatcher:
                initial_instance_conf_assignments
 
 
-    def update_tournament(self, cache, finished_conf, tournament, number_winner):
+    def update_tournament(self, cache, tasks, finished_conf, tournament, number_winner):
         """
         Given a finishing conf we update the tournament if necessary. I.e the finishing conf has seen all instances of
-        the tournament. In that case, it is moved either to the best or worst finishes. best finishers are ordered.
+        the tournament. In that case, it is moved either to the best or worst finishers. best finishers are ordered.
         Worst finishers are not
         :param cache: Ray cache object.
         :param finished_conf: Configuration that finished or was canceled
@@ -76,10 +76,18 @@ class MiniTournamentDispatcher:
         conf_time_out = get_conf_time_out(results, finished_conf.id, tournament.instance_set)
         evaluated_instances = results[finished_conf.id].keys()
 
-        # A conf can only become a best finisher if it has seen all instances of the tournament
-        if set(evaluated_instances) == set(tournament.instance_set):
+        # We figure out if there are still tasks the finished configuration is still running on for which we have a results
+        # but have not returned through a ray.wait()
+        still_running_task_for_conf = [sr for sr in tasks if sr in list(tournament.ray_object_store[finished_conf.id].values())]
+
+        # A conf can only become a best finisher if it has seen all instances of the tournament and is not running any
+        # other conf/instance pairs. i.e the result we process here is the last one
+        if set(evaluated_instances) == set(tournament.instance_set) and len(still_running_task_for_conf) == 0:
             # We can than remove the conf from further consideration
-            tournament.configurations.remove(finished_conf)
+            if finished_conf in tournament.configurations:
+                tournament.configurations.remove(finished_conf)
+            else:
+                print(f"conf not {finished_conf}")
             finished_conf_runtime = get_censored_runtime_for_instance_set(results, finished_conf.id,
                                                                           tournament.instance_set)
 

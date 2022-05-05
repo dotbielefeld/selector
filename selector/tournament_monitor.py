@@ -6,39 +6,52 @@ import numpy as np
 
 from tournament_performance import get_censored_runtime_for_instance_set,get_conf_time_out
 
+
 @ray.remote(num_cpus=1)
-def monitor(sleep_time, tournaments, cache, number_of_finisher):
-    """
-    Monitor whether the live total runtime of a running conf is exceeding the accumulated runtime of the worst finisher,
-     given that we have already enough finisher. Note that we only kill one conf/instance at a time. In case a conf
-     exceed the runtime of another and runs multiple instances currently, we only kill it on one instance and restart the
-     monitor to kill it on the next instance. This makes bookkeeping easier.
-    :param sleep_time: Int. Wake up and check whether runtime is exceeded
-    :param tournaments: List with the current tournaments
-    :param cache: Ray cache
-    :param number_of_finisher: Int.
-    :return: conf/instance that are killed.
-    """
-    logging.basicConfig(filename=f'./selector/logs/monitor.log', level=logging.INFO,
-                        format='%(asctime)s %(message)s')
-    logging.info("Starting monitor")
-    try:
+class Monitor:
+    def __init__(self, sleep_time, cache, number_of_finisher):
+        """
+        Monitor whether the live total runtime of a running conf is exceeding the accumulated runtime of the worst finisher,
+         given that we have already enough finisher. While up the monitor may kill multiple conf/instance pairs. To avoid
+         killing a ta run twice, the monitor stores what it has already killed.
+        :param sleep_time: Int. Wake up and check whether runtime is exceeded
+        :param cache: Ray cache
+        :param number_of_finisher: Int.
+        :return: conf/instance that are killed.
+        """
+        self.sleep_time = sleep_time
+        self.cache = cache
+        self.number_of_finisher = number_of_finisher
+        self.tournaments = []
+        self.termination_history = {}
+
+        logging.basicConfig(filename=f'./selector/logs/monitor.log', level=logging.INFO,
+                            format='%(asctime)s %(message)s')
+
+    def monitor(self):
+        logging.info("Starting monitor")
         while True:
-            # Todo mesure time here
+            # Get results that are already available for ta runs
             start = time.time()
-            results = ray.get(cache.get_results.remote())
+            results = ray.get(self.cache.get_results.remote())
             dur = time.time() - start
             logging.info(f"Monitor getting results {dur}")
 
             # get starting times for each conf/instance
             start = time.time()
-            start_time = ray.get(cache.get_start.remote())
+            start_time = ray.get(self.cache.get_start.remote())
             dur = time.time() - start
             logging.info(f"Monitor getting start {dur}")
 
+            # Get the current tournaments that are in the cache
+            start = time.time()
+            tournaments = ray.get(self.cache.get_tournament.remote())
+            dur = time.time() - start
+            logging.info(f"Monitor getting tournaments {dur}")
+
             for t in tournaments:
                 # We can only start canceling runs if there are enough winners already
-                if len(t.best_finisher) == number_of_finisher:
+                if len(t.best_finisher) == self.number_of_finisher:
                     # Compare runtime to the worst best finisher
                     worst_best_finisher = t.best_finisher[-1]
                     runtime_worst_best_finisher = get_censored_runtime_for_instance_set(results, worst_best_finisher.id,
@@ -68,19 +81,47 @@ def monitor(sleep_time, tournaments, cache, number_of_finisher):
                         logging.info(f"Monitor kill check,{conf.id} {conf_runtime}, {runtime_worst_best_finisher}"
                                      f"{worst_best_finisher.id,},{conf_time_out}, {[m. id for m in t.configurations]}")
 
-                        # We kill only one instance the conf is still running on. In case the conf runs on multiple
-                        # instances we need to restart the monitor
+
                         # We also kill in case there has been a time out recorded for the conf
                         if conf_runtime > runtime_worst_best_finisher or conf_time_out:
+                            # We can only kill still running tasks
                             for i in instances_conf_still_runs:
-                                logging.info(f"Monitor is killing: {conf} {i} with id: {t.ray_object_store[conf.id][i]}")
-                                print(f"Monitor is killing:{time.ctime()} {t.ray_object_store[conf.id][i]}")
-                                [ray.cancel(t.ray_object_store[conf.id][i])]
-                                cache.put_result.remote(conf.id, i, np.nan)
-                                return conf, i, True
-            time.sleep(sleep_time)
-    except KeyboardInterrupt:
-        logging.info("Monitor is killed")
+                                # We check if we have killed the conf/instance pair before.
+                                if self.termination_check(conf.id, i):
+                                    logging.info(f"Monitor is killing: {conf} {i} with id: {t.ray_object_store[conf.id][i]}")
+                                    print(f"Monitor is killing:{time.ctime()} {t.ray_object_store[conf.id][i]}")
+                                    # In case we kill we store that we have killed
+                                    self.update_termination_history(conf.id, i)
+                                    [ray.cancel(t.ray_object_store[conf.id][i])]
+                                else:
+                                    continue
+            time.sleep(self.sleep_time)
+
+    def termination_check(self, conf_id, instance):
+        """
+        Check if we have killed a conf/instance pair already. Return True if we did not.
+        :param conf_id:
+        :param instance:
+        :return:
+        """
+        if conf_id not in self.termination_history:
+            return True
+        elif instance not in self.termination_history[conf_id]:
+            return True
+        else:
+            return False
+
+    def update_termination_history(self, conf_id, instance_id):
+        if conf_id not in self.termination_history:
+            self.termination_history[conf_id] = []
+
+        if instance_id not in self.termination_history[conf_id]:
+            self.termination_history[conf_id].append(instance_id)
+        else:
+            logging.info(f"This should not happen: we kill something we already killed")
+
+
+
 
 
 
