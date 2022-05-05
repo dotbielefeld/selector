@@ -1,6 +1,61 @@
-"""This module contains the default point generator."""
+"""
+This module contains the default point generator.
 
-from selector.pool import Configuration
+It also contains functions to check validity of the configuration setting.
+"""
+
+from selector.pool import Configuration, ParamType
+
+
+def check_conditionals(s, config_setting):
+    """
+    Check if conditionals are violated.
+
+    : param s: scenario object
+    : param config_setting: configuration setting to be checked
+    return: List of parameter names to turn off
+    """
+    cond_vio = []
+    for condition in s.conditionals:
+        for cond in s.conditionals[condition]:
+            for param in s.parameter:
+                if param.name == cond:
+                    if param.type == ParamType.categorical:
+                        if config_setting[cond] not in \
+                                s.conditionals[condition][cond] and \
+                                condition not in cond_vio and \
+                                condition in config_setting:
+                            cond_vio.append(condition)
+                    elif param.type == ParamType.continuous or \
+                            param.type == ParamType.integer:
+                        if (config_setting[cond] >
+                                s.conditionals[condition][cond][1] or
+                                config_setting[cond] <
+                                s.conditionals[condition][cond][0]) and \
+                                condition not in cond_vio and \
+                                condition in config_setting:
+                            cond_vio.append(condition)
+
+    return cond_vio
+
+
+def check_no_goods(s, config_setting):
+    """
+    Check if conditionals are violated.
+
+    : param s: scenario object
+    : param config_setting: configuration setting to be checked
+    return: True/False, if no goods are violated
+    """
+    check = False
+    for ng in s.no_goods:
+        params = list(ng.keys())
+        if check is not True:
+            if ng[params[0]] == config_setting[params[0]]:
+                if ng[params[1]] == config_setting[params[1]]:
+                    check = True
+
+    return check
 
 
 def default_point(s, identity):

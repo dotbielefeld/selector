@@ -10,6 +10,8 @@ from selector.read_files import get_ta_arguments_from_pcs, read_instance_paths, 
 from selector.point_gen import PointGen
 from selector.random_point_generator import random_point
 from selector.default_point_generator import default_point
+from selector.variable_graph_point_generator import variable_graph_point
+from selector.tournament_dispatcher import MiniTournamentDispatcher as mtd
 
 
 
@@ -187,10 +189,25 @@ if __name__ == "__main__":
     #s = Scenario("./selector/input/scenarios/example_scenario.txt", parser)
     s = Scenario("./test_data/test_scenario.txt", parser)
 
+    minitourn = mtd.init_tournament
+
+    print(minitourn)
+
     random_generator = PointGen(s, random_point)
 
     default_generator = PointGen(s, default_point)
 
-    print('\n Random configuration:\n\n', random_generator.point_generator(), '\n')
+    param_1 = random_generator.point_generator()
 
-    print('\n Default configuration:\n\n', default_generator.point_generator(), '\n')
+    param_2 = default_generator.point_generator()
+
+    print('\n Random configuration:\n\n', param_1, '\n')
+
+    print('\n Default configuration:\n\n', param_2, '\n')
+
+    variable_graph_generator = PointGen(s, variable_graph_point,
+                                        [param_1, param_2])
+
+    param_3 = variable_graph_generator.point_generator()
+
+    print('\n Variable Graph configuration:\n\n', param_3, '\n')

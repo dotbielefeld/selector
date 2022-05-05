@@ -2,57 +2,12 @@
 
 import numpy as np
 import math
+import sys
 from selector.pool import Configuration, ParamType
+from selector.default_point_generator import check_conditionals, check_no_goods
 
 
-def remove_infeasible(s, config_setting):
-    """
-    Checking Conditionals and turning parameters off if violated.
-
-    : param s: scenario object
-    : param config_setting: parameter configuration
-    return: config_estting adjusted to conditionals
-    """
-    conf_to_del = []
-
-    # Child node is turned off if parent node does
-    # not take value in specified range
-    for child_node in s.conditionals:
-        for parent_node in s.conditionals[child_node]:
-            for params in s.parameter:
-                if params.name \
-                        == parent_node:
-
-                    parent_info = s.conditionals[child_node]
-                    param_space = params
-
-                    continue
-
-            for parent in parent_info:
-                if param_space.type == ParamType.categorical:
-                    if config_setting[parent_node] \
-                            not in parent_info[parent_node]:
-                        if child_node not in conf_to_del:
-                            conf_to_del.append(child_node)
-
-                elif param_space.type == ParamType.continuous or \
-                        param_space.type == ParamType.integer:
-                    # Is the parameter value in the range?
-                    if parent_info[parent_node][0] \
-                        > config_setting[parent_node] or \
-                            config_setting[parent_node] \
-                            > parent_info[parent_node][1]:
-
-                        if child_node not in conf_to_del:
-                            conf_to_del.append(child_node)
-
-        for ctd in conf_to_del:
-            config_setting.pop(ctd, None)
-
-    return config_setting
-
-
-def satisfy_no_goods(s, config_setting):
+def reset_no_goods(s, config_setting):
     """
     Checking for no goods and resetting parameter values if violated.
 
@@ -63,31 +18,31 @@ def satisfy_no_goods(s, config_setting):
     for ng in s.no_goods:
 
         violation = True
-        for i in range(10):
-            if violation:
-                ng_values = list(ng.values())
-                config_set_values = []
 
-                for ng_element in ng:
-                    config_set_values.append(config_setting[ng_element])
+        if violation:
+            ng_values = list(ng.values())
+            config_set_values = []
 
-                if config_set_values == ng_values:
-                    configs_to_reset = []
-                    violation = True
+            for ng_element in ng:
+                config_set_values.append(config_setting[ng_element])
 
-                    for params in s.parameter:
-                        if params.name in ng:
-                            configs_to_reset.append(params)
+            if config_set_values == ng_values:
+                configs_to_reset = []
+                violation = True
 
-                    new_setting = random_set_conf(configs_to_reset)
+                for params in s.parameter:
+                    if params.name in ng:
+                        configs_to_reset.append(params)
 
-                    for ns in new_setting:
-                        config_setting[ns] = new_setting[ns]
+                new_setting = random_set_conf(configs_to_reset)
 
-                else:
-                    violation = False
+                for ns in new_setting:
+                    config_setting[ns] = new_setting[ns]
+
             else:
-                continue
+                violation = False
+        else:
+            continue
 
     return config_setting
 
@@ -109,9 +64,30 @@ def random_set_conf(parameter):
         elif param.type == ParamType.continuous:
             if param.scale:
                 # Generate in logarithmic space
-                config_setting[param.name] \
-                    = math.exp(np.random.uniform(low=math.log(param.bound[0]),
-                                                 high=(param.bound[1])))
+                if param.bound[1] < 0:
+                    # Upper and lower bound are negative
+                    config_setting[param.name] \
+                        = -1 * math.exp(np.random.uniform(
+                            low=math.log(param.bound[0] * -1),
+                            high=math.log(param.bound[1] * -1)))
+
+                elif param.bound[0] < 0:
+                    # Lower bound is negative
+                    lb = -1 * math.exp(np.random.uniform(
+                        low=math.log(sys.float_info.min),
+                        high=math.log(param.bound[0] * -1)))
+                    ub = math.exp(np.random.uniform(
+                        low=math.log(sys.float_info.min),
+                        high=math.log(param.bound[1])))
+                    config_setting[param.name] \
+                        = np.random.choice([lb, ub])
+
+                else:
+                    # Bounds are positive
+                    config_setting[param.name] \
+                        = math.exp(np.random.uniform(
+                            low=math.log(param.bound[0]),
+                            high=math.log(param.bound[1])))
             else:
                 config_setting[param.name] \
                     = np.random.uniform(low=param.bound[0],
@@ -119,12 +95,31 @@ def random_set_conf(parameter):
 
         elif param.type == ParamType.integer:
             if param.scale:
-
                 # Generate in logarithmic space
-                config_setting[param.name] \
-                    = int(math.exp(np.random.randint(
-                          low=math.log(param.bound[0]),
-                          high=math.log(param.bound[1]))))
+                if param.bound[1] < 0:
+                    # Upper and lower bound are negative
+                    config_setting[param.name] \
+                        = int(-1 * math.exp(np.random.uniform(
+                            low=math.log(param.bound[0] * -1),
+                            high=math.log(param.bound[1] * -1))))
+
+                elif param.bound[0] < 0:
+                    # Lower bound is negative
+                    lb = int(-1 * math.exp(np.random.uniform(
+                        low=math.log(sys.float_info.min),
+                        high=math.log(param.bound[0] * -1))))
+                    ub = int(math.exp(np.random.uniform(
+                        low=math.log(sys.float_info.min),
+                        high=math.log(param.bound[1]))))
+                    config_setting[param.name] \
+                        = np.random.choice([lb, ub])
+
+                else:
+                    # Bounds are positive
+                    config_setting[param.name] \
+                        = int(math.exp(np.random.uniform(
+                            low=math.log(param.bound[0]),
+                            high=math.log(param.bound[1]))))
             else:
                 config_setting[param.name] \
                     = np.random.randint(low=param.bound[0],
@@ -146,10 +141,15 @@ def random_point(s, identity):
     config_setting = random_set_conf(s.parameter)
 
     # Check conditionals and turn off parameters if violated
-    config_setting = remove_infeasible(s, config_setting)
+    cond_vio = check_conditionals(s, config_setting)
+    for param in cond_vio:
+        config_setting.pop(param, None)
 
     # Check no goods and reset values if violated
-    config_setting = satisfy_no_goods(s, config_setting)
+    ng_vio = check_no_goods(s, config_setting)
+    while ng_vio:
+        config_setting = reset_no_goods(s, config_setting)
+        ng_vio = check_no_goods(s, config_setting)
 
     # Fill Configuration class with ID and parameter values
     configuration = Configuration(identity, config_setting)
