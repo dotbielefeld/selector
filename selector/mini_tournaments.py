@@ -64,7 +64,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     main_loop_start = time.time()
     # TODO other convergence criteria DOTAC-36
     #while tournament_counter < scenario.total_tournament_number:
-    while time.time() - main_loop_start < 1300:
+    while time.time() - main_loop_start < 100:
         logger.info("Starting main loop")
         winner, not_ready = ray.wait(tasks)
         tasks = not_ready

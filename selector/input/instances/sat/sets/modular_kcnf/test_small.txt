@@ -1,0 +1,3 @@
+/input/instances/sat/data/modular_kcnf/00004.cnf
+/input/instances/sat/data/modular_kcnf/00005.cnf
+/input/instances/sat/data/modular_kcnf/00006.cnf

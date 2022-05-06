@@ -2,13 +2,12 @@
 
 import uuid
 from selector.random_point_generator import random_point
-import numpy as np
 
 
 class PointGen:
     """Interface for point generation."""
 
-    def __init__(self, scenario, gm=random_point, meta=None):
+    def __init__(self, scenario, gm=random_point):
         """
         Initialize PointGen.
 
@@ -17,20 +16,17 @@ class PointGen:
         """
         self.s = scenario
         self.gen_method = gm
-        self.meta = meta
 
-    def point_generator(self):
+    def point_generator(self, meta=False):
         """
         Running point generation according to object setting.
 
         return: configuration/point generated
         """
-        if self.meta is not None:
-            configuration = self.gen_method(self.s, self.id, self.meta)
+        self.id = uuid.uuid4()
+        if meta:
+            configuration = self.gen_method(self.s, self.id, meta)
         else:
             configuration = self.gen_method(self.s, self.id)
-
-        self.id = uuid.uuid4()
-        configuration = self.gen_method(self.s, self.id)
 
         return configuration
