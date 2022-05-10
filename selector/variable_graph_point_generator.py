@@ -233,16 +233,40 @@ def graph_crossover(graph_structure, C, N, s):
     return config_setting
 
 
+def choose_parents(CN):
+    """
+    Pick Configurations according to option set in CN[0].
+
+    : param CN: list [str: mode of parent selection, Tournament data object]
+    return: configurations C and N
+    """
+    if CN[0] == 'best_and_random':
+        tournament = CN[1]
+        if len(tournament.best_finisher) > 1:
+            best_ind = np.random.choice(tournament.best_finisher)
+        else:
+            best_ind = tournament.best_finisher[0]
+
+        conf_list = tournament.configurations
+
+        C = conf_list.pop(best_ind)
+
+        N = np.random.choice(conf_list)
+
+    return C, N
+
+
 def variable_graph_point(s, identity, CN):
     """
     Configuration is generated via variable graph method.
 
     : param s: scenario object
     : param identity: uuid to identify configuration
+    : param CN: list [str: mode of parent selection, Tournament data object]
     return: default configuration
     """
-    C = CN[0]
-    N = CN[1]
+    # Pick parent configurations
+    C, N = choose_parents(CN)
 
     # Generate general graph structure
     graph_structure = variable_graph_structure(s)
