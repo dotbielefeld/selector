@@ -1,6 +1,5 @@
 """This module contains simple tests for the point generation functions."""
 import ray
-import unittest
 from selector.ta_result_store import TargetAlgorithmObserver
 from selector.tournament_dispatcher import MiniTournamentDispatcher
 from selector.pointselector import RandomSelector
@@ -9,49 +8,6 @@ from selector.point_gen import PointGen
 from selector.random_point_generator import random_point
 from selector.default_point_generator import default_point
 from selector.variable_graph_point_generator import variable_graph_point, Mode
-
-
-class PointGenTest(unittest.TestCase):
-    """Testing point generation functions."""
-
-    def test_default_point(self, conf):
-        """
-        Testing default point generation.
-
-        : param conf: generated default configuration
-        """
-        self.assertEqual(conf, {'luby': False, 'rinc': 2.0,
-                                'cla-decay': 0.999,
-                                'phase-saving': 2,
-                                'strSseconds': 150.0,
-                                'bce-limit': 100000000,
-                                'param_1': -1})
-
-    def test_random_point(self, conf):
-        """
-        Testing random point generation.
-
-        : param conf: generated default configuration
-        """
-        self.assertEqual(conf, {'luby': True,
-                                'rinc': 3.409974661894675,
-                                'cla-decay': 0.9175615966761705,
-                                'phase-saving': 1,
-                                'bce-limit': 9337277,
-                                'param_1': -1})
-
-    def test_vg_point(self, conf):
-        """
-        Testing variable graph point generation.
-
-        : param conf: generated default configuration
-        """
-        self.assertEqual(conf, {'luby': True,
-                                'rinc': 3.409974661894675,
-                                'cla-decay': 0.9175615966761705,
-                                'phase-saving': 1,
-                                'bce-limit': 9337277,
-                                'param_1': -1})
 
 
 def test_gen_funcs(scenario, parser):
@@ -95,11 +51,9 @@ def test_gen_funcs(scenario, parser):
     param_1 = default_generator.point_generator()
     param_2 = random_generator.point_generator(seed=42)
 
-    test = PointGenTest()
+    print('\n Default configuration:\n\n', param_1, '\n')
 
-    test.test_default_point(param_1.conf)
-
-    test.test_random_point(param_2.conf)
+    print('\n Random configuration:\n\n', param_2, '\n')
 
     variable_graph_generator = PointGen(s, variable_graph_point)
 
@@ -107,4 +61,4 @@ def test_gen_funcs(scenario, parser):
         mode=Mode.best_and_random,
         data=hist, lookback=2, seed=42)
 
-    test.test_vg_point(param_3.conf)
+    print('\n Variable Graph configuration:\n\n', param_3, '\n')
