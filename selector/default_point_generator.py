@@ -49,11 +49,9 @@ def check_no_goods(s, config_setting):
     """
     check = False
     for ng in s.no_goods:
-        params = list(ng.keys())
-        if check is not True:
-            if ng[params[0]] == config_setting[params[0]]:
-                if ng[params[1]] == config_setting[params[1]]:
-                    check = True
+        param_1, param_2 = ng.keys()
+        check = (not check and ng[param_1] == config_setting[param_1]) \
+            and (ng[param_2] == config_setting[param_2])
 
     return check
 

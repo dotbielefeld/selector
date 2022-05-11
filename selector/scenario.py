@@ -183,6 +183,5 @@ if __name__ == "__main__":
     parser = parse_args()
 
     #s = Scenario("./selector/input/scenarios/example_scenario.txt", parser)
-    s = Scenario("./test_data/test_scenario.txt", parser)
 
-    test_gen_funcs(s)
+    test_gen_funcs(Scenario, parser)

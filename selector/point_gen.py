@@ -17,16 +17,15 @@ class PointGen:
         self.s = scenario
         self.gen_method = gm
 
-    def point_generator(self, meta=False):
+    def point_generator(self, **kwargs):
         """
         Running point generation according to object setting.
 
+        : param meta: meta data a point generator requires
+        : **kwargs: depend on gen_method
         return: configuration/point generated
         """
         self.id = uuid.uuid4()
-        if meta:
-            configuration = self.gen_method(self.s, self.id, meta)
-        else:
-            configuration = self.gen_method(self.s, self.id)
+        configuration = self.gen_method(self.s, self.id, **kwargs)
 
         return configuration

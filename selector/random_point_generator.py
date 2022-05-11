@@ -128,7 +128,7 @@ def random_set_conf(parameter):
     return config_setting
 
 
-def random_point(s, identity):
+def random_point(s, identity, seed=False):
     """
     Random parameter setting is generated in Configuration format.
 
@@ -137,6 +137,9 @@ def random_point(s, identity):
     return: randomly set configuration, which accounts for no goods
     and conditionals
     """
+    if seed:
+        np.random.seed(seed)
+
     # Generate configuration randomly based on given parameter space
     config_setting = random_set_conf(s.parameter)
 
