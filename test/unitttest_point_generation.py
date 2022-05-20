@@ -9,6 +9,7 @@ from selector.point_gen import PointGen
 from selector.random_point_generator import random_point
 from selector.default_point_generator import default_point
 from selector.variable_graph_point_generator import variable_graph_point, Mode
+from selector.lhs_point_generator import lhc_points, LHSType, Criterion
 from selector.scenario import Scenario, parse_args
 
 
@@ -49,6 +50,7 @@ class PointGenTest(unittest.TestCase):
         self.hist = ray.get(global_cache.get_tournament_history.remote())
         self.default_generator = PointGen(self.s, default_point)
         self.variable_graph_generator = PointGen(self.s, variable_graph_point)
+        self.lhc_generator = PointGen(self.s, lhc_points)
 
     def test_default_point(self):
         """
@@ -93,6 +95,24 @@ class PointGenTest(unittest.TestCase):
                                      'phase-saving': 1,
                                      'bce-limit': 9337277,
                                      'param_1': -1})
+
+    def test_lhc_point(self):
+        """
+        Testing variable graph point generation.
+
+        : param conf: generated default configuration
+        """
+        conf = self.lhc_generator.point_generator(
+            n_samples=2, seed=42,
+            lhs_type=LHSType.centered,
+            criterion=Criterion.maximin)
+        self.assertEqual(conf[0].conf, {'luby': True,
+                                        'rinc': 3.275,
+                                        'cla-decay': 0.9249975,
+                                        'phase-saving': 0,
+                                        'strSseconds': 200.0,
+                                        'bce-limit': 50075000,
+                                        'param_1': -2})
 
 if __name__ == '__main__':
     unittest.main()

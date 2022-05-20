@@ -8,6 +8,7 @@ from selector.point_gen import PointGen
 from selector.random_point_generator import random_point
 from selector.default_point_generator import default_point
 from selector.variable_graph_point_generator import variable_graph_point, Mode
+from selector.lhs_point_generator import lhc_points, LHSType, Criterion
 
 
 def test_gen_funcs(scenario, parser):
@@ -62,3 +63,11 @@ def test_gen_funcs(scenario, parser):
         data=hist, lookback=2, seed=42)
 
     print('\n Variable Graph configuration:\n\n', param_3, '\n')
+
+    lhc_generator = PointGen(s, lhc_points)
+
+    params_4 = lhc_generator.point_generator(n_samples=2, seed=42,
+                                             lhs_type=LHSType.centered,
+                                             criterion=Criterion.maximin)
+
+    print('\n LHC configurations:\n\n', *params_4, sep="\n\n")

@@ -20,21 +20,21 @@ def check_conditionals(s, config_setting):
         for cond in s.conditionals[condition]:
             for param in s.parameter:
                 if param.name == cond:
-                    if param.type == ParamType.categorical:
-                        if config_setting[cond] not in \
-                                s.conditionals[condition][cond] and \
-                                condition not in cond_vio and \
-                                condition in config_setting:
-                            cond_vio.append(condition)
-                    elif param.type == ParamType.continuous or \
-                            param.type == ParamType.integer:
-                        if (config_setting[cond] >
-                                s.conditionals[condition][cond][1] or
-                                config_setting[cond] <
-                                s.conditionals[condition][cond][0]) and \
-                                condition not in cond_vio and \
-                                condition in config_setting:
-                            cond_vio.append(condition)
+                    if param.type == ParamType.categorical and \
+                            (config_setting[cond] not in
+                             s.conditionals[condition][cond] and
+                             condition not in cond_vio and
+                             condition in config_setting):
+                        cond_vio.append(condition)
+                    elif (param.type == ParamType.continuous or
+                            param.type == ParamType.integer) and \
+                            (config_setting[cond] >
+                             s.conditionals[condition][cond][1] or
+                             config_setting[cond] <
+                             s.conditionals[condition][cond][0]) and \
+                            condition not in cond_vio and \
+                            condition in config_setting:
+                        cond_vio.append(condition)
 
     return cond_vio
 
