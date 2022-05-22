@@ -31,6 +31,30 @@ from instance_sets import InstanceSet
 from aggr_capping import AggrMonitor
 from instance_monitor import InstanceMonitor
 
+
+def termination_check(termination_criterion, main_loop_start, total_runtime, total_tournament_number,
+                      tournament_counter):
+    """
+    Check what termination criterion for the main tournament loop has been parsed and return true,
+    if the criterion is not met yet.
+    :param termination_criterion: Str. termination criterion for the tournament main loop
+    :param main_loop_start: Int. Time of the start of the tournament main loop
+    :param total_runtime: Int. Total runtime for the main loop, when the termination criterion is "total_runtime"
+    :param total_tournament_number: Int. Total number of tournaments for the main loop,
+                                    when the termination criterion is "total_tournament_number"
+    :param tournament_counter: Int. Number of tournaments, that finished already
+    :return: Bool. True, when the termination criterion is not met, False otherwise
+    """
+    if termination_criterion == "total_runtime":
+        return time.time() - main_loop_start < total_runtime
+
+    elif termination_criterion == "total_tournament_number":
+        return tournament_counter < total_tournament_number
+
+    else:
+        return time.time() - main_loop_start < total_runtime
+
+
 def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     point_selector = RandomSelector()
     tournament_dispatcher = MiniTournamentDispatcher()
@@ -64,29 +88,23 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     logger.info(f"Initial Tasks, {[get_tasks(o.ray_object_store, tasks) for o in tournaments]}")
 
     # TODO other convergence criteria DOTAC-36
+    main_loop_start = time.time()
 
-    if scenario.termination_criterion == "total_runtime":
-        logger.info(f"The termination criterion is: {scenario.termination_criterion} "
-                    f"The total runtime is: {scenario.total_runtime}")
-        main_loop_start = time.time()
-        total_tournament_number = -1
-
-    elif scenario.termination_criterion == "total_tournament_number":
-        logger.info(f"The termination criterion is: {scenario.termination_criterion} "
-                    f"The total number of tournaments is: {scenario.total_tournament_number}")
-        total_tournament_number = scenario.total_tournament_number
-        main_loop_start = 0
-
-    else:
-        logger.info(f"No valid termination criterion has been parsed. "
-                    f"The termination criterion will be set to runtime. "
-                    f"The total runtime is: {scenario.total_runtime}")
-        main_loop_start = time.time()
-        total_tournament_number = -1
-
-    while time.time() - main_loop_start < scenario.total_runtime or tournament_counter < total_tournament_number:
+    while termination_check(scenario.termination_criterion, main_loop_start, scenario.total_runtime,
+                            scenario.total_tournament_number, tournament_counter):
 
         logger.info("Starting main loop")
+        if scenario.termination_criterion == "total_runtime":
+            logger.info(f"The termination criterion is: {scenario.termination_criterion}")
+            logger.info(f"The total runtime is: {scenario.total_runtime}")
+        elif scenario.termination_criterion == "total_tournament_number":
+            logger.info(f"The termination criterion is: {scenario.termination_criterion}")
+            logger.info(f"The total number of tournaments is: {scenario.total_tournament_number}")
+        else:
+            logger.info(f"No valid termination criterion has been parsed. "
+                        f"The termination criterion will be set to runtime.")
+            logger.info(f"The total runtime is: {scenario.total_runtime}")
+
         winner, not_ready = ray.wait(tasks)
         tasks = not_ready
         try:
@@ -177,7 +195,7 @@ if __name__ == "__main__":
 
     parser = {"check_path": False, "seed": 42, "ta_run_type": "import_wrapper", "winners_per_tournament": 2,
               "initial_instance_set_size": 3, "tournament_size": 4, "number_tournaments": 2, "total_tournament_number": 2,
-              "total_runtime": 120, "generator_multiple": 5, "set_size": 50,
+              "total_runtime": 1200, "generator_multiple": 5, "set_size": 50,
               "termination_criterion": "total_runtime"}
 
     scenario = Scenario("./selector/input/scenarios/test_example.txt", parser)
@@ -197,7 +215,6 @@ if __name__ == "__main__":
     offline_mini_tournament_configuration(scenario, ta_wrapper, logger)
 
     ray.shutdown()
-
 
 
 
