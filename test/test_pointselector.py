@@ -123,9 +123,3 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
                                                   max_evals=100, seed=42))
 
         self.assertEqual(selected_ids[0], selected_ids[1])
-
-if __name__ == '__main__':
-    runner = unittest.TextTestRunner()
-    itersuite = unittest.TestLoader().loadTestsFromTestCase(
-        HyperparameterizedSelectorTest)
-    runner.run(itersuite)
