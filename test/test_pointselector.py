@@ -2,6 +2,7 @@
 import unittest
 import numpy as np
 import ray
+import pickle
 from selector.ta_result_store import TargetAlgorithmObserver
 from selector.pool import Configuration, Generator
 from selector.tournament_dispatcher import MiniTournamentDispatcher
@@ -47,8 +48,9 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
 
     def setUp(self):
         """Set up unittest."""
-        parser = parse_args()
-        self.s = Scenario("./test_data/test_scenario.txt", parser)
+        file = open('./test/s', 'rb')
+        self.s = pickle.load(file)
+        file.close()
         self.random_generator = PointGen(self.s, random_point, seed=42)
         # Set up a tournament with mock data
         global_cache = TargetAlgorithmObserver.remote()
@@ -87,6 +89,8 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
         """Testing hyperparameterized point selector."""
         def_conf = [self.default_generator.point_generator()]
 
+        print(self.s)
+
         ran_conf = []
         for i in range(5):
             ran_conf.append(self.random_generator.point_generator(seed=42 + i))
@@ -123,3 +127,6 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
                                                   max_evals=100, seed=42))
 
         self.assertEqual(selected_ids[0], selected_ids[1])
+
+if __name__ == '__main__':
+    unittest.main()
