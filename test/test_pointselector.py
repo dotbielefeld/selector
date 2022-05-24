@@ -14,8 +14,6 @@ from selector.variable_graph_point_generator import variable_graph_point, Mode
 from selector.lhs_point_generator import lhc_points, LHSType, Criterion
 from selector.scenario import Scenario, parse_args
 
-np.random.seed(42)
-
 
 class RandomPointselectorTest(unittest.TestCase):
     """Testing Random_Pointselector_Test."""
@@ -35,6 +33,7 @@ class RandomPointselectorTest(unittest.TestCase):
     def test_random_pointselector(self):
         """Testing random point selector."""
         iteration = 1
+        np.random.seed(42)
         selector = RandomSelector()
         selected_ids = selector.select_points(self.pool, 2, iteration,
                                               seed=42)
@@ -126,4 +125,7 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
         self.assertEqual(selected_ids[0], selected_ids[1])
 
 if __name__ == '__main__':
-    unittest.main()
+    runner = unittest.TextTestRunner()
+    itersuite = unittest.TestLoader().loadTestsFromTestCase(
+        HyperparameterizedSelectorTest)
+    runner.run(itersuite)
