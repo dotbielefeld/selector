@@ -13,7 +13,7 @@ import copy
 import numpy as np
 import itertools
 from enum import Enum, IntEnum
-from selector.pool import Configuration, ParamType
+from selector.pool import Configuration, ParamType, Generator
 from selector.random_point_generator import random_set_conf
 from selector.default_point_generator import check_conditionals, check_no_goods
 
@@ -104,10 +104,11 @@ def check_valid(config_label, C, N, cn):
     : param N: second configuration
     return: config_label
     """
-    if config_label[cn] == LabelType.C and cn not in C.conf:
-        config_label.pop(cn, None)
-    elif config_label[cn] == LabelType.N and cn not in N.conf:
-        config_label.pop(cn, None)
+    if cn in config_label:
+        if config_label[cn] == LabelType.C and cn not in C.conf:
+            config_label.pop(cn, None)
+        elif config_label[cn] == LabelType.N and cn not in N.conf:
+            config_label.pop(cn, None)
 
     return config_label
 
@@ -334,6 +335,8 @@ def variable_graph_point(s, identity, mode=Mode.random, data=False,
     config_setting = graph_crossover(graph_structure, C, N, s)
 
     # Fill Configuration class with ID and parameter values
-    configuration = Configuration(identity, config_setting)
+    configuration = Configuration(identity,
+                                  config_setting,
+                                  Generator.var_graph)
 
     return configuration

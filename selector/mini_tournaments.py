@@ -10,11 +10,14 @@ import time
 
 from scenario import Scenario
 from pool import Configuration
-from pointselector import RandomSelector
+from pointselector import RandomSelector, HyperparameterizedSelector
 from ta_result_store import TargetAlgorithmObserver
 
 from selector.point_gen import PointGen
 from selector.random_point_generator import random_point
+from selector.default_point_generator import default_point
+from selector.variable_graph_point_generator import variable_graph_point, Mode
+from selector.lhs_point_generator import lhc_points, LHSType, Criterion
 
 from tournament_dispatcher import MiniTournamentDispatcher
 from tournament_bookkeeping import get_tournament_membership, update_tasks, get_tasks, clear_logs
@@ -32,10 +35,14 @@ from instance_sets import InstanceSet
 
 def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     point_selector = RandomSelector()
+    hp_seletor = HyperparameterizedSelector()
     tournament_dispatcher = MiniTournamentDispatcher()
     global_cache = TargetAlgorithmObserver.remote()
     monitor = Monitor.remote(1, global_cache, scenario.winners_per_tournament)
     random_generator = PointGen(scenario, random_point)
+    default_point_generator = PointGen(scenario, default_point)
+    vg_point_generator = PointGen(scenario, variable_graph_point)
+    lhc_point_generator = PointGen(scenario, lhc_points)
 
     instance_selector = InstanceSet(scenario.instance_set, scenario.initial_instance_set_size, scenario.set_size)
     tasks = []
@@ -45,7 +52,9 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     # creating the first tournaments and adding first conf/instance pairs to ray tasks
     for _ in range(scenario.number_tournaments):
         generated_points = [random_generator.point_generator() for _ in range(scenario.tournament_size * scenario.generator_multiple)]
+
         points_to_run = point_selector.select_points(generated_points, scenario.tournament_size, tournament_counter)
+
 
         instance_id, instances = instance_selector.get_subset(0)
         tournament, initial_assignments = tournament_dispatcher.init_tournament(global_cache, points_to_run,
@@ -62,6 +71,8 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     logger.info(f"Initial Tasks, {[get_tasks(o.ray_object_store, tasks) for o in tournaments]}")
 
     main_loop_start = time.time()
+    epoch = 0
+    max_epochs = 256
     # TODO other convergence criteria DOTAC-36
     #while tournament_counter < scenario.total_tournament_number:
     while time.time() - main_loop_start < 1300:
@@ -103,8 +114,33 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             tournament_counter += 1
 
             # Generate and select
-            generated_points = [random_generator.point_generator() for _ in range(scenario.tournament_size * scenario.generator_multiple)]
-            points_to_run = point_selector.select_points(generated_points, scenario.tournament_size-1, tournament_counter)
+            random_points = [random_generator.point_generator() for _ in range(scenario.tournament_size * scenario.generator_multiple)]
+            # points_to_run = point_selector.select_points(generated_points, scenario.tournament_size-1, tournament_counter)
+            default_ps = [default_point_generator.point_generator()]
+            hist = ray.get(global_cache.get_tournament_history.remote())
+            vg_points = [vg_point_generator.point_generator(
+                         mode=Mode.random, data=hist, lookback=1)
+                         for _ in range(
+                         scenario.tournament_size *
+                         scenario.generator_multiple)]
+            lhc_ps = lhc_point_generator.point_generator(
+                n_samples=(scenario.tournament_size *
+                           scenario.generator_multiple),
+                lhs_type=LHSType.centered,
+                criterion=Criterion.maximin)
+
+            generated_points = random_points + default_ps + \
+                vg_points + lhc_ps
+
+            weights = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            weights = [weights for x in range(len(generated_points))]
+            weights = np.array(weights)
+
+            points_to_run = \
+                hp_seletor.select_points(scenario, generated_points,
+                                         scenario.tournament_size - 1,
+                                         epoch, max_epochs, weights,
+                                         max_evals=100)
             points_to_run = points_to_run + [result_tournament.best_finisher[0]]
 
             # Get the instances for the new tournament
@@ -127,6 +163,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             logger.info(f"Final results tournament {result_tournament}")
             logger.info(f"New tournament {new_tournament}")
             logger.info(f"Initial Tasks of new tournament, {[get_tasks(o.ray_object_store, tasks) for o in tournaments]}")
+            epoch += 1
         else:
             # If the tournament does not terminate we get a new conf/instance assignment and add that as ray task
             next_task = tournament_dispatcher.next_tournament_run(global_cache, result_tournament, result_conf)

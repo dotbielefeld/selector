@@ -1,0 +1,10 @@
+rnd-freq [0,1] [0]
+cla-decay  [0,1] [0.999]
+max-var-decay  [0,1] [0.95]
+var-decay   [0,1] [0.8]
+ccmin-mode   [0,2] [2]i
+phase-saving    {0,1,2} [2]
+minLBDMinimizingClause [3,200] [6]i
+minSizeMinimizingClause [3,200] [30]i
+R [1, 5] [1.4]
+K [0, 1] [0.8]

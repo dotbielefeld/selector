@@ -8,6 +8,7 @@ sys.path.append(os.getcwd())
 from selector.read_files import get_ta_arguments_from_pcs, read_instance_paths, read_instance_features
 
 from test.test_point_generation import test_gen_funcs
+from test.test_point_selection import test_point_selection
 
 
 
@@ -184,4 +185,5 @@ if __name__ == "__main__":
 
     #s = Scenario("./selector/input/scenarios/example_scenario.txt", parser)
 
-    test_gen_funcs(Scenario, parser)
+    test_point_selection(Scenario, parser)
+

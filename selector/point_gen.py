@@ -1,13 +1,14 @@
 """This module contains the point generation class."""
 
 import uuid
+import random
 from selector.random_point_generator import random_point
 
 
 class PointGen:
     """Interface for point generation."""
 
-    def __init__(self, scenario, gm=random_point):
+    def __init__(self, scenario, gm=random_point, seed=False):
         """
         Initialize PointGen.
 
@@ -16,6 +17,7 @@ class PointGen:
         """
         self.s = scenario
         self.gen_method = gm
+        self.seed = seed
 
     def point_generator(self, **kwargs):
         """
@@ -25,7 +27,10 @@ class PointGen:
         : **kwargs: depend on gen_method
         return: configuration/point generated
         """
-        self.id = uuid.uuid4()
+        if self.seed:
+            self.id = uuid.UUID(int=random.getrandbits(self.seed))
+        else:
+            self.id = uuid.uuid4()
         configuration = self.gen_method(self.s, self.id, **kwargs)
 
         return configuration
