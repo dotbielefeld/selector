@@ -2,6 +2,7 @@
 import unittest
 import numpy as np
 import ray
+import pickle
 from selector.ta_result_store import TargetAlgorithmObserver
 from selector.pool import Configuration, Generator
 from selector.tournament_dispatcher import MiniTournamentDispatcher
@@ -12,9 +13,7 @@ from selector.random_point_generator import random_point
 from selector.default_point_generator import default_point
 from selector.variable_graph_point_generator import variable_graph_point, Mode
 from selector.lhs_point_generator import lhc_points, LHSType, Criterion
-from selector.scenario import Scenario, parse_args
-
-np.random.seed(42)
+from selector.selection_features import FeatureGenerator
 
 
 class RandomPointselectorTest(unittest.TestCase):
@@ -35,6 +34,7 @@ class RandomPointselectorTest(unittest.TestCase):
     def test_random_pointselector(self):
         """Testing random point selector."""
         iteration = 1
+        np.random.seed(42)
         selector = RandomSelector()
         selected_ids = selector.select_points(self.pool, 2, iteration,
                                               seed=42)
@@ -48,8 +48,9 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
 
     def setUp(self):
         """Set up unittest."""
-        parser = parse_args()
-        self.s = Scenario("./test_data/test_scenario.txt", parser)
+        file = open('./test/s', 'rb')
+        self.s = pickle.load(file)
+        file.close()
         self.random_generator = PointGen(self.s, random_point, seed=42)
         # Set up a tournament with mock data
         global_cache = TargetAlgorithmObserver.remote()
@@ -88,6 +89,8 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
         """Testing hyperparameterized point selector."""
         def_conf = [self.default_generator.point_generator()]
 
+        print(self.s)
+
         ran_conf = []
         for i in range(5):
             ran_conf.append(self.random_generator.point_generator(seed=42 + i))
@@ -117,11 +120,15 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
 
         selected_ids = []
 
+        fg = FeatureGenerator()
+        features = fg.static_feature_gen(confs, epoch, max_epochs)
+
         for epoch in range(2):
             selected_ids.append(hps.select_points(self.s, confs,
                                                   configs_requested, epoch,
-                                                  max_epochs, weights,
-                                                  max_evals=100, seed=42))
+                                                  max_epochs, features,
+                                                  weights, max_evals=100,
+                                                  seed=42))
 
         self.assertEqual(selected_ids[0], selected_ids[1])
 

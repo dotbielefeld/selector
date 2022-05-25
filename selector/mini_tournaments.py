@@ -18,6 +18,7 @@ from selector.random_point_generator import random_point
 from selector.default_point_generator import default_point
 from selector.variable_graph_point_generator import variable_graph_point, Mode
 from selector.lhs_point_generator import lhc_points, LHSType, Criterion
+from selector.selection_features import FeatureGenerator
 
 from tournament_dispatcher import MiniTournamentDispatcher
 from tournament_bookkeeping import get_tournament_membership, update_tasks, get_tasks, clear_logs
@@ -136,10 +137,14 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             weights = [weights for x in range(len(generated_points))]
             weights = np.array(weights)
 
+            fg = FeatureGenerator()
+            features = fg.static_feature_gen(generated_points, epoch,
+                                             max_epochs)
+
             points_to_run = \
                 hp_seletor.select_points(scenario, generated_points,
                                          scenario.tournament_size - 1,
-                                         epoch, max_epochs, weights,
+                                         epoch, max_epochs, features, weights,
                                          max_evals=100)
             points_to_run = points_to_run + [result_tournament.best_finisher[0]]
 

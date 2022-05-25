@@ -59,8 +59,8 @@ class HyperparameterizedSelector(PointSelector):
         """Initialize class."""
         super().__init__()
 
-    def select_points(self, scenario, pool, number_of_points,
-                      epoch, max_epoch, weights, max_evals=100,
+    def select_points(self, scenario, pool, number_of_points, epoch,
+                      max_epoch, features, weights, max_evals=100,
                       seed=False):
         """
         Select configurations subset from pool based on scoring function.
@@ -74,7 +74,7 @@ class HyperparameterizedSelector(PointSelector):
         """
         selected_points = select_point(scenario, list(pool), max_evals,
                                        number_of_points, pool, epoch,
-                                       max_epoch, weights, seed)
+                                       max_epoch, features, weights, seed)
 
         self.selection_history[epoch] = selected_points
 

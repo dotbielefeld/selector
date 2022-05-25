@@ -10,6 +10,7 @@ from selector.random_point_generator import random_point
 from selector.default_point_generator import default_point
 from selector.variable_graph_point_generator import variable_graph_point, Mode
 from selector.lhs_point_generator import lhc_points, LHSType, Criterion
+from selector.selection_features import FeatureGenerator
 
 
 def test_point_selection(scenario, parser):
@@ -90,9 +91,12 @@ def test_point_selection(scenario, parser):
     epoch = 4
     max_epochs = 256
 
+    fg = FeatureGenerator()
+    features = fg.static_feature_gen(confs, epoch, max_epochs)
+
     for epoch in range(3):
-        selected_ids = hps.select_points(s, confs, configs_requested,
-                                         epoch, max_epochs, weights,
+        selected_ids = hps.select_points(s, confs, configs_requested, epoch,
+                                         max_epochs, features, weights,
                                          max_evals=100, seed=42)
         print(selected_ids)
         print(len(selected_ids))

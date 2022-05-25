@@ -4,7 +4,6 @@ import copy
 import scipy
 import itertools
 from selector.pool import ParamType
-from selector.selection_features import FeatureGenerator
 
 
 def transform_conf_vals(conf):
@@ -25,6 +24,9 @@ def transform_conf_vals(conf):
 
 def delete_conditionals(scenario, conf):
     """Delete conditional parameters, so that comparison is possible.
+
+    Not all points have values for conditional params. In order to
+    compute matching feature vectors, we omit conditional params.
 
     :param scenario: scenario object
     :param conf: nested list, configuration values
@@ -52,11 +54,16 @@ def param_type_indices(scenario):
     idx = 0
 
     for p in range(len(params)):
+        # Record index if param is cat and not in conditional
         if params[p].type == ParamType.categorical and \
                 not params[p].condition:
             cat_idc.append(idx)
+        # Record index if param is cont/int and not in conditional
         elif not params[p].condition:
             cont_int_idc.append(idx)
+        # If param is in conditionals, do not record index, reset index
+        # to make sure indices are adjusted to shorter lists, because
+        # params which are in conditionals are deleted by delete_conditionals()
         else:
             idx -= 1
         idx += 1
@@ -74,12 +81,32 @@ def get_relatives(suggested):
     for s in suggested:
         gen_type = s.generator
         index_list = []
-        for i in range(len(suggested)):
-            if suggested[i] != s and suggested[i].generator == gen_type:
-                index_list.append(i)
+        index_list = [idx for idx, sugg in enumerate(suggested)
+                      if sugg != s and sugg.generator == gen_type]
         relatives.append(index_list)
 
     return np.array(relatives)
+
+
+def distance_stats(smfeatures, distances):
+    """Compute distances statistics.
+
+    :param suggested: list, list of suggested points
+    :param distances: list, distance values
+    :return smfeatures: array, new features for simulation
+    """
+    smflen = len(smfeatures[0])
+    smfeatures = np.hstack((smfeatures, np.mean(distances, axis=1).reshape(
+                            len(distances), 1)))
+    smfeatures = np.hstack((smfeatures, np.mean(distances * distances,
+                            axis=1).reshape(len(distances), 1)))
+    smfeatures = np.hstack((smfeatures, np.std(distances, axis=1).reshape(
+                            len(distances), 1)))
+    mindist = np.min(distances, axis=1)
+    smfeatures = np.hstack((smfeatures, (smfeatures[:, smflen] -
+                            mindist).reshape(len(distances), 1)))
+
+    return smfeatures
 
 
 def simulation(suggested, features, max_evals, selected_points, weights,
@@ -107,34 +134,14 @@ def simulation(suggested, features, max_evals, selected_points, weights,
             if selpoint > 0:
                 # Diversity features to selected points
                 simseldist = smdistances[:, smsel]
-                smflen = len(smfeatures[0])
-                smfeatures = np.insert(smfeatures, len(smfeatures[0]),
-                                       np.mean(simseldist, axis=1), axis=1)
-                smfeatures = np.insert(smfeatures, len(smfeatures[0]),
-                                       np.mean(simseldist * simseldist,
-                                       axis=1), axis=1)
-                smfeatures = np.insert(smfeatures, len(smfeatures[0]),
-                                       np.std(simseldist, axis=1), axis=1)
-                mindist = np.min(simseldist, axis=1)
-                smfeatures = np.insert(smfeatures, len(smfeatures[0]),
-                                       smfeatures[:, smflen] - mindist, axis=1)
+                smfeatures = distance_stats(smfeatures, simseldist)
 
             rel_sel = list(itertools.chain.from_iterable(relatives[sel]
                                                          for sel in smsel))
             if rel_sel:
                 # Diversity features to selected and related points
                 simrelseldist = smdistances[:, rel_sel]
-                smflen = len(smfeatures[0])
-                smfeatures = np.insert(smfeatures, len(smfeatures[0]),
-                                       np.mean(simrelseldist, axis=1), axis=1)
-                smfeatures = np.insert(smfeatures, len(smfeatures[0]),
-                                       np.mean(simrelseldist * simrelseldist,
-                                       axis=1), axis=1)
-                smfeatures = np.insert(smfeatures, len(smfeatures[0]),
-                                       np.std(simrelseldist, axis=1), axis=1)
-                smfeatures = np.insert(smfeatures, len(smfeatures[0]),
-                                       smfeatures[:, smflen] -
-                                       np.min(simrelseldist, axis=1), axis=1)
+                smfeatures = distance_stats(smfeatures, simrelseldist)
 
             # Min-max normalization
             minf = np.min(smfeatures, axis=0)
@@ -147,7 +154,7 @@ def simulation(suggested, features, max_evals, selected_points, weights,
             # set no variance features to 0, except for the first
             smfeatures[:, eq[1:]] = 0
 
-            # Probability distribution according to features
+            # Probability distribution based on scores
             s_w = 1.0 / (1.0 + np.exp(np.sum(smfeatures *
                          smweights[:, 0:len(smfeatures[0])], axis=1)))
 
@@ -180,7 +187,7 @@ def simulation(suggested, features, max_evals, selected_points, weights,
 
 
 def select_point(scenario, suggested, max_evals, npoints, pool, epoch,
-                 max_epoch, weights, seed):
+                 max_epoch, features, weights, seed):
     """Generate features and run simultion.
 
     :param suggested: list, list of configs/points to select from
@@ -198,10 +205,10 @@ def select_point(scenario, suggested, max_evals, npoints, pool, epoch,
 
     suggested_intact = copy.copy(suggested)
 
+    # Not all points have values for conditional params. In order to
+    # compute matching feature vectors, we omit conditional params.
     suggested = delete_conditionals(scenario, suggested)
 
-    fg = FeatureGenerator()
-    features = fg.static_feature_gen(pool, epoch, max_epoch)
     selected_points = []
     smselected_points = []
 
@@ -213,20 +220,27 @@ def select_point(scenario, suggested, max_evals, npoints, pool, epoch,
     sugg_points = np.array(sugg_points)
     cont_int_idc, cat_idc = param_type_indices(scenario)
 
-    # Compute euclidean distances wit continous and integer values
+    # Compute euclidean distances with continous and integer values
     eucd = scipy.spatial.distance.cdist(sugg_points[:, cont_int_idc],
                                         sugg_points[:, cont_int_idc],
                                         metric='euclidean')
 
     # Compute Hamming distance with categorical values, if present
-    if cat_idc:
-        hamd = scipy.spatial.distance.hamming(sugg_points[:, cat_idc],
-                                              sugg_points[:, cat_idc],
-                                              w=None)
+    if not cat_idc.size == 0:
+        hamd = []
+        for idxf, frompoint in enumerate(sugg_points[:, cat_idc]):
+            hd = []
+            for idxt, topoint in enumerate(sugg_points[:, cat_idc]):
+                if idxf != idxt:
+                    hd.append(scipy.spatial.distance.hamming(frompoint,
+                                                             topoint,
+                                                             w=None))
+            hamd.append(hd)
+        hamd = np.array(hamd)
     else:
-        hamd = 0
+        hamd = np.array([0 for _ in sugg_points])
 
-    distances = eucd + hamd
+    distances = np.hstack((eucd, hamd))
 
     # Run simulation for every point requested
     for psel in range(npoints):
