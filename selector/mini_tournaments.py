@@ -17,7 +17,8 @@ from selector.point_gen import PointGen
 from selector.random_point_generator import random_point
 
 from tournament_dispatcher import MiniTournamentDispatcher
-from tournament_bookkeeping import get_tournament_membership, update_tasks, get_tasks, clear_logs
+from tournament_bookkeeping import get_tournament_membership, update_tasks, get_tasks, termination_check
+from log_setup import clear_logs, log_termination_setting
 
 from tournament_monitor import Monitor
 from tournament_performance import overall_best_update
