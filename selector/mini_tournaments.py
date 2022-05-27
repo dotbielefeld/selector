@@ -110,11 +110,38 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
         tasks = not_ready
         try:
             result = ray.get(winner)[0]
+            result_conf, result_instance, cancel_flag = result[0], result[1], result[2]
+        # Some time a ray worker may crash. We handel that here. I.e if the TA did not run to the end, we reschedule
         except ray.exceptions.WorkerCrashedError as e:
-            logger.info('Crashed TA worker', time.ctime(), winner, e)
-            continue
+            logger.info(f'Crashed TA worker, {time.ctime()}, {winner}, {e}')
+            print("Crashed TA worker")
+            # Figure out which tournament conf. belongs to
+            for t in tournaments:
+                conf_instance = get_tasks(t.ray_object_store, winner)
+                if  len(conf_instance) != 0:
+                    tournament_of_c_i = t
+                    break
 
-        result_conf, result_instance, cancel_flag = result[0], result[1], result[2]
+            conf = [conf for conf in tournament_of_c_i.configurations if conf.id == conf_instance[0][0]][0]
+            instance = conf_instance[0][1]
+            # We check if we have killed the conf and only messed up the termination of the process
+            termination_history = ray.get(global_cache.get_termination_history.remote())
+            # TODO we probably need to check, that we really killed the process..
+            if conf.id in termination_history.keys() and instance in termination_history[conf.id]:
+                result_conf = conf
+                result_instance = instance
+                cancel_flag = True
+                global_cache.put_result.remote(result_conf.id, result_instance, np.nan)
+                logger.info(f"Canceled task with no return: {result_conf}, {result_instance}")
+            else: #got no results: need to rescheulde
+                next_task = [[conf, instance]]
+                tasks = update_tasks(tasks, next_task, tournament_of_c_i, global_cache_ray, ta_wrapper_ray, scenario_ray)
+                logger.info(f"We have no results: rescheduling {conf.id}, {instance} {[get_tasks(o.ray_object_store, tasks) for o in tournaments]}")
+                continue
+
+        except ray.exceptions.TaskCancelledError as e:
+            logger.info(f'This should only happen if the tournament are bigger then the number of cpu, {e}')
+
         result_tournament = get_tournament_membership(tournaments, result_conf)
 
         # Check whether we canceled a task or if the TA terminated regularly
