@@ -1,15 +1,13 @@
 import os
 import warnings
 import argparse
-import selector.random_point_generator as rpg
 
 import sys
 sys.path.append(os.getcwd())
 
 from selector.read_files import get_ta_arguments_from_pcs, read_instance_paths, read_instance_features
-from selector.point_gen import PointGen
-from selector.random_point_generator import random_point
-from selector.default_point_generator import default_point
+
+from test.test_point_generation import test_gen_funcs
 
 
 
