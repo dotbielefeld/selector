@@ -26,7 +26,6 @@ from tournament_bookkeeping import get_tournament_membership, update_tasks, get_
 from tournament_monitor import Monitor
 from tournament_performance import overall_best_update
 
-from wrapper.glucose_wrapper import GLucoseWrapper
 from wrapper.tap_sleep_wrapper import TAP_Sleep_Wrapper
 from wrapper.tap_work_wrapper import TAP_Work_Wrapper
 from instance_sets import InstanceSet
@@ -205,7 +204,6 @@ if __name__ == "__main__":
     scenario = Scenario("./selector/input/scenarios/test_example.txt", parser)
 
     # TODO this needs to come from the scenario?!
-    #ta_wrapper = GLucoseWrapper()
     #ta_wrapper = TAP_Sleep_Wrapper()
     ta_wrapper = TAP_Work_Wrapper()
 
