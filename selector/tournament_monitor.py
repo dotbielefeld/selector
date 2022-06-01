@@ -23,7 +23,6 @@ class Monitor:
         self.cache = cache
         self.number_of_finisher = number_of_finisher
         self.tournaments = []
-        self.termination_history = {}
 
         logging.basicConfig(filename=f'./selector/logs/monitor.log', level=logging.INFO,
                             format='%(asctime)s %(message)s')
@@ -48,6 +47,11 @@ class Monitor:
             tournaments = ray.get(self.cache.get_tournament.remote())
             dur = time.time() - start
             logging.info(f"Monitor getting tournaments {dur}")
+
+            start = time.time()
+            termination_history = ray.get(self.cache.get_termination_history.remote())
+            dur = time.time() - start
+            logging.info(f"Monitor getting termination_history {dur}")
 
             for t in tournaments:
                 # We can only start canceling runs if there are enough winners already
@@ -87,38 +91,30 @@ class Monitor:
                             # We can only kill still running tasks
                             for i in instances_conf_still_runs:
                                 # We check if we have killed the conf/instance pair before.
-                                if self.termination_check(conf.id, i):
+                                if self.termination_check(conf.id, i, termination_history):
                                     logging.info(f"Monitor is killing: {conf} {i} with id: {t.ray_object_store[conf.id][i]}")
                                     print(f"Monitor is killing:{time.ctime()} {t.ray_object_store[conf.id][i]}")
                                     # In case we kill we store that we have killed
-                                    self.update_termination_history(conf.id, i)
+                                    self.cache.put_termination_history.remote(conf.id, i)
                                     [ray.cancel(t.ray_object_store[conf.id][i])]
                                 else:
                                     continue
             time.sleep(self.sleep_time)
 
-    def termination_check(self, conf_id, instance):
+    def termination_check(self, conf_id, instance, termination_history):
         """
         Check if we have killed a conf/instance pair already. Return True if we did not.
         :param conf_id:
         :param instance:
         :return:
         """
-        if conf_id not in self.termination_history:
+        if conf_id not in termination_history:
             return True
-        elif instance not in self.termination_history[conf_id]:
+        elif instance not in termination_history[conf_id]:
             return True
         else:
             return False
 
-    def update_termination_history(self, conf_id, instance_id):
-        if conf_id not in self.termination_history:
-            self.termination_history[conf_id] = []
-
-        if instance_id not in self.termination_history[conf_id]:
-            self.termination_history[conf_id].append(instance_id)
-        else:
-            logging.info(f"This should not happen: we kill something we already killed")
 
 
 

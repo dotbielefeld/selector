@@ -10,12 +10,12 @@ class TargetAlgorithmObserver:
         self.results = {}
         self.start_time = {}
         self.tournament_history = {}
-        self.ta_termination = {}
+        self.termination_history = {}
         self.tournaments = []
         self.read_from = {"conf id":1 , "instance_id":1 , "index":1 }
 
         # todo logging dic should be provided somewhere else -> DOTAC-37
-        logging.basicConfig(filename='./selector/logs/Target_Algorithm_Cache.log', level=logging.INFO,
+        logging.basicConfig(filename='./selector/logs/Target_Algorithm_Cache.logger', level=logging.INFO,
                             format='%(asctime)s %(message)s')
 
     def put_intermediate_output(self, conf_id, instance_id, value):
@@ -69,3 +69,15 @@ class TargetAlgorithmObserver:
 
     def get_tournament(self):
         return self.tournaments
+
+    def put_termination_history(self, conf_id, instance_id):
+        if conf_id not in self.termination_history:
+            self.termination_history[conf_id] = []
+
+        if instance_id not in self.termination_history[conf_id]:
+            self.termination_history[conf_id].append(instance_id)
+        else:
+            logging.info(f"This should not happen: we kill something we already killed")
+
+    def get_termination_history(self):
+        return self.termination_history

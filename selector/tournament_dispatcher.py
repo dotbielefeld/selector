@@ -75,6 +75,7 @@ class MiniTournamentDispatcher:
         results = ray.get(cache.get_results.remote())
         conf_time_out = get_conf_time_out(results, finished_conf.id, tournament.instance_set)
         evaluated_instances = results[finished_conf.id].keys()
+        bfi_add = False
 
         # We figure out if there are still tasks the finished configuration is still running on for which we have a results
         # but have not returned through a ray.wait()
@@ -101,6 +102,7 @@ class MiniTournamentDispatcher:
                     # If the conf is better than one best finisher we insert it
                     if finished_conf_runtime <= bfr and not conf_time_out:
                         tournament.best_finisher.insert(bfi, finished_conf)
+                        bfi_add = True
                         if finished_conf in tournament.worst_finisher:
                             tournament.worst_finisher.remove(finished_conf)
                         # If we have too many best finishers we cut off the excess
@@ -109,13 +111,13 @@ class MiniTournamentDispatcher:
                             tournament.worst_finisher = tournament.worst_finisher + tournament.best_finisher[transition:]
                             tournament.best_finisher = tournament.best_finisher[: transition]
                             break
-                    # We also add a conf to best finishers if we have not enough
-                    elif len(tournament.best_finisher) < number_winner:
-                        tournament.best_finisher.append(finished_conf)
-                        break
-                    # If the conf is not better it is a worst finisher
-                    elif finished_conf not in tournament.worst_finisher:
-                        tournament.worst_finisher.append(finished_conf)
+                # We also add a conf to best finishers if we have not enough
+                if len(tournament.best_finisher) < number_winner and not bfi_add:
+                    tournament.best_finisher.append(finished_conf)
+
+                # If the conf is not better it is a worst finisher
+                elif finished_conf not in tournament.worst_finisher and not bfi_add:
+                    tournament.worst_finisher.append(finished_conf)
             else:
                 tournament.best_finisher.append(finished_conf)
 
