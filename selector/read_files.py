@@ -112,15 +112,10 @@ def get_categorical(param_name, param_info):
 
         bounds = [b in boolean_yes for b in bounds]
 
-    elif isinstance(float(bounds[0]), float):
+    elif isinstance(str(bounds[0]), str) & isinstance(str(defaults[0]), str):
         param_type = ParamType.categorical
-
-        if isinstance(float(defaults[0]), float):
-            defaults = float(defaults[0])
-        else:
-            raise ValueError(f"For parameter {param_name} the parsed defaults are not categorical")
-
-        bounds = [float(b) for b in bounds]
+        defaults = str(defaults[0])
+        bounds = [str(b) for b in bounds]
 
         if defaults not in bounds:
             raise ValueError(f"For parameter {param_name} the default value is not within the range of the bounds")
@@ -257,3 +252,4 @@ def read_instance_features(feature_set_path):
             features[line[0]] = np.array(line[1:], dtype=np.single)
 
     return features, feature_names
+

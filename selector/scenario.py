@@ -162,6 +162,8 @@ def parse_args():
     hp.add_argument('--tournament_size', type=int, default=5 )
     hp.add_argument('--number_tournaments', type=int, default=2)
     hp.add_argument('--total_tournament_number', type=int, default=4)
+    hp.add_argument('--total_runtime', type=int, default=1200)
+    hp.add_argument('--termination_criterion', type=str, default="runtime")
 
     hp.add_argument('--initial_instance_set_size', type=int, default=2)
     hp.add_argument('--instance_set_size', type=int, default=10)
@@ -182,8 +184,6 @@ def parse_args():
 if __name__ == "__main__":
 
     parser = parse_args()
-
-    #s = Scenario("./selector/input/scenarios/example_scenario.txt", parser)
 
     test_point_selection(Scenario, parser)
 
