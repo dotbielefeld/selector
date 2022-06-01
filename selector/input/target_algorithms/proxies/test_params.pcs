@@ -1,0 +1,20 @@
+luby {on,off}[off]
+rinc [1.1,4][2]
+cla-decay [0.9,0.99999][0.999]l
+phase-saving [0,2][2]i
+strSseconds {10,50,100,150,200,250,290}[150]# flips for sparrow.  -2 => CPsparrow, -1 => Sparrow, 0 => Riss427, >0 => SparrowToRiss
+bce-limit  [100000,200000000][100000000]il
+param_1 [-2,-1][-1]il
+#param_2 {yes,no}[no]
+#param_3 [10,20][3]il
+
+# con
+rinc | luby in {on, off}
+#rinc | bce-limit in {100000000, 200000000}
+strSseconds | luby in {on}
+strSseconds | cla-decay in {0.92, 0.93}
+
+# forbidden
+{luby=on , rinc=3}
+
+

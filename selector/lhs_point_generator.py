@@ -3,7 +3,7 @@
 from skopt.space import Space
 from skopt.sampler import Lhs
 from enum import Enum
-from selector.pool import Configuration, ParamType
+from selector.pool import Configuration, ParamType, Generator
 from selector.default_point_generator import check_conditionals, check_no_goods
 from selector.random_point_generator import reset_no_goods
 
@@ -121,6 +121,6 @@ def lhc_points(s, identity, n_samples=1, seed=False, lhs_type=LHSType.classic,
     n_configurations = []
 
     for conf in n_points:
-        n_configurations.append(Configuration(identity, conf))
+        n_configurations.append(Configuration(identity, conf, Generator.lhc))
 
     return n_configurations
