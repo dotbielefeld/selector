@@ -16,7 +16,7 @@ def enqueue_output(out, queue):
         queue.put(line)
     out.close()
 
-@ray.remote(num_cpus=1)
+@ray.remote(num_cpus=1, max_retries=0,  retry_exceptions= False)
 def tae_from_cmd_wrapper(conf, instance_path, cache, ta_command_creator, scenario):
     """
     Execute the target algorithm with a given conf/instance pair by calling a user provided Wrapper that created a cmd
@@ -67,10 +67,14 @@ def tae_from_cmd_wrapper(conf, instance_path, cache, ta_command_creator, scenari
 
     except KeyboardInterrupt:
         logging.info(f" Killing: {conf}, {instance_path} ")
-        # TODO add a type check for p since we might kill before p is up
-        p.terminate()
-        time.sleep(1)
-        p.kill()
+        # We only terminated the subprocess in case it has started (p is defined)
+        print(vars())
+        if 'p' in vars():
+            p.terminate()
+            time.sleep(1)
+            if p.poll() is None:
+                p.kill()
+        logging.info(f"Killing status: {p.poll()} {conf.id} {instance_path}")
         #try:
         #    os.killpg(p.pid, signal.SIGTERM)
         #except ProcessLookupError:

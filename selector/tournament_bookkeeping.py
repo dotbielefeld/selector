@@ -1,5 +1,7 @@
 import os
 from ta_execution import tae_from_cmd_wrapper
+import time
+import logging
 
 def get_tournament_membership(tournaments, conf):
     """
@@ -49,14 +51,28 @@ def update_tasks(tasks, next_task, tournament, global_cache, ta_wrapper, scenari
                 tournament.ray_object_store[t[0].id][t[1]] = task
     return tasks
 
-def clear_logs():
+
+def termination_check(termination_criterion, main_loop_start, total_runtime, total_tournament_number,
+                      tournament_counter):
     """
-    Clear the logs
+    Check what termination criterion for the main tournament loop has been parsed and return true,
+    if the criterion is not met yet.
+    :param termination_criterion: Str. termination criterion for the tournament main loop
+    :param main_loop_start: Int. Time of the start of the tournament main loop
+    :param total_runtime: Int. Total runtime for the main loop, when the termination criterion is "total_runtime"
+    :param total_tournament_number: Int. Total number of tournaments for the main loop,
+                                    when the termination criterion is "total_tournament_number"
+    :param tournament_counter: Int. Number of tournaments, that finished already
+    :return: Bool. True, when the termination criterion is not met, False otherwise
     """
-    for folder in ['./selector/logs' ,'./selector/logs/ta_logs']:
-        for filename in os.listdir(folder):
-            file_path = os.path.join(folder, filename)
-            if os.path.isfile(file_path) or os.path.islink(file_path):
-                os.unlink(file_path)
+    if termination_criterion == "total_runtime":
+        return time.time() - main_loop_start < total_runtime
+
+    elif termination_criterion == "total_tournament_number":
+        return tournament_counter < total_tournament_number
+
+    else:
+        return time.time() - main_loop_start < total_runtime
+
 
 
