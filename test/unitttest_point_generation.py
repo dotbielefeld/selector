@@ -88,7 +88,7 @@ class PointGenTest(unittest.TestCase):
         """
         conf = self.variable_graph_generator.point_generator(
             mode=Mode.best_and_random,
-            data=self.hist, lookback=2, seed=42)
+            alldata=self.hist, lookback=2, seed=42)
         self.assertEqual(conf.conf, {'luby': True,
                                      'rinc': 3.409974661894675,
                                      'cla-decay': 0.9175615966761705,
