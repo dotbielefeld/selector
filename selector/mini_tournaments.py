@@ -85,18 +85,6 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     while termination_check(scenario.termination_criterion, main_loop_start, scenario.total_runtime,
                             scenario.total_tournament_number, tournament_counter):
 
-        logger.info("Starting main loop")
-        if scenario.termination_criterion == "total_runtime":
-            logger.info(f"The termination criterion is: {scenario.termination_criterion}")
-            logger.info(f"The total runtime is: {scenario.total_runtime}")
-        elif scenario.termination_criterion == "total_tournament_number":
-            logger.info(f"The termination criterion is: {scenario.termination_criterion}")
-            logger.info(f"The total number of tournaments is: {scenario.total_tournament_number}")
-        else:
-            logger.info(f"No valid termination criterion has been parsed. "
-                        f"The termination criterion will be set to runtime.")
-            logger.info(f"The total runtime is: {scenario.total_runtime}")
-
         winner, not_ready = ray.wait(tasks)
         tasks = not_ready
         try:
