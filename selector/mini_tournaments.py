@@ -32,7 +32,7 @@ from wrapper.tap_work_wrapper import TAP_Work_Wrapper
 from instance_sets import InstanceSet
 
 
-from aggr_capping import AggrMonitor
+#from aggr_capping import AggrMonitor
 from instance_monitor import InstanceMonitor
 
 
@@ -192,7 +192,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             default_ps = [default_point_generator.point_generator()]
             hist = ray.get(global_cache.get_tournament_history.remote())
             vg_points = [vg_point_generator.point_generator(
-                         mode=Mode.random, data=hist, lookback=1)
+                         mode=Mode.random, alldata=hist, lookback=1)
                          for _ in range(
                          scenario.tournament_size *
                          scenario.generator_multiple)]
