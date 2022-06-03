@@ -4,7 +4,7 @@ This module contains the default point generator.
 It also contains functions to check validity of the configuration setting.
 """
 
-from selector.pool import Configuration, ParamType
+from selector.pool import Configuration, ParamType, Generator
 
 
 def check_conditionals(s, config_setting):
@@ -50,8 +50,9 @@ def check_no_goods(s, config_setting):
     check = False
     for ng in s.no_goods:
         param_1, param_2 = ng.keys()
-        check = (not check and ng[param_1] == config_setting[param_1]) \
-            and (ng[param_2] == config_setting[param_2])
+        if param_1 in config_setting and param_2 in config_setting:
+            check = (not check and ng[param_1] == config_setting[param_1]) \
+                and (ng[param_2] == config_setting[param_2])
 
     return check
 
@@ -71,6 +72,6 @@ def default_point(s, identity):
         config_setting[param.name] = param.default
 
     # Fill Configuration class with ID and parameter values
-    configuration = Configuration(identity, config_setting)
+    configuration = Configuration(identity, config_setting, Generator.default)
 
     return configuration

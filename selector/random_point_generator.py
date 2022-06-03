@@ -3,7 +3,7 @@
 import numpy as np
 import math
 import sys
-from selector.pool import Configuration, ParamType
+from selector.pool import Configuration, ParamType, Generator
 from selector.default_point_generator import check_conditionals, check_no_goods
 
 
@@ -155,6 +155,6 @@ def random_point(s, identity, seed=False):
         ng_vio = check_no_goods(s, config_setting)
 
     # Fill Configuration class with ID and parameter values
-    configuration = Configuration(identity, config_setting)
+    configuration = Configuration(identity, config_setting, Generator.random)
 
     return configuration

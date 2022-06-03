@@ -8,6 +8,7 @@ from enum import Enum
 class Configuration:
     id: int
     conf: dict
+    generator: Enum
 
 @dataclass
 class Parameter:
@@ -35,10 +36,12 @@ class ParamType(Enum):
     continuous = 2
     integer = 3
 
-
 class TaskType(Enum):
     target_algorithm = 1
     monitor = 2
 
-
-
+class Generator(Enum):
+    default = 1
+    random = 2
+    var_graph = 3
+    lhc = 4
