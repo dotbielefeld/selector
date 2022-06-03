@@ -4,7 +4,7 @@ import uuid
 import time
 
 from selector.pool import Tournament
-from selector.tournament_performance import get_censored_runtime_for_instance_set, get_instances_no_results, get_conf_time_out
+from selector.tournament_performance import get_censored_runtime_for_instance_set, get_instances_no_results, get_conf_time_out, get_runtime_for_instance_set_with_timeout
 
 class MiniTournamentDispatcher:
 
@@ -61,7 +61,7 @@ class MiniTournamentDispatcher:
                initial_instance_conf_assignments
 
 
-    def update_tournament(self, cache, tasks, finished_conf, tournament, number_winner):
+    def update_tournament(self, cache, tasks, finished_conf, tournament, number_winner, time_out, par_penalty):
         """
         Given a finishing conf we update the tournament if necessary. I.e the finishing conf has seen all instances of
         the tournament. In that case, it is moved either to the best or worst finishers. best finishers are ordered.
@@ -89,18 +89,18 @@ class MiniTournamentDispatcher:
                 tournament.configurations.remove(finished_conf)
             else:
                 print(f"conf not {finished_conf}")
-            finished_conf_runtime = get_censored_runtime_for_instance_set(results, finished_conf.id,
-                                                                          tournament.instance_set)
+            finished_conf_runtime_mean = get_runtime_for_instance_set_with_timeout(results, finished_conf.id,
+                                                                                   tournament.instance_set, time_out, par_penalty) / len(tournament.instance_set)
 
             # If there are already some best finisher we need to compare the conf to them
             if len(tournament.best_finisher) > 0:
                 # We assume that the finishers in the set are ordered according to their runtime
                 for bfi in range(len(tournament.best_finisher)):
-                    bfr = get_censored_runtime_for_instance_set(results, tournament.best_finisher[bfi].id,
-                                                                tournament.instance_set)
+                    bfrm = get_runtime_for_instance_set_with_timeout(results, tournament.best_finisher[bfi].id,
+                                                                     tournament.instance_set, time_out, par_penalty) / len(tournament.instance_set)
 
                     # If the conf is better than one best finisher we insert it
-                    if finished_conf_runtime <= bfr and not conf_time_out:
+                    if finished_conf_runtime_mean <= bfrm:
                         tournament.best_finisher.insert(bfi, finished_conf)
                         bfi_add = True
                         if finished_conf in tournament.worst_finisher:

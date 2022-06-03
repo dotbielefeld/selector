@@ -136,7 +136,8 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
         # Update the tournament based on result
         result_tournament, tournament_stop = tournament_dispatcher.update_tournament(global_cache, tasks, result_conf,
                                                                                      result_tournament,
-                                                                                     scenario.winners_per_tournament)
+                                                                                     scenario.winners_per_tournament,
+                                                                                     scenario.cutoff_time, scenario.par)
 
         global_cache.put_tournament_history.remote(result_tournament)
         logger.info(f"Result tournament update: Id: {result_tournament.id}"
@@ -238,7 +239,7 @@ if __name__ == "__main__":
     parser = {"check_path": False, "seed": 42, "ta_run_type": "import_wrapper", "winners_per_tournament": 2,
               "initial_instance_set_size": 3, "tournament_size": 4, "number_tournaments": 2, "total_tournament_number": 2,
               "total_runtime": 1200, "generator_multiple": 5, "set_size": 50,
-              "termination_criterion": "total_runtime"}
+              "termination_criterion": "total_runtime", "par": 1}
 
     scenario = Scenario("./selector/input/scenarios/test_example.txt", parser)
     # TODO this needs to come from the scenario?!
