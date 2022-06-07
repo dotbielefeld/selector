@@ -236,10 +236,10 @@ if __name__ == "__main__":
 
     logger = logging.getLogger(__name__)
 
-    parser = {"check_path": False, "seed": 42, "ta_run_type": "import_wrapper", "winners_per_tournament": 2,
-              "initial_instance_set_size": 3, "tournament_size": 4, "number_tournaments": 2, "total_tournament_number": 2,
+    parser = {"check_path": False, "seed": 42, "ta_run_type": "import_wrapper", "winners_per_tournament": 1,
+              "initial_instance_set_size": 2, "tournament_size": 2, "number_tournaments": 1, "total_tournament_number": 3,
               "total_runtime": 1200, "generator_multiple": 5, "set_size": 50,
-              "termination_criterion": "total_runtime", "par": 1}
+              "termination_criterion": "total_tournament_number", "par": 1, "ta_pid_name": "glucose-simp"}
 
     scenario = Scenario("./selector/input/scenarios/test_example.txt", parser)
     # TODO this needs to come from the scenario?!
