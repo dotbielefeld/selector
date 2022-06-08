@@ -56,6 +56,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     tasks = []
     tournaments = []
     tournament_counter = 0
+    results = ray.get(global_cache.get_results.remote())
 
     # creating the first tournaments and adding first conf/instance pairs to ray tasks
     for _ in range(scenario.number_tournaments):
@@ -65,7 +66,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
 
 
         instance_id, instances = instance_selector.get_subset(0)
-        tournament, initial_assignments = tournament_dispatcher.init_tournament(global_cache, points_to_run,
+        tournament, initial_assignments = tournament_dispatcher.init_tournament(results, points_to_run,
                                                                                 instances, instance_id)
         tournaments.append(tournament)
         global_cache.put_tournament_history.remote(tournament)
@@ -130,11 +131,11 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
                 tasks.remove(result_tournament.ray_object_store[result_conf.id][result_instance])
             logger.info(f"Canceled TA: {result_conf.id}, {result_instance}")
         else:
-            result_time = ray.get(global_cache.get_results.remote())[result_conf.id][result_instance]
+            result_time = results[result_conf.id][result_instance]
             logger.info(f"TA result: {result_conf.id}, {result_instance} {result_time}")
 
         # Update the tournament based on result
-        result_tournament, tournament_stop = tournament_dispatcher.update_tournament(global_cache, tasks, result_conf,
+        result_tournament, tournament_stop = tournament_dispatcher.update_tournament(results, tasks, result_conf,
                                                                                      result_tournament,
                                                                                      scenario.winners_per_tournament,
                                                                                      scenario.cutoff_time, scenario.par)
@@ -192,7 +193,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             instance_id, instances = instance_selector.get_subset(result_tournament.instance_set_id + 1)
 
             # Create new tournament
-            new_tournament, initial_assignments_new_tournament = tournament_dispatcher.init_tournament(global_cache,
+            new_tournament, initial_assignments_new_tournament = tournament_dispatcher.init_tournament(results,
                                                                                                        points_to_run,
                                                                                                        instances,
                                                                                                        instance_id)
@@ -211,7 +212,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             epoch += 1
         else:
             # If the tournament does not terminate we get a new conf/instance assignment and add that as ray task
-            next_task = tournament_dispatcher.next_tournament_run(global_cache, result_tournament, result_conf)
+            next_task = tournament_dispatcher.next_tournament_run(results, result_tournament, result_conf)
             tasks = update_tasks(tasks, next_task, result_tournament, global_cache, ta_wrapper, scenario)
             logger.info(f"Track new task {next_task}")
             logger.info(f"New Task {next_task}, {[get_tasks(o.ray_object_store, tasks) for o in tournaments]}, {result_tournament}")

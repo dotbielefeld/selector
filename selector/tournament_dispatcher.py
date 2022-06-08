@@ -8,17 +8,15 @@ from selector.tournament_performance import get_censored_runtime_for_instance_se
 
 class MiniTournamentDispatcher:
 
-    def init_tournament(self, cache, configurations, instance_partition, instance_partition_id):
+    def init_tournament(self, results, configurations, instance_partition, instance_partition_id):
         """
         Create a new tournament out of the given configurations and list of instances.
-        :param cache: Results cache.
+        :param results: Results cache.
         :param configurations: List. Configurations for the tournament
         :param instance_partition: List. List of instances
         :param instance_partition_id: Id of the instance set.
         :return: Tournament, first conf/instance assignment to run
         """
-
-        results = ray.get(cache.get_results.remote())
 
         # Get the configuration that has seen the most instances before
         conf_instances_ran = []
@@ -61,19 +59,17 @@ class MiniTournamentDispatcher:
                initial_instance_conf_assignments
 
 
-    def update_tournament(self, cache, tasks, finished_conf, tournament, number_winner, time_out, par_penalty):
+    def update_tournament(self, results, tasks, finished_conf, tournament, number_winner, time_out, par_penalty):
         """
         Given a finishing conf we update the tournament if necessary. I.e the finishing conf has seen all instances of
         the tournament. In that case, it is moved either to the best or worst finishers. best finishers are ordered.
         Worst finishers are not
-        :param cache: Ray cache object.
+        :param results: Ray cache object.
         :param finished_conf: Configuration that finished or was canceled
         :param tournament: Tournament the finish conf was a member of
         :param number_winner: Int that determines the number of winners per tournament
         :return: updated tournament, stopping signal
         """
-        results = ray.get(cache.get_results.remote())
-        conf_time_out = get_conf_time_out(results, finished_conf.id, tournament.instance_set)
         evaluated_instances = results[finished_conf.id].keys()
         bfi_add = False
 
@@ -130,17 +126,16 @@ class MiniTournamentDispatcher:
 
         return tournament, stop
 
-    def next_tournament_run(self, cache, tournament, finished_conf):
+    def next_tournament_run(self, results, tournament, finished_conf):
         """
         Decided which conf/instance pair to run next. Rule: If the configuration that has just finished was not killed
         nor saw all instances, it is assigned a new instance at random. Else, the configuration with the lowest runtime
         so far is selected.
-        :param cache: Ray cache
+        :param results: Ray cache
         :param tournament: The tournament we opt to create a new task for
         :param finished_conf: Configuration that just finished before
         :return: configuration, instance pair to run next
         """
-        results = ray.get(cache.get_results.remote())
         next_possible_conf = {}
 
         # For each conf still in the running we need to figure out on which instances it already ran or is still
