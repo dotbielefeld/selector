@@ -1,6 +1,7 @@
 import numpy as np
 import ray
 import pickle
+import math
 
 def get_conf_time_out(results, configuration_id, instances_set):
     """
@@ -38,6 +39,25 @@ def get_censored_runtime_for_instance_set(results, configuration_id, instances_s
         runtime = np.nansum(list(conf_results_instances))
 
     return runtime
+
+def get_runtime_for_instance_set_with_timeout(results, configuration_id, instances_set, timeout, par_penalty=1):
+    """
+    For a configuration compute the total runtime needed only for instances in a set. If there are no results for the
+    conf return 0. Note that runs that were canceled by the monitor are not included since we count them as nan's
+    :param results: Dic of results: {conf_id: {instance: runtime}}
+    :param configuration_id: Id of the configuration
+    :param instances_set: List of instances
+    :return: Runtime of the configuration on instances
+    """
+    if configuration_id in results.keys():
+        conf_results_all_instances = results[configuration_id]
+        conf_results_instances = [conf_results_all_instances[instance] for instance in
+                                  conf_results_all_instances if instance in instances_set]
+
+        runtime = np.nansum(list(conf_results_instances)) + np.count_nonzero(np.isnan(list(conf_results_instances))) * (timeout * par_penalty)
+
+    return runtime
+
 
 def get_censored_runtime_of_configuration(results, configuration_id):
     """
