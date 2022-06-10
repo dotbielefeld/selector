@@ -32,40 +32,20 @@ from wrapper.tap_work_wrapper import TAP_Work_Wrapper
 from instance_sets import InstanceSet
 
 
-from aggr_capping import AggrMonitor
 from instance_monitor import InstanceMonitor
 
 
-def termination_check(termination_criterion, main_loop_start, total_runtime, total_tournament_number,
-                      tournament_counter):
-    """
-    Check what termination criterion for the main tournament loop has been parsed and return true,
-    if the criterion is not met yet.
-    :param termination_criterion: Str. termination criterion for the tournament main loop
-    :param main_loop_start: Int. Time of the start of the tournament main loop
-    :param total_runtime: Int. Total runtime for the main loop, when the termination criterion is "total_runtime"
-    :param total_tournament_number: Int. Total number of tournaments for the main loop,
-                                    when the termination criterion is "total_tournament_number"
-    :param tournament_counter: Int. Number of tournaments, that finished already
-    :return: Bool. True, when the termination criterion is not met, False otherwise
-    """
-    if termination_criterion == "total_runtime":
-        return time.time() - main_loop_start < total_runtime
-
-    elif termination_criterion == "total_tournament_number":
-        return tournament_counter < total_tournament_number
-
-    else:
-        return time.time() - main_loop_start < total_runtime
 
 
 def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
+    log_termination_setting(logger, scenario)
+
     point_selector = RandomSelector()
     hp_seletor = HyperparameterizedSelector()
     tournament_dispatcher = MiniTournamentDispatcher()
     global_cache = TargetAlgorithmObserver.remote()
-    #monitor = Monitor.remote(1, global_cache, scenario.winners_per_tournament)
-    monitor = InstanceMonitor.remote(1, global_cache)
+    monitor = Monitor.remote(1, global_cache, scenario.winners_per_tournament)
+    #monitor = InstanceMonitor.remote(1, global_cache)
     random_generator = PointGen(scenario, random_point)
     default_point_generator = PointGen(scenario, default_point)
     vg_point_generator = PointGen(scenario, variable_graph_point)
@@ -75,6 +55,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     tasks = []
     tournaments = []
     tournament_counter = 0
+    results = ray.get(global_cache.get_results.remote())
 
     # creating the first tournaments and adding first conf/instance pairs to ray tasks
     for _ in range(scenario.number_tournaments):
@@ -84,7 +65,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
 
 
         instance_id, instances = instance_selector.get_subset(0)
-        tournament, initial_assignments = tournament_dispatcher.init_tournament(global_cache, points_to_run,
+        tournament, initial_assignments = tournament_dispatcher.init_tournament(results, points_to_run,
                                                                                 instances, instance_id)
         tournaments.append(tournament)
         global_cache.put_tournament_history.remote(tournament)
@@ -97,27 +78,12 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     logger.info(f"Initial Tournaments {tournaments}")
     logger.info(f"Initial Tasks, {[get_tasks(o.ray_object_store, tasks) for o in tournaments]}")
 
-
     main_loop_start = time.time()
     epoch = 0
     max_epochs = 256
-    # TODO other convergence criteria DOTAC-36
-
 
     while termination_check(scenario.termination_criterion, main_loop_start, scenario.total_runtime,
                             scenario.total_tournament_number, tournament_counter):
-
-        logger.info("Starting main loop")
-        if scenario.termination_criterion == "total_runtime":
-            logger.info(f"The termination criterion is: {scenario.termination_criterion}")
-            logger.info(f"The total runtime is: {scenario.total_runtime}")
-        elif scenario.termination_criterion == "total_tournament_number":
-            logger.info(f"The termination criterion is: {scenario.termination_criterion}")
-            logger.info(f"The total number of tournaments is: {scenario.total_tournament_number}")
-        else:
-            logger.info(f"No valid termination criterion has been parsed. "
-                        f"The termination criterion will be set to runtime.")
-            logger.info(f"The total runtime is: {scenario.total_runtime}")
 
         winner, not_ready = ray.wait(tasks)
         tasks = not_ready
@@ -148,7 +114,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
                 logger.info(f"Canceled task with no return: {result_conf}, {result_instance}")
             else: #got no results: need to rescheulde
                 next_task = [[conf, instance]]
-                tasks = update_tasks(tasks, next_task, tournament_of_c_i, global_cache_ray, ta_wrapper_ray, scenario_ray)
+                tasks = update_tasks(tasks, next_task, tournament_of_c_i, global_cache, ta_wrapper, scenario)
                 logger.info(f"We have no results: rescheduling {conf.id}, {instance} {[get_tasks(o.ray_object_store, tasks) for o in tournaments]}")
                 continue
 
@@ -164,13 +130,14 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
                 tasks.remove(result_tournament.ray_object_store[result_conf.id][result_instance])
             logger.info(f"Canceled TA: {result_conf.id}, {result_instance}")
         else:
-            result_time = ray.get(global_cache.get_results.remote())[result_conf.id][result_instance]
+            result_time = results[result_conf.id][result_instance]
             logger.info(f"TA result: {result_conf.id}, {result_instance} {result_time}")
 
         # Update the tournament based on result
-        result_tournament, tournament_stop = tournament_dispatcher.update_tournament(global_cache, tasks, result_conf,
+        result_tournament, tournament_stop = tournament_dispatcher.update_tournament(results, tasks, result_conf,
                                                                                      result_tournament,
-                                                                                     scenario.winners_per_tournament)
+                                                                                     scenario.winners_per_tournament,
+                                                                                     scenario.cutoff_time, scenario.par)
 
         global_cache.put_tournament_history.remote(result_tournament)
         logger.info(f"Result tournament update: Id: {result_tournament.id}"
@@ -192,7 +159,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             default_ps = [default_point_generator.point_generator()]
             hist = ray.get(global_cache.get_tournament_history.remote())
             vg_points = [vg_point_generator.point_generator(
-                         mode=Mode.random, data=hist, lookback=1)
+                         mode=Mode.random, alldata=hist, lookback=1)
                          for _ in range(
                          scenario.tournament_size *
                          scenario.generator_multiple)]
@@ -225,7 +192,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             instance_id, instances = instance_selector.get_subset(result_tournament.instance_set_id + 1)
 
             # Create new tournament
-            new_tournament, initial_assignments_new_tournament = tournament_dispatcher.init_tournament(global_cache,
+            new_tournament, initial_assignments_new_tournament = tournament_dispatcher.init_tournament(results,
                                                                                                        points_to_run,
                                                                                                        instances,
                                                                                                        instance_id)
@@ -244,7 +211,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             epoch += 1
         else:
             # If the tournament does not terminate we get a new conf/instance assignment and add that as ray task
-            next_task = tournament_dispatcher.next_tournament_run(global_cache, result_tournament, result_conf)
+            next_task = tournament_dispatcher.next_tournament_run(results, result_tournament, result_conf)
             tasks = update_tasks(tasks, next_task, result_tournament, global_cache, ta_wrapper, scenario)
             logger.info(f"Track new task {next_task}")
             logger.info(f"New Task {next_task}, {[get_tasks(o.ray_object_store, tasks) for o in tournaments]}, {result_tournament}")
@@ -269,10 +236,10 @@ if __name__ == "__main__":
 
     logger = logging.getLogger(__name__)
 
-    parser = {"check_path": False, "seed": 42, "ta_run_type": "import_wrapper", "winners_per_tournament": 2,
-              "initial_instance_set_size": 3, "tournament_size": 4, "number_tournaments": 2, "total_tournament_number": 2,
+    parser = {"check_path": False, "seed": 42, "ta_run_type": "import_wrapper", "winners_per_tournament": 1,
+              "initial_instance_set_size": 2, "tournament_size": 2, "number_tournaments": 1, "total_tournament_number": 3,
               "total_runtime": 1200, "generator_multiple": 5, "set_size": 50,
-              "termination_criterion": "total_runtime"}
+              "termination_criterion": "total_tournament_number", "par": 1, "ta_pid_name": "glucose-simp"}
 
     scenario = Scenario("./selector/input/scenarios/test_example.txt", parser)
     # TODO this needs to come from the scenario?!

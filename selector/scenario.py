@@ -7,8 +7,7 @@ sys.path.append(os.getcwd())
 
 from selector.read_files import get_ta_arguments_from_pcs, read_instance_paths, read_instance_features
 
-from test.test_point_generation import test_gen_funcs
-from test.test_point_selection import test_point_selection
+
 
 
 
@@ -44,6 +43,8 @@ class Scenario:
 
         for arg_name, arg_value in scenario.items():
             setattr(self, arg_name, arg_value)
+
+        self.cutoff_time = float(self.cutoff_time)
 
         self.verify_scenario()
 

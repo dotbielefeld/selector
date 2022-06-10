@@ -100,7 +100,7 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
         for i in range(4):
             var_conf.append(self.variable_graph_generator.point_generator(
                 mode=Mode.random,
-                data=self.hist, lookback=i + 1, seed=(42 + i)))
+                alldata=self.hist, lookback=i + 1, seed=(42 + i)))
 
         lhc_conf = \
             self.lhc_generator.point_generator(n_samples=5, seed=42,
