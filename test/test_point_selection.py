@@ -68,7 +68,7 @@ def test_point_selection(scenario, parser):
     for i in range(4):
         var_conf.append(variable_graph_generator.point_generator(
             mode=Mode.random,
-            data=hist, lookback=i + 1, seed=(42 + i)))
+            alldata=hist, lookback=i + 1, seed=(42 + i)))
 
     # print('\n Variable Graph configuration:\n\n', *var_conf, sep="\n\n")
 
