@@ -258,7 +258,7 @@ def choose_parents(mode, data, lookback):
     return: configurations C and N
     """
     if lookback < len(data):
-        data = list(data.values())[len(data) - lookback:]
+        data = list(data.values())[:len(data) - lookback]
     else:
         data = list(data.values())
 
@@ -306,7 +306,7 @@ def choose_parents(mode, data, lookback):
     return C, N
 
 
-def variable_graph_point(s, identity, mode=Mode.random, data=False,
+def variable_graph_point(s, identity, mode=Mode.random, alldata=False,
                          lookback=1, seed=False):
     """
     Configuration is generated via variable graph method.
@@ -322,10 +322,11 @@ def variable_graph_point(s, identity, mode=Mode.random, data=False,
     if seed:
         np.random.seed(seed)
 
-    if not data:
+    if not alldata:
         print('No data given to variable point generator')
         exit()
     # Pick parent configurations
+    data = copy.copy(alldata)
     C, N = choose_parents(mode, data, lookback)
 
     # Generate general graph structure

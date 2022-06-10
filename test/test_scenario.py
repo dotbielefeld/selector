@@ -126,8 +126,8 @@ class Scenario_Test(unittest.TestCase):
             # test strSseconds
             self.assertEqual(test_parameter_list[4].name, 'strSseconds')
             self.assertEqual(test_parameter_list[4].type, ParamType.categorical)
-            self.assertEqual(test_parameter_list[4].bound, [10.0, 50.0, 100.0, 150.0, 200.0, 250.0, 290.0])
-            self.assertEqual(test_parameter_list[4].default, 150)
+            self.assertEqual(test_parameter_list[4].bound, ['10', '50', '100', '150', '200', '250', '290'])
+            self.assertEqual(test_parameter_list[4].default, '150')
             self.assertEqual(test_parameter_list[4].condition, {'luby': [True], 'cla-decay': [0.92, 0.93]})
             self.assertEqual(test_parameter_list[4].scale, '')
 
