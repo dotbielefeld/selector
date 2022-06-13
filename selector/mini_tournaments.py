@@ -121,6 +121,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
         except ray.exceptions.TaskCancelledError as e:
             logger.info(f'This should only happen if the tournament are bigger then the number of cpu, {e}')
 
+        results = ray.get(global_cache.get_results.remote())
         result_tournament = get_tournament_membership(tournaments, result_conf)
 
         # Check whether we canceled a task or if the TA terminated regularly
