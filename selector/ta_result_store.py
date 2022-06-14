@@ -15,7 +15,7 @@ class TargetAlgorithmObserver:
         self.read_from = {"conf id":1 , "instance_id":1 , "index":1 }
 
         # todo logging dic should be provided somewhere else -> DOTAC-37
-        logging.basicConfig(filename='./selector/logs/Target_Algorithm_Cache.logger', level=logging.INFO,
+        logging.basicConfig(filename='./selector/logs/latest/Target_Algorithm_Cache.logger', level=logging.INFO,
                             format='%(asctime)s %(message)s')
 
     def put_intermediate_output(self, conf_id, instance_id, value):

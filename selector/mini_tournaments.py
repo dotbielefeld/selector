@@ -22,7 +22,7 @@ from selector.selection_features import FeatureGenerator
 
 from tournament_dispatcher import MiniTournamentDispatcher
 from tournament_bookkeeping import get_tournament_membership, update_tasks, get_tasks, termination_check
-from log_setup import clear_logs, log_termination_setting
+from log_setup import clear_logs, log_termination_setting, check_log_folder, save_latest_logs
 
 from tournament_monitor import Monitor
 from tournament_performance import overall_best_update
@@ -231,11 +231,12 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
 
 if __name__ == "__main__":
     np.random.seed(42)
+    check_log_folder()
     clear_logs()
 
     logging.basicConfig( level=logging.INFO,
                         format='%(asctime)s %(message)s', handlers = [
-        logging.FileHandler("./selector/logs/main.log"),
+        logging.FileHandler("./selector/logs/latest/main.log"),
     ])
 
     logger = logging.getLogger(__name__)
@@ -260,6 +261,7 @@ if __name__ == "__main__":
 
     offline_mini_tournament_configuration(scenario, ta_wrapper, logger)
 
+    save_latest_logs()
     ray.shutdown()
 
 

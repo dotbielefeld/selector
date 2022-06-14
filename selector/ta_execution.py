@@ -55,7 +55,7 @@ def tae_from_cmd_wrapper(conf, instance_path, cache, ta_command_creator, scenari
     :return:
     """
     # todo logging dic should be provided somewhere else -> DOTAC-37
-    logging.basicConfig(filename=f'./selector/logs/wrapper_log_for{conf.id}.log', level=logging.INFO,
+    logging.basicConfig(filename=f'./selector/logs/latest/wrapper_log_for{conf.id}.log', level=logging.INFO,
                         format='%(asctime)s %(message)s')
 
     try:
