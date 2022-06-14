@@ -69,10 +69,11 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
                                                                                 instances, instance_id)
         tournaments.append(tournament)
         global_cache.put_tournament_history.remote(tournament)
+        global_cache.put_tournament_update.remote(tournament)
         tasks = update_tasks(tasks, initial_assignments, tournament, global_cache, ta_wrapper, scenario)
 
     #starting the monitor
-    global_cache.put_tournament_update.remote(tournaments)
+    #global_cache.put_tournament_update.remote(tournaments)
     monitor.monitor.remote()
 
     logger.info(f"Initial Tournaments {tournaments}")
@@ -204,19 +205,21 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             tournaments.append(new_tournament)
             tasks = update_tasks(tasks, initial_assignments_new_tournament, new_tournament, global_cache,  ta_wrapper, scenario)
             global_cache.put_tournament_history.remote(new_tournament)
-            global_cache.put_tournament_update.remote(tournaments)
+
+            global_cache.put_tournament_update.remote(new_tournament)
+            global_cache.remove_tournament.remote(result_tournament)
+           # global_cache.put_tournament_update.remote(tournaments)
 
             logger.info(f"Final results tournament {result_tournament}")
             logger.info(f"New tournament {new_tournament}")
-            logger.info(f"Initial Tasks of new tournament, {[get_tasks(o.ray_object_store, tasks) for o in tournaments]}")
             epoch += 1
         else:
             # If the tournament does not terminate we get a new conf/instance assignment and add that as ray task
             next_task = tournament_dispatcher.next_tournament_run(results, result_tournament, result_conf)
             tasks = update_tasks(tasks, next_task, result_tournament, global_cache, ta_wrapper, scenario)
-            logger.info(f"Track new task {next_task}")
-            logger.info(f"New Task {next_task}, {[get_tasks(o.ray_object_store, tasks) for o in tournaments]}, {result_tournament}")
-            global_cache.put_tournament_update.remote(tournaments)
+            logger.info(f"New Task {next_task}, {result_tournament}")
+            #global_cache.put_tournament_update.remote(tournaments)
+            global_cache.put_tournament_update.remote(result_tournament)
 
         overall_best_update(global_cache)
 
