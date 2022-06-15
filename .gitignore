@@ -6,6 +6,13 @@ __pycache__/
 # C extensions
 *.so
 
+# Folders
+selector/input/
+selector/output/
+selector/wrapper/
+selector/logs/
+wrapper/
+
 # Distribution / packaging
 .Python
 build/
