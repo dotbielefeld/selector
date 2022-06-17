@@ -142,10 +142,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
                                                                                      scenario.cutoff_time, scenario.par)
 
         global_cache.put_tournament_history.remote(result_tournament)
-        logger.info(f"Result tournament update: Id: {result_tournament.id}"
-                    f"Best finisher: {[c.id for c in result_tournament.best_finisher]}"
-                    f", Worst finisher: {[c.id for c in result_tournament.worst_finisher]}"
-                    f", Remaining configurations: {[c.id for c in result_tournament.configurations]} {tournament_stop}")
+        logger.info(f"Result tournament update: {result_tournament}")
 
         if tournament_stop:
             print("Iteration:", time.time() - main_loop_start, tournament_counter)
