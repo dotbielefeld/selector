@@ -14,6 +14,8 @@ from selector.default_point_generator import default_point
 from selector.variable_graph_point_generator import variable_graph_point, Mode
 from selector.lhs_point_generator import lhc_points, LHSType, Criterion
 from selector.selection_features import FeatureGenerator
+from selector.surrogates.surrogates import SurrogateManager
+import uuid
 
 
 class RandomPointselectorTest(unittest.TestCase):
@@ -53,7 +55,7 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
         file.close()
         self.random_generator = PointGen(self.s, random_point, seed=42)
         # Set up a tournament with mock data
-        global_cache = TargetAlgorithmObserver.remote()
+        self.global_cache = TargetAlgorithmObserver.remote()
         point_selector = RandomSelector()
         for i in range(5):
             instance_selector = InstanceSet(self.s.instance_set, 1, 1)
@@ -66,8 +68,10 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
                 self.s.tournament_size, 0)
             instance_id, instances = instance_selector.get_subset(0)
 
+            results = ray.get(self.global_cache.get_results.remote())
+
             tourn, _ = MiniTournamentDispatcher().init_tournament(
-                global_cache,
+                results,
                 points_to_run,
                 instances,
                 instance_id)
@@ -77,9 +81,9 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
             tourn.configurations.pop(i)
             tourn.worst_finisher = tourn.configurations
             tourn.configurations = []
-            global_cache.put_tournament_history.remote(tourn)
+            self.global_cache.put_tournament_history.remote(tourn)
 
-        self.hist = ray.get(global_cache.get_tournament_history.remote())
+        self.hist = ray.get(self.global_cache.get_tournament_history.remote())
         self.default_generator = PointGen(self.s, default_point, seed=42)
         self.variable_graph_generator = PointGen(self.s, variable_graph_point,
                                                  seed=42)
@@ -89,7 +93,9 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
         """Testing hyperparameterized point selector."""
         def_conf = [self.default_generator.point_generator()]
 
-        print(self.s)
+        cutoff_time = float(self.s.cutoff_time)
+
+        instance_id = 1
 
         ran_conf = []
         for i in range(5):
@@ -109,26 +115,80 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
 
         confs = def_conf + ran_conf + var_conf + lhc_conf
 
+        hist = ray.get(self.global_cache.get_tournament_history.remote())
+
+        for tourn in hist.values():
+            for conf in tourn.configuration_ids:
+                self.global_cache.put_result.remote(uuid.UUID(str(conf)),
+                                                    instance_id,
+                                                    np.random.randint(2, 15))
+
         hps = HyperparameterizedSelector()
 
         configs_requested = 8
-        weights = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        weights = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         weights = [weights for x in range(len(confs))]
         weights = np.array(weights)
         epoch = 4
         max_epochs = 256
 
         selected_ids = []
+        predicted_quals = []
+        evaluated = []
 
         fg = FeatureGenerator()
-        features = fg.static_feature_gen(confs, epoch, max_epochs)
+        sm = SurrogateManager(self.s.parameter)
+
+        results = ray.get(self.global_cache.get_results.remote())
 
         for epoch in range(2):
+
+            features = fg.static_feature_gen(confs, epoch, max_epochs)
+            features = np.concatenate(
+                (features, fg.diversity_feature_gen(confs, self.hist,
+                                                    results, cutoff_time,
+                                                    self.s.parameter,
+                                                    predicted_quals,
+                                                    evaluated, sm)),
+                axis=1)
+            features = np.concatenate((features,
+                                      fg.dynamic_feature_gen(confs, self.hist,
+                                                             predicted_quals,
+                                                             sm, cutoff_time,
+                                                             self.s.parameter,
+                                                             results)),
+                                      axis=1)
+
             selected_ids.append(hps.select_points(self.s, confs,
                                                   configs_requested, epoch,
                                                   max_epochs, features,
-                                                  weights, max_evals=100,
-                                                  seed=42))
+                                                  weights, results,
+                                                  max_evals=100, seed=42)[0])
+
+            predicted_quals.extend(sm.expected_value(selected_ids,
+                                                     self.s.parameter,
+                                                     cutoff_time,
+                                                     surrogate='GPR'))
+
+            evaluated.extend(selected_ids)
+
+            predicted_quals.extend(sm.expected_value(selected_ids,
+                                                     self.s.parameter,
+                                                     cutoff_time,
+                                                     surrogate='GPR'))
+
+            for conf in selected_ids:
+                self.global_cache.put_result.remote(conf.id,
+                                                    epoch,
+                                                    np.random.randint(2, 15))
+
+            results = ray.get(self.global_cache.get_results.remote())
+
+            for conf in selected_ids:
+                for surrogate in sm.surrogates.keys():
+                    sm.observe(conf.conf, results[conf.id][epoch],
+                               self.s.parameter, cutoff_time, surrogate)
 
         self.assertEqual(selected_ids[0], selected_ids[1])
 

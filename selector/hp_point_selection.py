@@ -1,74 +1,8 @@
 """This module contains point selection functions."""
 import numpy as np
 import copy
-import scipy
 import itertools
 from selector.pool import ParamType
-
-
-def transform_conf_vals(conf):
-    """Transform configuration values from str to int.
-
-    :param conf: list, configuration values
-    :return conf: 1d array, transformed configuration values
-    """
-    for val in range(len(conf)):
-        if type(conf[val]) == bool:
-            if val:
-                conf[val] = 1
-            else:
-                conf[val] = 0
-
-    return np.array(conf)
-
-
-def delete_conditionals(scenario, conf):
-    """Delete conditional parameters, so that comparison is possible.
-
-    Not all points have values for conditional params. In order to
-    compute matching feature vectors, we omit conditional params.
-
-    :param scenario: scenario object
-    :param conf: nested list, configuration values
-    :return conf: nested list, transformed configuration values
-    """
-    cond_params = list(scenario.conditionals.keys())
-    for cond in cond_params:
-        for c in range(len(conf)):
-            if cond in conf[c].conf:
-                del conf[c].conf[cond]
-
-    return conf
-
-
-def param_type_indices(scenario):
-    """Get indices of categorical and other parameter types.
-
-    :param scenario: scenario object
-    :return cont_int_idc, cat_idc: arrays, indices of parameter types
-    """
-    cont_int_idc = []
-    cat_idc = []
-    params = scenario.parameter
-
-    idx = 0
-
-    for p in range(len(params)):
-        # Record index if param is cat and not in conditional
-        if params[p].type == ParamType.categorical and \
-                not params[p].condition:
-            cat_idc.append(idx)
-        # Record index if param is cont/int and not in conditional
-        elif not params[p].condition:
-            cont_int_idc.append(idx)
-        # If param is in conditionals, do not record index, reset index
-        # to make sure indices are adjusted to shorter lists, because
-        # params which are in conditionals are deleted by delete_conditionals()
-        else:
-            idx -= 1
-        idx += 1
-
-    return np.array(cont_int_idc), np.array(cat_idc)
 
 
 def get_relatives(suggested):
@@ -186,6 +120,77 @@ def simulation(suggested, features, max_evals, selected_points, weights,
     return sfreq
 
 
+def normalize_plus_cond_acc(sugg, s):
+    """Normalize and account for conditionals.
+
+    :param sugg: list, configuration values
+    :param s: scenario
+    :return sugg: suggested configuration with normalized and adjusted values
+    """
+    maximums = {}
+    cat_params = []
+    if isinstance(s, list):
+        psetting = s
+    else:
+        psetting = s.parameter
+
+    for param in psetting:
+        if param.type == ParamType.categorical:
+            maximums[param.name] = 1
+            cat_params.append(param.name)
+        else:
+            maximums[param.name] = param.bound[len(param.bound) - 1]
+
+    for point in sugg:
+        for key, _ in point.conf.items():
+            if key in cat_params:
+                if point.conf[key] is True:
+                    point.conf[key] = 1
+                else:
+                    point.conf[key] = 0
+
+    for point in sugg:
+        for key, val in maximums.items():
+            if key in point.conf and maximums[key] > 0:
+                point.conf[key] = point.conf[key] / maximums[key]
+            elif key in point.conf and maximums[key] < 0:
+                point.conf[key] = maximums[key] / point.conf[key]
+            else:
+                point.conf[key] = None
+    return sugg
+
+
+def pairwise_distances(sugg_i, sugg_j):
+    """Compute pairwise distances.
+
+    :param sugg_i: list, configuration values
+    :param sugg_j: list, configuration values
+    :return m: pairwise distances
+    """
+    m = np.zeros((len(sugg_i), len(sugg_j)))
+    for i, s_i in enumerate(sugg_i):
+        for j, s_j in enumerate(sugg_j):
+            s = 0
+            for key in s_i.conf:
+                if (s_i.conf[key] is None and s_j.conf[key]
+                        is not None) or \
+                        (s_i.conf[key] is not None and s_j.conf[key]
+                            is None):
+                    s += 1
+                elif (s_i.conf[key] is None and s_j.conf[key]
+                        is None):
+                    s += 0
+                else:
+                    if isinstance(s_i.conf[key], str) or \
+                            isinstance(s_j.conf[key], str):
+                        s += (float(s_i.conf[key]) - float(s_j.conf[key]))**2
+                    else:
+                        s += (s_i.conf[key] - s_j.conf[key])**2
+            m[i, j] = s**0.5
+
+    return np.array(m)
+
+
 def select_point(scenario, suggested, max_evals, npoints, pool, epoch,
                  max_epoch, features, weights, seed):
     """Generate features and run simultion.
@@ -207,40 +212,13 @@ def select_point(scenario, suggested, max_evals, npoints, pool, epoch,
 
     # Not all points have values for conditional params. In order to
     # compute matching feature vectors, we omit conditional params.
-    suggested = delete_conditionals(scenario, suggested)
+    sugg = copy.deepcopy(suggested)
+    sugg = normalize_plus_cond_acc(sugg, scenario)
+
+    distances = pairwise_distances(sugg, sugg)
 
     selected_points = []
     smselected_points = []
-
-    sugg_points = []
-    for sp in suggested:
-        conf = transform_conf_vals(list(sp.conf.values()))
-        sugg_points.append(conf)
-
-    sugg_points = np.array(sugg_points)
-    cont_int_idc, cat_idc = param_type_indices(scenario)
-
-    # Compute euclidean distances with continous and integer values
-    eucd = scipy.spatial.distance.cdist(sugg_points[:, cont_int_idc],
-                                        sugg_points[:, cont_int_idc],
-                                        metric='euclidean')
-
-    # Compute Hamming distance with categorical values, if present
-    if not cat_idc.size == 0:
-        hamd = []
-        for idxf, frompoint in enumerate(sugg_points[:, cat_idc]):
-            hd = []
-            for idxt, topoint in enumerate(sugg_points[:, cat_idc]):
-                if idxf != idxt:
-                    hd.append(scipy.spatial.distance.hamming(frompoint,
-                                                             topoint,
-                                                             w=None))
-            hamd.append(hd)
-        hamd = np.array(hamd)
-    else:
-        hamd = np.array([0 for _ in sugg_points])
-
-    distances = np.hstack((eucd, hamd))
 
     # Run simulation for every point requested
     for psel in range(npoints):
