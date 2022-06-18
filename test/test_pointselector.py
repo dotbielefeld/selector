@@ -1,13 +1,9 @@
 """This module contains simple tests for the point selection functions."""
 import unittest
 import numpy as np
-import ray
 import pickle
-from selector.ta_result_store import TargetAlgorithmObserver
-from selector.pool import Configuration, Generator
-from selector.tournament_dispatcher import MiniTournamentDispatcher
+from selector.pool import Configuration, Generator, Tournament
 from selector.pointselector import RandomSelector, HyperparameterizedSelector
-from selector.instance_sets import InstanceSet
 from selector.point_gen import PointGen
 from selector.random_point_generator import random_point
 from selector.default_point_generator import default_point
@@ -16,6 +12,7 @@ from selector.lhs_point_generator import lhc_points, LHSType, Criterion
 from selector.selection_features import FeatureGenerator
 from selector.surrogates.surrogates import SurrogateManager
 import uuid
+import copy
 
 
 class RandomPointselectorTest(unittest.TestCase):
@@ -54,36 +51,41 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
         self.s = pickle.load(file)
         file.close()
         self.random_generator = PointGen(self.s, random_point, seed=42)
-        # Set up a tournament with mock data
-        self.global_cache = TargetAlgorithmObserver.remote()
         point_selector = RandomSelector()
+
+        generated_points = [self.random_generator.point_generator(
+                            seed=42)
+                            for _ in range(self.s.tournament_size)]
+        point_selector.select_points(
+            generated_points,
+            self.s.tournament_size, 0)
+
+        self.results = {}
+
+        for conf in generated_points:
+            if generated_points[-1] == conf:
+                self.results[conf.id] = {0: np.random.randint(2, 15),
+                                         1: np.random.randint(2, 15)}
+            else:
+                self.results[conf.id] = {0: np.random.randint(2, 15)}
+
+        self.hist = {}
+
         for i in range(5):
-            instance_selector = InstanceSet(self.s.instance_set, 1, 1)
-            generated_points = [self.random_generator.point_generator(
-                                seed=42 + i)
-                                for _ in range(self.s.tournament_size *
-                                               self.s.generator_multiple)]
-            points_to_run = point_selector.select_points(
-                generated_points,
-                self.s.tournament_size, 0)
-            instance_id, instances = instance_selector.get_subset(0)
+            gp = copy.deepcopy(generated_points)
+            tourn_id = uuid.uuid4()
+            best_finisher = np.random.choice(gp)
+            index = gp.index(best_finisher)
+            del gp[index]
+            worst_finisher = np.random.choice(gp, size=5).tolist()
+            configuration_ids = []
+            for conf in generated_points:
+                configuration_ids.append(conf.id)
+            self.hist[tourn_id] = \
+                Tournament(tourn_id, [best_finisher], worst_finisher,
+                           [], configuration_ids, {},
+                           ['instance_1.cnf'], 0)
 
-            results = ray.get(self.global_cache.get_results.remote())
-
-            tourn, _ = MiniTournamentDispatcher().init_tournament(
-                results,
-                points_to_run,
-                instances,
-                instance_id)
-
-            tourn.best_finisher = [tourn.configurations[i]]
-
-            tourn.configurations.pop(i)
-            tourn.worst_finisher = tourn.configurations
-            tourn.configurations = []
-            self.global_cache.put_tournament_history.remote(tourn)
-
-        self.hist = ray.get(self.global_cache.get_tournament_history.remote())
         self.default_generator = PointGen(self.s, default_point, seed=42)
         self.variable_graph_generator = PointGen(self.s, variable_graph_point,
                                                  seed=42)
@@ -94,8 +96,6 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
         def_conf = [self.default_generator.point_generator()]
 
         cutoff_time = float(self.s.cutoff_time)
-
-        instance_id = 1
 
         ran_conf = []
         for i in range(5):
@@ -115,14 +115,6 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
 
         confs = def_conf + ran_conf + var_conf + lhc_conf
 
-        hist = ray.get(self.global_cache.get_tournament_history.remote())
-
-        for tourn in hist.values():
-            for conf in tourn.configuration_ids:
-                self.global_cache.put_result.remote(uuid.UUID(str(conf)),
-                                                    instance_id,
-                                                    np.random.randint(2, 15))
-
         hps = HyperparameterizedSelector()
 
         configs_requested = 8
@@ -140,14 +132,12 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
         fg = FeatureGenerator()
         sm = SurrogateManager(self.s.parameter)
 
-        results = ray.get(self.global_cache.get_results.remote())
-
         for epoch in range(2):
 
             features = fg.static_feature_gen(confs, epoch, max_epochs)
             features = np.concatenate(
                 (features, fg.diversity_feature_gen(confs, self.hist,
-                                                    results, cutoff_time,
+                                                    self.results, cutoff_time,
                                                     self.s.parameter,
                                                     predicted_quals,
                                                     evaluated, sm)),
@@ -157,13 +147,13 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
                                                              predicted_quals,
                                                              sm, cutoff_time,
                                                              self.s.parameter,
-                                                             results)),
+                                                             self.results)),
                                       axis=1)
 
             selected_ids.append(hps.select_points(self.s, confs,
                                                   configs_requested, epoch,
                                                   max_epochs, features,
-                                                  weights, results,
+                                                  weights, self.results,
                                                   max_evals=100, seed=42)[0])
 
             predicted_quals.extend(sm.expected_value(selected_ids,
@@ -179,18 +169,32 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
                                                      surrogate='GPR'))
 
             for conf in selected_ids:
-                self.global_cache.put_result.remote(conf.id,
-                                                    epoch,
-                                                    np.random.randint(2, 15))
-
-            results = ray.get(self.global_cache.get_results.remote())
+                if selected_ids[-1] == conf:
+                    self.results[conf.id] = {1: np.random.randint(2, 15),
+                                             0: np.random.randint(2, 15)}
+                else:
+                    self.results[conf.id] = {1: np.random.randint(2, 15)}
 
             for conf in selected_ids:
                 for surrogate in sm.surrogates.keys():
-                    sm.observe(conf.conf, results[conf.id][epoch],
+                    sm.observe(conf.conf, self.results[conf.id][epoch],
                                self.s.parameter, cutoff_time, surrogate)
 
-        self.assertEqual(selected_ids[0], selected_ids[1])
+        test_1 = Configuration(1,
+                               {'luby': 1, 'rinc': 3.409974661894675,
+                                'cla-decay': 0.9175615966761705,
+                                'phase-saving': 1, 'bce-limit': 9337277,
+                                'param_1': -1, 'strSseconds': 150.0},
+                               Generator.var_graph)
+        test_2 = Configuration(2,
+                               {'luby': 1, 'rinc': 3.1300000000000003,
+                                'cla-decay': 0.909999, 'phase-saving': 1,
+                                'bce-limit': 60070000, 'param_1': -2,
+                                'strSseconds': 150.0},
+                               Generator.lhc)
+
+        self.assertEqual(selected_ids[0].conf, test_1.conf)
+        self.assertEqual(selected_ids[1].conf, test_2.conf)
 
 if __name__ == '__main__':
     unittest.main()
