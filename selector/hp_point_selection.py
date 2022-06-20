@@ -226,7 +226,10 @@ def select_point(scenario, suggested, max_evals, npoints, pool, epoch,
         sfreq = simulation(suggested, features, max_evals, smselected_points,
                            weights, npoints, distances, relatives)
         sidx = np.argmax(sfreq)
+        # print('\nsfreq', sfreq, '\n')
+        # print('\nsidx', sidx, '\n')
         selected_points.append(suggested_intact[sidx])
+        del suggested_intact[sidx]
         smselected_points.append(sidx)
         del suggested[sidx]
         weights = np.delete(weights, sidx, axis=0)
