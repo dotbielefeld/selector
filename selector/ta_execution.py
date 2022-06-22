@@ -55,7 +55,7 @@ def tae_from_cmd_wrapper(conf, instance_path, cache, ta_command_creator, scenari
     :return:
     """
     # todo logging dic should be provided somewhere else -> DOTAC-37
-    logging.basicConfig(filename=f'./selector/logs/wrapper_log_for{conf.id}.log', level=logging.INFO,
+    logging.basicConfig(filename=f'./selector/logs/latest/wrapper_log_for{conf.id}.log', level=logging.INFO,
                         format='%(asctime)s %(message)s')
 
     try:
@@ -96,12 +96,14 @@ def tae_from_cmd_wrapper(conf, instance_path, cache, ta_command_creator, scenari
                 time.sleep(1)
                 if p.poll() is None:
                     p.kill()
-                termination_check(p.pid, p.poll(), scenario.ta_pid_name, os.getpid(),conf.id, instance_path)
-
+                if scenario.ta_pid_name is not None:
+                    termination_check(p.pid, p.poll(), scenario.ta_pid_name, os.getpid(),conf.id, instance_path)
+                    
+        ta_end = time.time()
         if timeout:
             cache.put_result.remote(conf.id, instance_path, scenario.cutoff_time)
         else:
-            cache.put_result.remote(conf.id, instance_path, time.time() - start)
+            cache.put_result.remote(conf.id, instance_path, ta_end - start)
 
         time.sleep(0.2)
         logging.info(f"Wrapper TAE end {conf}, {instance_path}")
@@ -116,7 +118,8 @@ def tae_from_cmd_wrapper(conf, instance_path, cache, ta_command_creator, scenari
             time.sleep(1)
             if p.poll() is None:
                 p.kill()
-            termination_check(p.pid, p.poll(), scenario.ta_pid_name, os.getpid(), conf.id, instance_path)
+            if scenario.ta_pid_name is not None:
+                termination_check(p.pid, p.poll(), scenario.ta_pid_name, os.getpid(), conf.id, instance_path)
 
         #logging.info(f"Killing status: {p.poll()} {conf.id} {instance_path}")
         #try:
