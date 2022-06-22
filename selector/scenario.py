@@ -186,5 +186,3 @@ def parse_args():
 if __name__ == "__main__":
 
     parser = parse_args()
-
-    test_point_selection(Scenario, parser)

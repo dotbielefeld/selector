@@ -282,7 +282,7 @@ class FeatureGenerator:
 
             group_relatives = {}
             for gen in generators:
-                for ev in evals:
+                for ev in evaluated:
                     if gen == ev.generator:
                         if gen not in group_relatives:
                             group_relatives[gen] = [ev]
@@ -416,31 +416,18 @@ class FeatureGenerator:
         :return dyn_feats: list, dynamic features
         """
         # TODO
+        dyn_feats = []
 
         # Features based on GBM (Gradient Boosting Tree)
-        dyn_feats = self.expected_qual(suggestions, sm,
-                                       cot, psetting, surr='GPR')
         '''
-        dyn_feats = \
-            np.concatenate((dyn_feats,
-                            self.expected_qual(suggestions, predicted_quals,
-                                               sm, cot, psetting,
-                                               surr='SMAC')),
-                           axis=1)
+        dyn_feats = self.expected_qual(suggestions, sm,
+                                       cot, psetting, surr='SMAC')
         dyn_feats = \
             np.concatenate((dyn_feats,
                             self.expected_improve(suggestions,
                                                   predicted_quals,
                                                   surr='GGA')),
                            axis=1)
-        '''
-        dyn_feats = \
-            np.concatenate((dyn_feats,
-                           self.prob_qual_improve(suggestions, sm, cot,
-                                                  psetting, results,
-                                                  surr='GPR')),
-                           axis=1)
-        '''
         dyn_feats = \
             np.concatenate((dyn_feats,
                             self.prob_qual_improve(suggestions,
@@ -451,13 +438,6 @@ class FeatureGenerator:
                             self.prob_qual_improve(suggestions, data,
                                                    surr='GGA')),
                            axis=1)
-        '''
-        dyn_feats = \
-            np.concatenate((dyn_feats,
-                           self.uncertainty_improve(suggestions, psetting,
-                                                    sm, surr='GPR')),
-                           axis=1)
-        '''
          dyn_feats = \
             np.concatenate((dyn_feats,
                             self.uncertainty_improve(suggestions, data,
@@ -473,7 +453,7 @@ class FeatureGenerator:
         return np.array(dyn_feats)
 
     def diversity_feature_gen(self, suggestions, data, results, cot,
-                              psetting, predicted_quals, evaluated, sm):
+                              psetting, predicted_quals, evaluated):
         """Generate diversity features.
 
         :param suggestions: list, suggested configurations
@@ -513,12 +493,14 @@ class FeatureGenerator:
                                                     generators, results,
                                                     cot)),
                            axis=1)
+        '''
         div_feats = \
             np.concatenate((div_feats,
                            self.diff_pred_real_qual(suggestions, data,
                                                     predicted_quals,
                                                     results)),
                            axis=1)
+        '''
 
         # Features based on points evaluated so far
         div_feats = \

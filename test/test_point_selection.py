@@ -12,7 +12,7 @@ from selector.default_point_generator import default_point
 from selector.variable_graph_point_generator import variable_graph_point, Mode
 from selector.lhs_point_generator import lhc_points, LHSType, Criterion
 from selector.selection_features import FeatureGenerator
-from selector.surrogates.surrogates import SurrogateManager
+# from selector.surrogates.surrogates import SurrogateManager
 
 
 def test_point_selection(scenario, parser):
@@ -106,7 +106,7 @@ def test_point_selection(scenario, parser):
     max_epochs = 256
 
     fg = FeatureGenerator()
-    sm = SurrogateManager(s.parameter)
+    # sm = SurrogateManager(s.parameter)
 
     cutoff_time = s.cutoff_time
     results = ray.get(global_cache.get_results.remote())
@@ -121,8 +121,9 @@ def test_point_selection(scenario, parser):
                                                             cutoff_time,
                                                             s.parameter,
                                                             predicted_quals,
-                                                            evaluated, sm)),
+                                                            evaluated)),
                                   axis=1)
+        '''
         features = np.concatenate((features,
                                   fg.dynamic_feature_gen(confs, hist,
                                                          predicted_quals,
@@ -130,6 +131,7 @@ def test_point_selection(scenario, parser):
                                                          s.parameter,
                                                          results)),
                                   axis=1)
+        '''
 
         selected_ids = hps.select_points(s, confs, configs_requested, epoch,
                                          max_epochs, features, weights,
@@ -137,9 +139,11 @@ def test_point_selection(scenario, parser):
 
         evaluated.extend(selected_ids)
 
+        '''
         predicted_quals.extend(sm.expected_value(selected_ids, s.parameter,
                                                  cutoff_time,
                                                  surrogate='GPR'))
+        '''
 
         for conf in selected_ids:
             global_cache.put_result.remote(conf.id,
@@ -148,10 +152,12 @@ def test_point_selection(scenario, parser):
 
         results = ray.get(global_cache.get_results.remote())
 
+        '''
         for conf in selected_ids:
             for surrogate in sm.surrogates.keys():
                 sm.observe(conf.conf, results[conf.id][epoch], s.parameter,
                            cutoff_time, surrogate)
+        '''
 
         print(selected_ids)
         print(len(selected_ids))

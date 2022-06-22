@@ -19,7 +19,7 @@ from selector.default_point_generator import default_point
 from selector.variable_graph_point_generator import variable_graph_point, Mode
 from selector.lhs_point_generator import lhc_points, LHSType, Criterion
 from selector.selection_features import FeatureGenerator
-from selector.surrogates.surrogates import SurrogateManager
+# from selector.surrogates.surrogates import SurrogateManager
 
 from tournament_dispatcher import MiniTournamentDispatcher
 from tournament_bookkeeping import get_tournament_membership, update_tasks, get_tasks, termination_check
@@ -87,7 +87,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     predicted_quals = []
     evaluated = []
 
-    sm = SurrogateManager(scenario.parameter)
+    # sm = SurrogateManager(scenario.parameter)
     fg = FeatureGenerator()
 
     while termination_check(scenario.termination_criterion, main_loop_start, scenario.total_runtime,
@@ -183,20 +183,13 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
                 vg_points + lhc_ps
 
             features = fg.static_feature_gen(generated_points, epoch, max_epochs)
-            #features = np.concatenate(
-            #    (features, fg.diversity_feature_gen(generated_points, hist,
-            #                                        results, cutoff_time,
-            #                                        scenario.parameter,
-            #                                        predicted_quals,
-            #                                        evaluated, sm)),
-            #    axis=1)
-            #features = np.concatenate(
-            #    (features, fg.dynamic_feature_gen(generated_points, hist,
-            #                                      predicted_quals,
-            #                                      sm, cutoff_time,
-            #                                      scenario.parameter,
-            #                                      results)),
-            #    axis=1)
+            features = np.concatenate(
+                (features, fg.diversity_feature_gen(generated_points, hist,
+                                                    results, cutoff_time,
+                                                    scenario.parameter,
+                                                    predicted_quals,
+                                                    evaluated)),
+                axis=1)
 
             weights = [1 for _ in generated_points]
             weights = [weights for _ in features]
@@ -209,19 +202,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
 
             evaluated.extend(points_to_run)
 
-            predicted_quals.extend(sm.expected_value(points_to_run,
-                                                     scenario.parameter,
-                                                     cutoff_time,
-                                                     surrogate='GPR'))
-
             res = ray.get(global_cache.get_results.remote())
-
-            for i in res:
-                for surrogate in sm.surrogates.keys():
-                    for ev in evaluated:
-                        if i == ev:
-                            sm.observe(ev[i].conf, i[i.keys()[-1]],
-                                       scenario.parameter, cutoff_time, surrogate)
 
             points_to_run = points_to_run + [result_tournament.best_finisher[0]]
 

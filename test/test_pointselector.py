@@ -10,7 +10,7 @@ from selector.default_point_generator import default_point
 from selector.variable_graph_point_generator import variable_graph_point, Mode
 from selector.lhs_point_generator import lhc_points, LHSType, Criterion
 from selector.selection_features import FeatureGenerator
-from selector.surrogates.surrogates import SurrogateManager
+# from selector.surrogates.surrogates import SurrogateManager
 import uuid
 import copy
 
@@ -130,7 +130,7 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
         evaluated = []
 
         fg = FeatureGenerator()
-        sm = SurrogateManager(self.s.parameter)
+        # sm = SurrogateManager(self.s.parameter)
 
         for epoch in range(2):
 
@@ -140,8 +140,9 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
                                                     self.results, cutoff_time,
                                                     self.s.parameter,
                                                     predicted_quals,
-                                                    evaluated, sm)),
+                                                    evaluated)),
                 axis=1)
+            '''
             features = np.concatenate((features,
                                       fg.dynamic_feature_gen(confs, self.hist,
                                                              predicted_quals,
@@ -149,6 +150,7 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
                                                              self.s.parameter,
                                                              self.results)),
                                       axis=1)
+            '''
 
             selected_ids.append(hps.select_points(self.s, confs,
                                                   configs_requested, epoch,
@@ -156,17 +158,14 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
                                                   weights, self.results,
                                                   max_evals=100, seed=42)[0])
 
-            predicted_quals.extend(sm.expected_value(selected_ids,
-                                                     self.s.parameter,
-                                                     cutoff_time,
-                                                     surrogate='GPR'))
-
             evaluated.extend(selected_ids)
 
+            '''
             predicted_quals.extend(sm.expected_value(selected_ids,
                                                      self.s.parameter,
                                                      cutoff_time,
-                                                     surrogate='GPR'))
+                                                     surrogate='SMAC'))
+            '''
 
             for conf in selected_ids:
                 if selected_ids[-1] == conf:
@@ -175,26 +174,21 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
                 else:
                     self.results[conf.id] = {1: np.random.randint(2, 15)}
 
+            '''
             for conf in selected_ids:
                 for surrogate in sm.surrogates.keys():
                     sm.observe(conf.conf, self.results[conf.id][epoch],
                                self.s.parameter, cutoff_time, surrogate)
+            '''
 
         test_1 = Configuration(1,
-                               {'luby': 1, 'rinc': 3.409974661894675,
-                                'cla-decay': 0.9175615966761705,
-                                'phase-saving': 1, 'bce-limit': 9337277,
-                                'param_1': -1, 'strSseconds': 150.0},
+                               {'luby': False, 'rinc': 1.3900000000000001,
+                                'cla-decay': 0.9299970000000001,
+                                'phase-saving': 2, 'bce-limit': 20090000,
+                                'param_1': -1},
                                Generator.var_graph)
-        test_2 = Configuration(2,
-                               {'luby': 1, 'rinc': 3.1300000000000003,
-                                'cla-decay': 0.909999, 'phase-saving': 1,
-                                'bce-limit': 60070000, 'param_1': -2,
-                                'strSseconds': 150.0},
-                               Generator.lhc)
 
         self.assertEqual(selected_ids[0].conf, test_1.conf)
-        self.assertEqual(selected_ids[1].conf, test_2.conf)
 
 if __name__ == '__main__':
     unittest.main()

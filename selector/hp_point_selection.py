@@ -136,7 +136,10 @@ def normalize_plus_cond_acc(sugg, s):
 
     for param in psetting:
         if param.type == ParamType.categorical:
-            maximums[param.name] = 1
+            if len(param.bound) > 2:
+                maximums[param.name] = float(param.bound[len(param.bound) - 1])
+            else:
+                maximums[param.name] = 1
             cat_params.append(param.name)
         else:
             maximums[param.name] = param.bound[len(param.bound) - 1]
@@ -149,14 +152,18 @@ def normalize_plus_cond_acc(sugg, s):
                 else:
                     point.conf[key] = 0
 
-    for point in sugg:
-        for key, val in maximums.items():
-            if key in point.conf and maximums[key] > 0:
+    for key, val in maximums.items():
+        for point in sugg:
+            if key in point.conf:
+                if point.conf[key] is None:
+                    pass
+            elif key in point.conf and maximums[key] > 0:
                 point.conf[key] = point.conf[key] / maximums[key]
             elif key in point.conf and maximums[key] < 0:
                 point.conf[key] = maximums[key] / point.conf[key]
-            else:
+            elif key not in point.conf:
                 point.conf[key] = None
+
     return sugg
 
 
@@ -226,8 +233,6 @@ def select_point(scenario, suggested, max_evals, npoints, pool, epoch,
         sfreq = simulation(suggested, features, max_evals, smselected_points,
                            weights, npoints, distances, relatives)
         sidx = np.argmax(sfreq)
-        # print('\nsfreq', sfreq, '\n')
-        # print('\nsidx', sidx, '\n')
         selected_points.append(suggested_intact[sidx])
         del suggested_intact[sidx]
         smselected_points.append(sidx)
