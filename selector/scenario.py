@@ -181,14 +181,6 @@ def parse_args():
     so.add_argument('--feature_file', type=str)
     so.add_argument('--paramfile', type=str)
 
-Contains the following features:
-
-1.) Making the main loop faster by a.) reducing logging and b.) only sending a minimal number of tournaments to the cache
-2.) Making the pid termination check optional
-3.) Updating command args to current status.
-4.) Restructuring logging: We now log to a temp folder called latest, from where we in the end create a time stamped folder. We also check at the beginning if all folders are present....
-
-
     return vars(parser.parse_args())
 
 if __name__ == "__main__":
