@@ -152,24 +152,24 @@ def parse_args():
     hp = parser.add_argument_group("Hyperparameters of selector")
     so = parser.add_argument_group("Scenario options")
 
-    hp.add_argument('--selector', type=str)
-    hp.add_argument('--number_iterations', type=str)
-    hp.add_argument('--generator_multiple', type=int, default=5)
-
     hp.add_argument('--check_path', default=False)
-    hp.add_argument('--seed', default=False)
+    hp.add_argument('--seed', default=42)
     hp.add_argument('--ta_run_type',type=str, default="import_wrapper")
+    hp.add_argument('--ta_pid_name', type=str, default="glucose")
 
     hp.add_argument('--winners_per_tournament', type=int, default=1)
     hp.add_argument('--tournament_size', type=int, default=5 )
     hp.add_argument('--number_tournaments', type=int, default=2)
-    hp.add_argument('--total_tournament_number', type=int, default=4)
-    hp.add_argument('--total_runtime', type=int, default=1200)
+
     hp.add_argument('--termination_criterion', type=str, default="runtime")
+    hp.add_argument('--total_runtime', type=int, default=1200)
+    hp.add_argument('--total_tournament_number', type=int, default=10)
 
+    hp.add_argument('--generator_multiple', type=int, default=5)
     hp.add_argument('--initial_instance_set_size', type=int, default=2)
-    hp.add_argument('--instance_set_size', type=int, default=10)
+    hp.add_argument('--set_size', type=int, default=10)
 
+    so.add_argument('--scenario_file', type=str)
     so.add_argument('--ta_cmd', type=str)
     so.add_argument('--deterministic', type=str)
     so.add_argument('--run_obj', type=str)
@@ -181,10 +181,16 @@ def parse_args():
     so.add_argument('--feature_file', type=str)
     so.add_argument('--paramfile', type=str)
 
+Contains the following features:
+
+1.) Making the main loop faster by a.) reducing logging and b.) only sending a minimal number of tournaments to the cache
+2.) Making the pid termination check optional
+3.) Updating command args to current status.
+4.) Restructuring logging: We now log to a temp folder called latest, from where we in the end create a time stamped folder. We also check at the beginning if all folders are present....
+
+
     return vars(parser.parse_args())
 
 if __name__ == "__main__":
 
     parser = parse_args()
-
-    test_point_selection(Scenario, parser)
