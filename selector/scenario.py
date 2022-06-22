@@ -6,6 +6,7 @@ import sys
 sys.path.append(os.getcwd())
 
 from selector.read_files import get_ta_arguments_from_pcs, read_instance_paths, read_instance_features
+from test.test_point_selection import test_point_selection
 
 
 
@@ -185,4 +186,3 @@ def parse_args():
 if __name__ == "__main__":
 
     parser = parse_args()
-

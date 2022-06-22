@@ -19,6 +19,7 @@ from selector.default_point_generator import default_point
 from selector.variable_graph_point_generator import variable_graph_point, Mode
 from selector.lhs_point_generator import lhc_points, LHSType, Criterion
 from selector.selection_features import FeatureGenerator
+# from selector.surrogates.surrogates import SurrogateManager
 
 from tournament_dispatcher import MiniTournamentDispatcher
 from tournament_bookkeeping import get_tournament_membership, update_tasks, get_tasks, termination_check
@@ -83,6 +84,13 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     epoch = 0
     max_epochs = 256
 
+    cutoff_time = scenario.cutoff_time
+    predicted_quals = []
+    evaluated = []
+
+    # sm = SurrogateManager(scenario.parameter)
+    fg = FeatureGenerator()
+
     while termination_check(scenario.termination_criterion, main_loop_start, scenario.total_runtime,
                             scenario.total_tournament_number, tournament_counter):
 
@@ -90,7 +98,8 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
         tasks = not_ready
         try:
             result = ray.get(winner)[0]
-            result_conf, result_instance, cancel_flag = result[0], result[1], result[2]
+            result_conf, result_instance, cancel_flag = result[0], result[1], result[2]           
+
         # Some time a ray worker may crash. We handel that here. I.e if the TA did not run to the end, we reschedule
         except ray.exceptions.WorkerCrashedError as e:
             logger.info(f'Crashed TA worker, {time.ctime()}, {winner}, {e}')
@@ -98,7 +107,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             # Figure out which tournament conf. belongs to
             for t in tournaments:
                 conf_instance = get_tasks(t.ray_object_store, winner)
-                if  len(conf_instance) != 0:
+                if len(conf_instance) != 0:
                     tournament_of_c_i = t
                     break
 
@@ -171,19 +180,27 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             generated_points = random_points + default_ps + \
                 vg_points + lhc_ps
 
-            weights = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-            weights = [weights for x in range(len(generated_points))]
+            features = fg.static_feature_gen(generated_points, epoch, max_epochs)
+            features = np.concatenate(
+                (features, fg.diversity_feature_gen(generated_points, hist,
+                                                    results, cutoff_time,
+                                                    scenario.parameter,
+                                                    predicted_quals,
+                                                    evaluated)),
+                axis=1)
+
+            weights = [1 for _ in generated_points]
+            weights = [weights for _ in features]
             weights = np.array(weights)
 
-            fg = FeatureGenerator()
-            features = fg.static_feature_gen(generated_points, epoch,
-                                             max_epochs)
+            points_to_run = hp_seletor.select_points(scenario, generated_points,
+                                                     scenario.tournament_size - 1,
+                                                     epoch, max_epochs, features, weights, results,
+                                                     max_evals=100)
 
-            points_to_run = \
-                hp_seletor.select_points(scenario, generated_points,
-                                         scenario.tournament_size - 1,
-                                         epoch, max_epochs, features, weights,
-                                         max_evals=100)
+            evaluated.extend(points_to_run)
+
+            res = ray.get(global_cache.get_results.remote())
 
             points_to_run = points_to_run + [result_tournament.best_finisher[0]]
 
