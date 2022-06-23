@@ -11,11 +11,11 @@ class TargetAlgorithmObserver:
         self.start_time = {}
         self.tournament_history = {}
         self.termination_history = {}
-        self.tournaments = []
+        self.tournaments = {}
         self.read_from = {"conf id":1 , "instance_id":1 , "index":1 }
 
         # todo logging dic should be provided somewhere else -> DOTAC-37
-        logging.basicConfig(filename='./selector/logs/Target_Algorithm_Cache.logger', level=logging.INFO,
+        logging.basicConfig(filename='./selector/logs/latest/Target_Algorithm_Cache.logger', level=logging.INFO,
                             format='%(asctime)s %(message)s')
 
     def put_intermediate_output(self, conf_id, instance_id, value):
@@ -34,8 +34,8 @@ class TargetAlgorithmObserver:
         # TODO store from where we have read last and contiue form there
         return self.intermediate_output
 
-    def put_result(self,conf_id, instance_id, result):
-        logging.info(f"Getting final result: {conf_id}, {instance_id}, {result} ")
+    def put_result(self, conf_id, instance_id, result):
+        logging.info(f"Getting final result: {conf_id}, {instance_id}, {result}")
         if conf_id not in self.results:
             self.results[conf_id] = {}
 
@@ -64,11 +64,14 @@ class TargetAlgorithmObserver:
     def get_tournament_history(self):
         return self.tournament_history
 
-    def put_tournament_update(self, tournaments):
-        self.tournaments = tournaments
+    def put_tournament_update(self, tournament):
+        self.tournaments[tournament.id] = tournament
+
+    def remove_tournament(self,tournament):
+        self.tournaments.pop(tournament.id)
 
     def get_tournament(self):
-        return self.tournaments
+        return list(self.tournaments.values())
 
     def put_termination_history(self, conf_id, instance_id):
         if conf_id not in self.termination_history:

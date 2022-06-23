@@ -3,6 +3,7 @@
 from skopt.space import Space
 from skopt.sampler import Lhs
 from enum import Enum
+import uuid
 from selector.pool import Configuration, ParamType, Generator
 from selector.default_point_generator import check_conditionals, check_no_goods
 from selector.random_point_generator import reset_no_goods
@@ -120,7 +121,12 @@ def lhc_points(s, identity, n_samples=1, seed=False, lhs_type=LHSType.classic,
 
     n_configurations = []
 
+    if len(n_points) > 1:
+        mult = True
+
     for conf in n_points:
+        if mult:
+            identity = uuid.uuid4()
         n_configurations.append(Configuration(identity, conf, Generator.lhc))
 
     return n_configurations
