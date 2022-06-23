@@ -1,6 +1,7 @@
 """This module contains simple tests for the point generation functions."""
 import ray
 import numpy as np
+import uuid
 from selector.ta_result_store import TargetAlgorithmObserver
 from selector.tournament_dispatcher import MiniTournamentDispatcher
 from selector.pointselector import RandomSelector, HyperparameterizedSelector
@@ -11,6 +12,7 @@ from selector.default_point_generator import default_point
 from selector.variable_graph_point_generator import variable_graph_point, Mode
 from selector.lhs_point_generator import lhc_points, LHSType, Criterion
 from selector.selection_features import FeatureGenerator
+# from selector.surrogates.surrogates import SurrogateManager
 
 
 def test_point_selection(scenario, parser):
@@ -19,6 +21,8 @@ def test_point_selection(scenario, parser):
 
     : param scenario: scenario object
     """
+    np.random.seed(42)
+
     s = scenario("./test_data/test_scenario.txt", parser)
 
     random_generator = PointGen(s, random_point, seed=42)
@@ -35,7 +39,9 @@ def test_point_selection(scenario, parser):
                                                      s.tournament_size, 0)
         instance_id, instances = instance_selector.get_subset(0)
 
-        tourn, _ = MiniTournamentDispatcher().init_tournament(global_cache,
+        results = ray.get(global_cache.get_results.remote())
+
+        tourn, _ = MiniTournamentDispatcher().init_tournament(results,
                                                               points_to_run,
                                                               instances,
                                                               instance_id)
@@ -44,10 +50,17 @@ def test_point_selection(scenario, parser):
 
         tourn.configurations.pop(i)
         tourn.worst_finisher = tourn.configurations
+
         tourn.configurations = []
         global_cache.put_tournament_history.remote(tourn)
 
     hist = ray.get(global_cache.get_tournament_history.remote())
+
+    for tourn in hist.values():
+        for conf in tourn.configuration_ids:
+            global_cache.put_result.remote(uuid.UUID(str(conf)),
+                                           instance_id,
+                                           np.random.randint(2, 15))
 
     default_generator = PointGen(s, default_point, seed=42)
 
@@ -85,18 +98,66 @@ def test_point_selection(scenario, parser):
     hps = HyperparameterizedSelector()
 
     configs_requested = 8
-    weights = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    weights = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+               1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
     weights = [weights for x in range(len(confs))]
     weights = np.array(weights)
     epoch = 4
     max_epochs = 256
 
     fg = FeatureGenerator()
-    features = fg.static_feature_gen(confs, epoch, max_epochs)
+    # sm = SurrogateManager(s.parameter)
+
+    cutoff_time = s.cutoff_time
+    results = ray.get(global_cache.get_results.remote())
+    predicted_quals = []
+    evaluated = []
 
     for epoch in range(3):
+        features = fg.static_feature_gen(confs, epoch, max_epochs)
+        features = np.concatenate((features,
+                                   fg.diversity_feature_gen(confs, hist,
+                                                            results,
+                                                            cutoff_time,
+                                                            s.parameter,
+                                                            predicted_quals,
+                                                            evaluated)),
+                                  axis=1)
+        '''
+        features = np.concatenate((features,
+                                  fg.dynamic_feature_gen(confs, hist,
+                                                         predicted_quals,
+                                                         sm, cutoff_time,
+                                                         s.parameter,
+                                                         results)),
+                                  axis=1)
+        '''
+
         selected_ids = hps.select_points(s, confs, configs_requested, epoch,
                                          max_epochs, features, weights,
-                                         max_evals=100, seed=42)
+                                         results, max_evals=100, seed=42)
+
+        evaluated.extend(selected_ids)
+
+        '''
+        predicted_quals.extend(sm.expected_value(selected_ids, s.parameter,
+                                                 cutoff_time,
+                                                 surrogate='GPR'))
+        '''
+
+        for conf in selected_ids:
+            global_cache.put_result.remote(conf.id,
+                                           epoch,
+                                           np.random.randint(2, 15))
+
+        results = ray.get(global_cache.get_results.remote())
+
+        '''
+        for conf in selected_ids:
+            for surrogate in sm.surrogates.keys():
+                sm.observe(conf.conf, results[conf.id][epoch], s.parameter,
+                           cutoff_time, surrogate)
+        '''
+
         print(selected_ids)
         print(len(selected_ids))

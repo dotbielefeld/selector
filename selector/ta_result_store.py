@@ -34,8 +34,8 @@ class TargetAlgorithmObserver:
         # TODO store from where we have read last and contiue form there
         return self.intermediate_output
 
-    def put_result(self,conf_id, instance_id, result):
-        logging.info(f"Getting final result: {conf_id}, {instance_id}, {result} ")
+    def put_result(self, conf_id, instance_id, result):
+        logging.info(f"Getting final result: {conf_id}, {instance_id}, {result}")
         if conf_id not in self.results:
             self.results[conf_id] = {}
 

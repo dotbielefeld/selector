@@ -41,7 +41,7 @@ class Scenario_Test(unittest.TestCase):
         self.assertEqual(scenario.deterministic, "0")
         self.assertEqual(scenario.run_obj, 'runtime')
         self.assertEqual(scenario.overall_obj, 'mean10')
-        self.assertEqual(scenario.cutoff_time, '300')
+        self.assertEqual(scenario.cutoff_time, 300.0)
         self.assertEqual(scenario.wallclock_limit, '172800')
         self.assertEqual(scenario.instance_file, './test/test_data/test_training.txt')
         self.assertEqual(scenario.test_instance_file, './test/test_data/test_test.txt')
