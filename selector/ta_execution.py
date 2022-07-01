@@ -43,7 +43,7 @@ def termination_check(process_pid, process_status, ta_process_name, python_pid, 
         logging.info(
             f"Successfully terminated {conf_id}, {instance} on {python_pid} with {process_status}")
 
-@ray.remote(num_cpus=1, max_retries=0,  retry_exceptions= False)
+@ray.remote(num_cpus=1)#, max_retries=0,  retry_exceptions= False)
 def tae_from_cmd_wrapper(conf, instance_path, cache, ta_command_creator, scenario):
     """
     Execute the target algorithm with a given conf/instance pair by calling a user provided Wrapper that created a cmd
@@ -67,7 +67,7 @@ def tae_from_cmd_wrapper(conf, instance_path, cache, ta_command_creator, scenari
         start = time.time()
         cache.put_start.remote(conf.id, instance_path, start)
 
-        p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        p = psutil.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                              close_fds=True)
 
         # Blocks
@@ -80,31 +80,44 @@ def tae_from_cmd_wrapper(conf, instance_path, cache, ta_command_creator, scenari
         t.daemon = True
         t.start()
         timeout = False
-        while p.poll() is None:
+        empty_line = False
+        memory_out = False
+        memory_p = 0
+        while True:
             try:
                 line = q.get(timeout=.5)
+                empty_line = False
+                # Get the cpu time and memory of the process
             except Empty:
+                empty_line = True
+                if p.poll() is None:
+                    cpu_time_p = p.cpu_times().user
+                    memory_p =  p.memory_info().rss / 1024 ** 2      # TODO adjust the mem limit below
+                if float(time.time() - start) > float(scenario.cutoff_time) or float(memory_p) > float(1024 * 3) and timeout ==False:
+                    timeout = True
+                    logging.info(f"Timeout or memory reached, terminating: {conf}, {instance_path} {time.time() - start}")
+                    print(f"Timeout or memory reached, terminating: {conf}, {instance_path} {time.time() - start}")
+                    if p.poll() is None:
+                        p.terminate()
+                    time.sleep(1)
+                    if p.poll() is None:
+                        p.kill()
+                    # if scenario.ta_pid_name is not None:
+                    #    termination_check(p.pid, p.poll(), scenario.ta_pid_name, os.getpid(),conf.id, instance_path)
                 pass
-            else:
+            else: # write intemediate feedback
                 cache.put_intermediate_output.remote(conf.id, instance_path, line)
                 logging.info(f"Wrapper TAE intermediate feedback {conf}, {instance_path} {line}")
-            if time.time() - start > scenario.cutoff_time:
-                timeout = True
-                logging.info(f"Timeout reached, terminating: {conf}, {instance_path} {time.time() - start}")
 
-                p.terminate()
-                time.sleep(1)
-                if p.poll() is None:
-                    p.kill()
-                if scenario.ta_pid_name is not None:
-                    termination_check(p.pid, p.poll(), scenario.ta_pid_name, os.getpid(),conf.id, instance_path)
-                    
-        ta_end = time.time()
-        if timeout:
-            cache.put_result.remote(conf.id, instance_path, scenario.cutoff_time)
+            # Break the while loop when the ta was killed or finished
+            if empty_line and p.poll() != None:
+                break
+
+        if timeout or memory_out:
+            cache.put_result.remote(conf.id, instance_path, np.nan)
         else:
+            ta_end = time.time()
             cache.put_result.remote(conf.id, instance_path, ta_end - start)
-
         time.sleep(0.2)
         logging.info(f"Wrapper TAE end {conf}, {instance_path}")
         return  conf, instance_path, False
@@ -113,13 +126,13 @@ def tae_from_cmd_wrapper(conf, instance_path, cache, ta_command_creator, scenari
         logging.info(f" Killing: {conf}, {instance_path} ")
         # We only terminated the subprocess in case it has started (p is defined)
         if 'p' in vars():
-            #termination_check(p.pid, p.poll(), "glucose-simp", os.getpid(), conf.id, instance_path)
-            p.terminate()
+            if p.poll() is None:
+                p.terminate()
             time.sleep(1)
             if p.poll() is None:
                 p.kill()
-            if scenario.ta_pid_name is not None:
-                termination_check(p.pid, p.poll(), scenario.ta_pid_name, os.getpid(), conf.id, instance_path)
+            #if scenario.ta_pid_name is not None:
+             #   termination_check(p.pid, p.poll(), scenario.ta_pid_name, os.getpid(), conf.id, instance_path)
 
         #logging.info(f"Killing status: {p.poll()} {conf.id} {instance_path}")
         #try:
