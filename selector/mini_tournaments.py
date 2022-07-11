@@ -137,8 +137,10 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
         # Check whether we canceled a task or if the TA terminated regularly
         # In case we canceled a task, we need to remove it from the ray tasks
         if cancel_flag:
-            if result_tournament.ray_object_store[result_conf.id][result_instance] in tasks:
-                tasks.remove(result_tournament.ray_object_store[result_conf.id][result_instance])
+            if result_conf.id in result_tournament.ray_object_store.keys():
+                if result_instance in result_tournament.ray_object_store[result_conf.id ].keys():
+                    if result_tournament.ray_object_store[result_conf.id][result_instance] in tasks:
+                        tasks.remove(result_tournament.ray_object_store[result_conf.id][result_instance])
             logger.info(f"Canceled TA: {result_conf.id}, {result_instance}")
         else:
             result_time = results[result_conf.id][result_instance]
