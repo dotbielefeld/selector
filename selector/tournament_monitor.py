@@ -24,7 +24,7 @@ class Monitor:
         self.number_of_finisher = number_of_finisher
         self.tournaments = []
 
-        logging.basicConfig(filename=f'./selector/logs/monitor.log', level=logging.INFO,
+        logging.basicConfig(filename=f'./selector/logs/latest/monitor.log', level=logging.INFO,
                             format='%(asctime)s %(message)s')
 
     def monitor(self):
