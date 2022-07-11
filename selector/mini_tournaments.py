@@ -235,7 +235,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             #global_cache.put_tournament_update.remote(tournaments)
             global_cache.put_tournament_update.remote(result_tournament)
 
-        overall_best_update(global_cache)
+        overall_best_update(tournaments, results)
 
     print("DONE")
     logger.info("DONE")
