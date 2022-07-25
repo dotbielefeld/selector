@@ -45,7 +45,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     hp_seletor = HyperparameterizedSelector()
     tournament_dispatcher = MiniTournamentDispatcher()
     global_cache = TargetAlgorithmObserver.remote()
-    monitor = Monitor.remote(1, global_cache, scenario.winners_per_tournament)
+    monitor = Monitor.remote(1, global_cache, scenario)
     #monitor = InstanceMonitor.remote(1, global_cache)
     random_generator = PointGen(scenario, random_point)
     default_point_generator = PointGen(scenario, default_point)
@@ -247,20 +247,25 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
 
 if __name__ == "__main__":
     np.random.seed(42)
-    check_log_folder()
-    clear_logs()
+
+    parser = {"check_path": False, "seed": 42, "ta_run_type": "import_wrapper", "winners_per_tournament": 1, #import_wrapper
+              "initial_instance_set_size": 2, "tournament_size": 2, "number_tournaments": 2, "total_tournament_number": 2,
+              "total_runtime": 1200, "generator_multiple": 3, "set_size": 50,
+              "termination_criterion": "total_tournament_number", "par": 1, "ta_pid_name": "glucose-simp", "memory_limit":1023*3, "log_folder":"run_1"}
+
+    scenario = Scenario("./selector/input/scenarios/test_example.txt", parser)#my_glucose_example #my_cadical_example
+
+    check_log_folder(scenario.log_folder)
+    clear_logs(scenario.log_folder)
 
     logging.basicConfig( level=logging.INFO,
                         format='%(asctime)s %(message)s', handlers = [
-        logging.FileHandler("./selector/logs/latest/main.log"),
+        logging.FileHandler(f"./selector/logs/{scenario.log_folder}/main.log"),
     ])
 
     logger = logging.getLogger(__name__)
 
-    parser = {"check_path": False, "seed": 42, "ta_run_type": "import_wrapper", "winners_per_tournament": 1,
-              "initial_instance_set_size": 2, "tournament_size": 2, "number_tournaments": 1, "total_tournament_number": 3,
-              "total_runtime": 1200, "generator_multiple": 5, "set_size": 50,
-              "termination_criterion": "total_tournament_number", "par": 1, "ta_pid_name": "glucose-simp"}
+    logger.info(f"Logging to {scenario.log_folder}")
 
     scenario = Scenario("./selector/input/scenarios/test_example.txt", parser)
     # TODO this needs to come from the scenario?!
@@ -277,7 +282,7 @@ if __name__ == "__main__":
 
     offline_mini_tournament_configuration(scenario, ta_wrapper, logger)
 
-    save_latest_logs()
+    save_latest_logs(scenario.log_folder)
     ray.shutdown()
 
 
