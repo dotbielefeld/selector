@@ -14,6 +14,24 @@ def get_tournament_membership(tournaments, conf):
         if conf.id in t.configuration_ids or conf.id in t.worst_finisher or conf.id in t.best_finisher:
             return t
 
+def get_get_tournament_membership_with_ray_id(task_id, tournaments):
+    """
+    For a ray task id return the tournament it belongs to
+    :param task_id:
+    :param tournaments:
+    :return:
+    """
+
+    ob_t = None
+    for t in tournaments:
+        t_objects = t.ray_object_store
+        for confs, instance_objects in t_objects.items():
+            for inst, ob in instance_objects.items():
+                if ob == task_id:
+                    ob_t = t
+                    pass
+    return ob_t
+
 def get_tasks(taskdic, tasks):
     """
     Map back a ray object to the conf/instance pair.

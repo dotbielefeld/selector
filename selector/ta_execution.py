@@ -167,6 +167,12 @@ def tae_from_cmd_wrapper(conf, instance_path, cache, ta_command_creator, scenari
 
 
 @ray.remote(num_cpus=1)
+def dummy_task(conf, instance_path, cache):
+    time.sleep(2)
+    cache.put_result.remote(conf.id, instance_path, np.nan)
+    return  conf, instance_path, True
+
+@ray.remote(num_cpus=1)
 def tae_from_aclib(conf, instance, cache, ta_exc):
     pass
 # TODO

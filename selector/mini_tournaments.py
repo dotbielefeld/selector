@@ -12,6 +12,7 @@ from scenario import Scenario
 from pool import Configuration
 from pointselector import RandomSelector, HyperparameterizedSelector
 from ta_result_store import TargetAlgorithmObserver
+from ta_execution import dummy_task
 
 from selector.point_gen import PointGen
 from selector.random_point_generator import random_point
@@ -22,11 +23,11 @@ from selector.selection_features import FeatureGenerator
 # from selector.surrogates.surrogates import SurrogateManager
 
 from tournament_dispatcher import MiniTournamentDispatcher
-from tournament_bookkeeping import get_tournament_membership, update_tasks, get_tasks, termination_check
+from tournament_bookkeeping import get_tournament_membership, update_tasks, get_tasks, termination_check, get_get_tournament_membership_with_ray_id
 from log_setup import clear_logs, log_termination_setting, check_log_folder, save_latest_logs
 
 from tournament_monitor import Monitor
-from tournament_performance import overall_best_update
+from tournament_performance import overall_best_update, get_instances_no_results
 
 from wrapper.tap_sleep_wrapper import TAP_Sleep_Wrapper
 from wrapper.tap_work_wrapper import TAP_Work_Wrapper
@@ -90,6 +91,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
 
     # sm = SurrogateManager(scenario.parameter)
     fg = FeatureGenerator()
+    bug_handel = []
 
     while termination_check(scenario.termination_criterion, main_loop_start, scenario.total_runtime,
                             scenario.total_tournament_number, tournament_counter):
@@ -98,12 +100,11 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
         tasks = not_ready
         try:
             result = ray.get(winner)[0]
-            result_conf, result_instance, cancel_flag = result[0], result[1], result[2]           
+            result_conf, result_instance, cancel_flag = result[0], result[1], result[2]
 
         # Some time a ray worker may crash. We handel that here. I.e if the TA did not run to the end, we reschedule
-        except ray.exceptions.WorkerCrashedError as e:
+        except (ray.exceptions.WorkerCrashedError, ray.exceptions.TaskCancelledError) as e:
             logger.info(f'Crashed TA worker, {time.ctime()}, {winner}, {e}')
-            print("Crashed TA worker")
             # Figure out which tournament conf. belongs to
             for t in tournaments:
                 conf_instance = get_tasks(t.ray_object_store, winner)
@@ -128,8 +129,27 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
                 logger.info(f"We have no results: rescheduling {conf.id}, {instance} {[get_tasks(o.ray_object_store, tasks) for o in tournaments]}")
                 continue
 
-        except ray.exceptions.TaskCancelledError as e:
-            logger.info(f'This should only happen if the tournament are bigger then the number of cpu, {e}')
+
+        # Getting the tournament of the first task id
+        first_task = tasks[0]
+        ob_t = get_get_tournament_membership_with_ray_id(first_task, tournaments)
+
+        # Figure out if the tournament of the first task is stale. If so cancel the task and start dummy task.
+        if len(ob_t.configurations) == 1:
+            i_no_result = get_instances_no_results(results, ob_t.configurations[0], ob_t.instance_set)
+            if len(i_no_result) == 1:
+                termination = ray.get(global_cache.get_termination_single(ob_t.configurations[0],i_no_result[0]))
+                result = ray.get(global_cache.get_results_single(ob_t.configurations[0],i_no_result[0]))
+                if termination and result == False and [ob_t.configurations[0],i_no_result[0]] not in bug_handel:
+                    logger.info(f"Stale tournament: {time.strftime('%X %x %Z')}, {ob_t.configurations[0]}, {i_no_result[0]} , {first_task}, {bug_handel}")
+                    ready_ids, _remaining_ids = ray.wait([first_task], timeout=0)
+                    if len(_remaining_ids) == 1:
+                        ray.cancel(first_task)
+                        tasks.remove(first_task)
+                        task = dummy_task.remote(ob_t.configurations[0],i_no_result[0], global_cache)
+                        tasks.append(task)
+                        bug_handel.append([ob_t.configurations[0],i_no_result[0]])
+
 
         results = ray.get(global_cache.get_results.remote())
         result_tournament = get_tournament_membership(tournaments, result_conf)
