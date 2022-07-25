@@ -92,6 +92,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     # sm = SurrogateManager(scenario.parameter)
     fg = FeatureGenerator()
     bug_handel = []
+    tournament_history = {}
 
     while termination_check(scenario.termination_criterion, main_loop_start, scenario.total_runtime,
                             scenario.total_tournament_number, tournament_counter):
@@ -115,9 +116,9 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             conf = [conf for conf in tournament_of_c_i.configurations if conf.id == conf_instance[0][0]][0]
             instance = conf_instance[0][1]
             # We check if we have killed the conf and only messed up the termination of the process
-            
-            termination_check = ray.get(global_cache.get_termination_single(conf.id , instance))
-            if termination_check:
+
+            termination_check_c_i = ray.get(global_cache.get_termination_single(conf.id , instance))
+            if termination_check_c_i:
                 result_conf = conf
                 result_instance = instance
                 cancel_flag = True
@@ -187,7 +188,10 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             random_points = [random_generator.point_generator() for _ in range(scenario.tournament_size * scenario.generator_multiple)]
             # points_to_run = point_selector.select_points(generated_points, scenario.tournament_size-1, tournament_counter)
             default_ps = [default_point_generator.point_generator()]
-            hist = ray.get(global_cache.get_tournament_history.remote())
+
+            hist = {**tournament_history , **{t.id : t for t in tournaments}}
+             #   ray.get(global_cache.get_tournament_history.remote())
+
             vg_points = [vg_point_generator.point_generator(
                          mode=Mode.random, alldata=hist, lookback=1)
                          for _ in range(
@@ -222,7 +226,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
 
             evaluated.extend(points_to_run)
 
-            res = ray.get(global_cache.get_results.remote())
+            #res = ray.get(global_cache.get_results.remote())
 
             points_to_run = points_to_run + [result_tournament.best_finisher[0]]
 
@@ -236,6 +240,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
                                                                                                        instance_id)
             # Remove that old tournament
             tournaments.remove(result_tournament)
+            tournament_history[result_tournament.id] = result_tournament
 
             # Add the new tournament and update the ray tasks with the new conf/instance assignments
             tournaments.append(new_tournament)
