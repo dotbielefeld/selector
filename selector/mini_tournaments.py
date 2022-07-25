@@ -115,9 +115,9 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             conf = [conf for conf in tournament_of_c_i.configurations if conf.id == conf_instance[0][0]][0]
             instance = conf_instance[0][1]
             # We check if we have killed the conf and only messed up the termination of the process
-            termination_history = ray.get(global_cache.get_termination_history.remote())
-            # TODO we probably need to check, that we really killed the process..
-            if conf.id in termination_history.keys() and instance in termination_history[conf.id]:
+            
+            termination_check = ray.get(global_cache.get_termination_single(conf.id , instance))
+            if termination_check:
                 result_conf = conf
                 result_instance = instance
                 cancel_flag = True
