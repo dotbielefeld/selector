@@ -107,6 +107,11 @@ class Scenario:
             if i not in self.features:
                 raise ValueError(f"For instance {i} no features were provided")
 
+        if  "log_folder" not in list(self.__dict__.keys()):
+            setattr(self, "log_folder" , "latest")
+        elif self.log_folder == "None":
+            self.log_folder = "latest"
+
 
 
     def scenario_from_file(self, scenario_path):
