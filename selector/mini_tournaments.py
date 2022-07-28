@@ -12,6 +12,7 @@ from scenario import Scenario
 from pool import Configuration
 from pointselector import RandomSelector, HyperparameterizedSelector
 from ta_result_store import TargetAlgorithmObserver
+from ta_execution import dummy_task
 
 from selector.point_gen import PointGen
 from selector.random_point_generator import random_point
@@ -22,11 +23,11 @@ from selector.selection_features import FeatureGenerator
 # from selector.surrogates.surrogates import SurrogateManager
 
 from tournament_dispatcher import MiniTournamentDispatcher
-from tournament_bookkeeping import get_tournament_membership, update_tasks, get_tasks, termination_check
+from tournament_bookkeeping import get_tournament_membership, update_tasks, get_tasks, termination_check, get_get_tournament_membership_with_ray_id
 from log_setup import clear_logs, log_termination_setting, check_log_folder, save_latest_logs
 
 from tournament_monitor import Monitor
-from tournament_performance import overall_best_update
+from tournament_performance import overall_best_update, get_instances_no_results
 
 from wrapper.tap_sleep_wrapper import TAP_Sleep_Wrapper
 from wrapper.tap_work_wrapper import TAP_Work_Wrapper
@@ -45,7 +46,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     hp_seletor = HyperparameterizedSelector()
     tournament_dispatcher = MiniTournamentDispatcher()
     global_cache = TargetAlgorithmObserver.remote()
-    monitor = Monitor.remote(1, global_cache, scenario.winners_per_tournament)
+    monitor = Monitor.remote(1, global_cache, scenario)
     #monitor = InstanceMonitor.remote(1, global_cache)
     random_generator = PointGen(scenario, random_point)
     default_point_generator = PointGen(scenario, default_point)
@@ -90,6 +91,8 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
 
     # sm = SurrogateManager(scenario.parameter)
     fg = FeatureGenerator()
+    bug_handel = []
+    tournament_history = {}
 
     while termination_check(scenario.termination_criterion, main_loop_start, scenario.total_runtime,
                             scenario.total_tournament_number, tournament_counter):
@@ -98,12 +101,11 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
         tasks = not_ready
         try:
             result = ray.get(winner)[0]
-            result_conf, result_instance, cancel_flag = result[0], result[1], result[2]           
+            result_conf, result_instance, cancel_flag = result[0], result[1], result[2]
 
         # Some time a ray worker may crash. We handel that here. I.e if the TA did not run to the end, we reschedule
-        except ray.exceptions.WorkerCrashedError as e:
+        except (ray.exceptions.WorkerCrashedError, ray.exceptions.TaskCancelledError) as e:
             logger.info(f'Crashed TA worker, {time.ctime()}, {winner}, {e}')
-            print("Crashed TA worker")
             # Figure out which tournament conf. belongs to
             for t in tournaments:
                 conf_instance = get_tasks(t.ray_object_store, winner)
@@ -114,9 +116,9 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             conf = [conf for conf in tournament_of_c_i.configurations if conf.id == conf_instance[0][0]][0]
             instance = conf_instance[0][1]
             # We check if we have killed the conf and only messed up the termination of the process
-            termination_history = ray.get(global_cache.get_termination_history.remote())
-            # TODO we probably need to check, that we really killed the process..
-            if conf.id in termination_history.keys() and instance in termination_history[conf.id]:
+
+            termination_check_c_i = ray.get(global_cache.get_termination_single(conf.id , instance))
+            if termination_check_c_i:
                 result_conf = conf
                 result_instance = instance
                 cancel_flag = True
@@ -128,8 +130,27 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
                 logger.info(f"We have no results: rescheduling {conf.id}, {instance} {[get_tasks(o.ray_object_store, tasks) for o in tournaments]}")
                 continue
 
-        except ray.exceptions.TaskCancelledError as e:
-            logger.info(f'This should only happen if the tournament are bigger then the number of cpu, {e}')
+
+        # Getting the tournament of the first task id
+        first_task = tasks[0]
+        ob_t = get_get_tournament_membership_with_ray_id(first_task, tournaments)
+
+        # Figure out if the tournament of the first task is stale. If so cancel the task and start dummy task.
+        if len(ob_t.configurations) == 1:
+            i_no_result = get_instances_no_results(results, ob_t.configurations[0].id, ob_t.instance_set)
+            if len(i_no_result) == 1:
+                termination = ray.get(global_cache.get_termination_single.remote(ob_t.configurations[0],i_no_result[0]))
+                result = ray.get(global_cache.get_results_single.remote(ob_t.configurations[0],i_no_result[0]))
+                if termination and result == False and [ob_t.configurations[0],i_no_result[0]] not in bug_handel:
+                    logger.info(f"Stale tournament: {time.strftime('%X %x %Z')}, {ob_t.configurations[0]}, {i_no_result[0]} , {first_task}, {bug_handel}")
+                    ready_ids, _remaining_ids = ray.wait([first_task], timeout=0)
+                    if len(_remaining_ids) == 1:
+                        ray.cancel(first_task)
+                        tasks.remove(first_task)
+                        task = dummy_task.remote(ob_t.configurations[0],i_no_result[0], global_cache)
+                        tasks.append(task)
+                        bug_handel.append([ob_t.configurations[0],i_no_result[0]])
+
 
         results = ray.get(global_cache.get_results.remote())
         result_tournament = get_tournament_membership(tournaments, result_conf)
@@ -137,8 +158,10 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
         # Check whether we canceled a task or if the TA terminated regularly
         # In case we canceled a task, we need to remove it from the ray tasks
         if cancel_flag:
-            if result_tournament.ray_object_store[result_conf.id][result_instance] in tasks:
-                tasks.remove(result_tournament.ray_object_store[result_conf.id][result_instance])
+            if result_conf.id in result_tournament.ray_object_store.keys():
+                if result_instance in result_tournament.ray_object_store[result_conf.id ].keys():
+                    if result_tournament.ray_object_store[result_conf.id][result_instance] in tasks:
+                        tasks.remove(result_tournament.ray_object_store[result_conf.id][result_instance])
             logger.info(f"Canceled TA: {result_conf.id}, {result_instance}")
         else:
             result_time = results[result_conf.id][result_instance]
@@ -165,7 +188,10 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             random_points = [random_generator.point_generator() for _ in range(scenario.tournament_size * scenario.generator_multiple)]
             # points_to_run = point_selector.select_points(generated_points, scenario.tournament_size-1, tournament_counter)
             default_ps = [default_point_generator.point_generator()]
-            hist = ray.get(global_cache.get_tournament_history.remote())
+
+            hist = {**tournament_history , **{t.id : t for t in tournaments}}
+             #   ray.get(global_cache.get_tournament_history.remote())
+
             vg_points = [vg_point_generator.point_generator(
                          mode=Mode.random, alldata=hist, lookback=1)
                          for _ in range(
@@ -200,7 +226,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
 
             evaluated.extend(points_to_run)
 
-            res = ray.get(global_cache.get_results.remote())
+            #res = ray.get(global_cache.get_results.remote())
 
             points_to_run = points_to_run + [result_tournament.best_finisher[0]]
 
@@ -214,6 +240,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
                                                                                                        instance_id)
             # Remove that old tournament
             tournaments.remove(result_tournament)
+            tournament_history[result_tournament.id] = result_tournament
 
             # Add the new tournament and update the ray tasks with the new conf/instance assignments
             tournaments.append(new_tournament)
@@ -235,7 +262,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             #global_cache.put_tournament_update.remote(tournaments)
             global_cache.put_tournament_update.remote(result_tournament)
 
-        overall_best_update(global_cache)
+        overall_best_update(tournaments, results)
 
     print("DONE")
     logger.info("DONE")
@@ -245,20 +272,25 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
 
 if __name__ == "__main__":
     np.random.seed(42)
-    check_log_folder()
-    clear_logs()
+
+    parser = {"check_path": False, "seed": 42, "ta_run_type": "import_wrapper", "winners_per_tournament": 1, #import_wrapper
+              "initial_instance_set_size": 2, "tournament_size": 2, "number_tournaments": 2, "total_tournament_number": 2,
+              "total_runtime": 1200, "generator_multiple": 3, "set_size": 50,
+              "termination_criterion": "total_tournament_number", "par": 1, "ta_pid_name": "glucose-simp", "memory_limit":1023*3, "log_folder":"run_1"}
+
+    scenario = Scenario("./selector/input/scenarios/test_example.txt", parser)#my_glucose_example #my_cadical_example
+
+    check_log_folder(scenario.log_folder)
+    clear_logs(scenario.log_folder)
 
     logging.basicConfig( level=logging.INFO,
                         format='%(asctime)s %(message)s', handlers = [
-        logging.FileHandler("./selector/logs/latest/main.log"),
+        logging.FileHandler(f"./selector/logs/{scenario.log_folder}/main.log"),
     ])
 
     logger = logging.getLogger(__name__)
 
-    parser = {"check_path": False, "seed": 42, "ta_run_type": "import_wrapper", "winners_per_tournament": 1,
-              "initial_instance_set_size": 2, "tournament_size": 2, "number_tournaments": 1, "total_tournament_number": 3,
-              "total_runtime": 1200, "generator_multiple": 5, "set_size": 50,
-              "termination_criterion": "total_tournament_number", "par": 1, "ta_pid_name": "glucose-simp"}
+    logger.info(f"Logging to {scenario.log_folder}")
 
     scenario = Scenario("./selector/input/scenarios/test_example.txt", parser)
     # TODO this needs to come from the scenario?!
@@ -275,7 +307,7 @@ if __name__ == "__main__":
 
     offline_mini_tournament_configuration(scenario, ta_wrapper, logger)
 
-    save_latest_logs()
+    save_latest_logs(scenario.log_folder)
     ray.shutdown()
 
 
