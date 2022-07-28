@@ -71,6 +71,8 @@ class Scenario:
 
         if "test_instance_file" in scenario:
             scenario["test_instances"] = read_instance_paths(scenario["test_instance_file"])
+        else:
+            scenario["test_instances"] = []
 
         if "feature_file" in scenario:
             scenario["features"], scenario["feature_names"] = read_instance_features(scenario["feature_file"])

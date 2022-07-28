@@ -4,8 +4,8 @@ from selector.pool import Parameter, ParamType
 
 import numpy as np
 
-boolean_yes = ["on", "yes"]
-boolean_no = ["no", "off"]
+boolean_yes = ["on", "yes", "true"]
+boolean_no = ["no", "off", "false"]
 boolean_options = boolean_yes + boolean_no
 
 def get_ta_arguments_from_pcs(para_file):
@@ -88,6 +88,7 @@ def get_categorical(param_name, param_info):
     """
 
     bounds = re.search(r'\{(.*)\}', param_info).group().strip("{ }").split(",")
+    bounds = [b.replace(" ","") for b in bounds]
     defaults = re.findall(r'\[(.*)\]*]', param_info)
     original_bound = []
 
@@ -98,7 +99,6 @@ def get_categorical(param_name, param_info):
                       f"be ignored for configuration.")
 
         param_type, bounds, defaults = None, None, None
-
     elif bounds[0] in boolean_options and bounds[1] in boolean_options:
         param_type = ParamType.categorical
         original_bound = bounds
@@ -115,8 +115,7 @@ def get_categorical(param_name, param_info):
     elif isinstance(str(bounds[0]), str) & isinstance(str(defaults[0]), str):
         param_type = ParamType.categorical
         defaults = str(defaults[0])
-        bounds = [str(b) for b in bounds]
-
+        bounds = [str(b).replace(" ", "") for b in bounds]
         if defaults not in bounds:
             raise ValueError(f"For parameter {param_name} the default value is not within the range of the bounds")
 
