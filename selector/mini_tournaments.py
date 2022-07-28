@@ -137,10 +137,10 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
 
         # Figure out if the tournament of the first task is stale. If so cancel the task and start dummy task.
         if len(ob_t.configurations) == 1:
-            i_no_result = get_instances_no_results(results, ob_t.configurations[0], ob_t.instance_set)
+            i_no_result = get_instances_no_results(results, ob_t.configurations[0].id, ob_t.instance_set)
             if len(i_no_result) == 1:
-                termination = ray.get(global_cache.get_termination_single(ob_t.configurations[0],i_no_result[0]))
-                result = ray.get(global_cache.get_results_single(ob_t.configurations[0],i_no_result[0]))
+                termination = ray.get(global_cache.get_termination_single.remote(ob_t.configurations[0],i_no_result[0]))
+                result = ray.get(global_cache.get_results_single.remote(ob_t.configurations[0],i_no_result[0]))
                 if termination and result == False and [ob_t.configurations[0],i_no_result[0]] not in bug_handel:
                     logger.info(f"Stale tournament: {time.strftime('%X %x %Z')}, {ob_t.configurations[0]}, {i_no_result[0]} , {first_task}, {bug_handel}")
                     ready_ids, _remaining_ids = ray.wait([first_task], timeout=0)
