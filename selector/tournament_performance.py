@@ -93,7 +93,7 @@ def get_instances_no_results(results, configuration_id, instance_set):
 
     return not_run_on
 
-def overall_best_update(cache):
+def overall_best_update(tournaments, results):
     """
     Over all tournaments get the best finisher with the most instance runs and shortest runtime and save that conf
     to a file.
@@ -101,14 +101,11 @@ def overall_best_update(cache):
     :return:
     """
 
-    tournaments = ray.get(cache.get_tournament_history.remote())
-    results = ray.get(cache.get_results.remote())
-
     number_of_instances_run = {}
     runtime = {}
     confs = {}
     # For each tournament get the best finisher
-    for _, t in tournaments.items():
+    for  t in tournaments:
         if t.best_finisher:
             best_winner = t.best_finisher[0]
             number_of_instances_run[best_winner.id] = len(results[best_winner.id])

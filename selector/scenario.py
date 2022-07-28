@@ -6,7 +6,6 @@ import sys
 sys.path.append(os.getcwd())
 
 from selector.read_files import get_ta_arguments_from_pcs, read_instance_paths, read_instance_features
-from test.test_point_selection import test_point_selection
 
 
 
@@ -73,7 +72,7 @@ class Scenario:
         if "test_instance_file" in scenario:
             scenario["test_instances"] = read_instance_paths(scenario["test_instance_file"])
         else:
-            raise ValueError("Please provide a file with test instances")
+            scenario["test_instances"] = []
 
         if "feature_file" in scenario:
             scenario["features"], scenario["feature_names"] = read_instance_features(scenario["feature_file"])
@@ -91,7 +90,7 @@ class Scenario:
         if self.run_obj not in ["runtime"]:
             raise ValueError("The specified run objective is not supported")
 
-        if self.overall_obj not in ["mean", "mean10"]:
+        if self.overall_obj not in ["mean", "mean10", "PAR10"]:
             raise ValueError("The specified objective is not supported")
 
         if not isinstance(float(self.cutoff_time), float) :
@@ -109,6 +108,11 @@ class Scenario:
         for i in (self.instance_set + self.test_instances):
             if i not in self.features:
                 raise ValueError(f"For instance {i} no features were provided")
+
+        if  "log_folder" not in list(self.__dict__.keys()):
+            setattr(self, "log_folder" , "latest")
+        elif self.log_folder == "None":
+            self.log_folder = "latest"
 
 
 
