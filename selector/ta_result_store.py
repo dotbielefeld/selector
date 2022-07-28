@@ -46,6 +46,13 @@ class TargetAlgorithmObserver:
         logging.info(f"Publishing results")
         return self.results
 
+    def get_results_single(self, conf_id, instance_id):
+        result = False
+        if conf_id in list(self.results.keys()):
+            if instance_id in list(self.results[conf_id].keys()):
+                result = self.results[conf_id][instance_id]
+        return result
+
     def put_start(self,conf_id, instance_id, start):
         logging.info(f"Getting start: {conf_id}, {instance_id}, {start} ")
         if conf_id not in self.start_time:
@@ -84,3 +91,11 @@ class TargetAlgorithmObserver:
 
     def get_termination_history(self):
         return self.termination_history
+
+    def get_termination_single(self, conf_id, instance_id):
+        termination = False
+        if conf_id in list(self.termination_history.keys()):
+            if instance_id in list(self.termination_history[conf_id]):
+                termination = True
+        return termination
+
