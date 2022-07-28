@@ -1,8 +1,7 @@
 """This module contains feature generation functions."""
 import numpy as np
-from scipy.stats import norm
 import copy
-from selector.pool import Generator
+from selector.pool import Generator, Surrogates
 import selector.hp_point_selection as hps
 
 
@@ -18,6 +17,7 @@ class FeatureGenerator:
 
         :param suggestions: list, suggested points
         :param data: data object, contains historic performance data
+        :param nce: int, number of configuration evaluations
         :return div_feats: list, computed features of suggested points
         """
         div_feats = []
@@ -33,6 +33,10 @@ class FeatureGenerator:
                         rels += 1
             div_feats.append([rels / nce])
 
+        max_val = float(max(max(d) for d in div_feats))
+        for d in div_feats:
+            d[0] = d[0] / max_val
+
         return div_feats
 
     def avg_rel_evals_qual(self, suggestions, data, nce, results, cot,
@@ -44,6 +48,7 @@ class FeatureGenerator:
         :param nce: int, number of all configs evaluated
         :param results: dict, qualities of configurations
         :param cot: float, cut off time for tournaments
+        :param generators: list, all possible generators
         :return div_feats: list, computed features of suggested points
         """
         div_feats = []
@@ -81,6 +86,10 @@ class FeatureGenerator:
             else:
                 div_feats.append([quals[sugg.generator] / cot])
 
+        max_val = float(max(max(d) for d in div_feats))
+        for d in div_feats:
+            d[0] = d[0] / max_val
+
         return div_feats
 
     def best_rel_evals_qual(self, suggestions, data, generators, results, cot):
@@ -88,6 +97,9 @@ class FeatureGenerator:
 
         :param suggestions: list, suggested points
         :param data: data object, contains historic performance data
+        :param generators: list, all possible generators
+        :param results: dict, qualities of configurations
+        :param cot: float, cut off time for tournaments
         :return div_feats: list, computed features of suggested points
         """
         div_feats = []
@@ -114,6 +126,10 @@ class FeatureGenerator:
             else:
                 div_feats.append([best_val[sugg.generator] / cot])
 
+        max_val = float(max(max(d) for d in div_feats))
+        for d in div_feats:
+            d[0] = d[0] / max_val
+
         return div_feats
 
     def std_rel_evals_qual(self, suggestions, data, generators, results, cot):
@@ -121,6 +137,9 @@ class FeatureGenerator:
 
         :param suggestions: list, suggested points
         :param data: data object, contains historic performance data
+        :param generators: list, all possible generators
+        :param results: dict, qualities of configurations
+        :param cot: float, cut off time for tournaments
         :return div_feats: list, computed features of suggested points
         """
         div_feats = []
@@ -152,6 +171,10 @@ class FeatureGenerator:
             else:
                 div_feats.append([qual_std[sugg.generator] / cot])
 
+        max_val = float(max(max(d) for d in div_feats))
+        for d in div_feats:
+            d[0] = d[0] / max_val
+
         return div_feats
 
     def diff_pred_real_qual(self, suggestions, data, predicted_quals, results):
@@ -159,6 +182,9 @@ class FeatureGenerator:
 
         :param suggestions: list, suggested points
         :param data: data object, contains historic performance data
+        :param predicted_quals: nested list, predicted performance/quality for
+            suggested configurations
+        :param results: dict, qualities of configurations
         :return div_feats: list, computed features of suggested points
         """
         if not predicted_quals:
@@ -208,13 +234,17 @@ class FeatureGenerator:
                     if len(rel_predicts[gen]) > 0 and \
                             len(rel_results[gen]) > 0:
                         diffs[gen] = \
-                            sum(rel_predicts[gen]) / len(rel_predicts[gen]) - \
-                            sum(rel_results[gen]) / len(rel_results[gen])
+                            np.mean(rel_predicts[gen]) \
+                            / np.mean(rel_results[gen])
                 elif gen not in diffs:
                     diffs[gen] = 0
 
             for sugg in suggestions:
                 div_feats.append([diffs[sugg.generator]])
+
+            max_val = float(max(max(d) for d in div_feats))
+            for d in div_feats:
+                d[0] = d[0] / max_val
 
         return div_feats
 
@@ -225,7 +255,7 @@ class FeatureGenerator:
         :param evals: list, already evaluated points
         :param psetting: scenario.parameter
         :return div_feats: list, average distances to all already evaluated
-                                 points
+            points
         """
         if evals:
 
@@ -239,6 +269,10 @@ class FeatureGenerator:
             div_feats = []
             for dist in distances:
                 div_feats.append([np.mean(dist)])
+
+            max_val = float(max(max(d) for d in div_feats))
+            for d in div_feats:
+                d[0] = d[0] / max_val
 
         else:
             div_feats = [[0] for _ in suggests]
@@ -261,6 +295,10 @@ class FeatureGenerator:
         div_feats = []
         for dist in distances:
             div_feats.append([np.mean(dist)])
+
+        max_val = float(max(max(d) for d in div_feats))
+        for d in div_feats:
+            d[0] = d[0] / max_val
 
         return div_feats
 
@@ -301,84 +339,128 @@ class FeatureGenerator:
             for dist in distances:
                 div_feats.append([np.mean(dist)])
 
+            max_val = float(max(max(d) for d in div_feats))
+            for d in div_feats:
+                d[0] = d[0] / max_val
+
         else:
             div_feats = [[0] for _ in suggests]
 
         return div_feats
 
-    def expected_qual(self, suggests, sm, cot, psetting, surr):
+    def expected_qual(self, suggests, sm, cot, surr):
         """Expected quality of points.
 
         :param suggests: list, suggested points
-        :param sm: initialized surrogates.SurrogateManager()
+        :param sm: object, surrogates.SurrogateManager()
         :param cot: int, cut off time
-        :param psetting: scenario.parameter
         :param surr: which surrogate to use
         :return dyn_feats: list, computed features of suggested points
         """
         dyn_feats = []
         try:
-            expimp = sm.expected_value(suggests, psetting, cot,
-                                       surrogate=surr)
+            expimp = sm.predict(surr, suggests, cot)
 
             for exim in expimp:
                 for ei in exim.values():
                     dyn_feats.append([ei['qual']])
+
+            max_val = float(max(max(d) for d in dyn_feats))
+            for d in dyn_feats:
+                d[0] = d[0] / max_val
 
         except:
             dyn_feats = [[0] for _ in suggests]
 
         return dyn_feats
 
-    def prob_qual_improve(self, suggests, sm, cot, psetting, results, surr):
+    def prob_qual_improve(self, suggests, sm, cot, results, surr):
         """Probability of quality of points to improve.
 
         :param suggests: list, suggested points
-        :param sm: initialized surrogates.SurrogateManager()
+        :param sm: object, surrogates.SurrogateManager()
         :param cot: int, cut off time
-        :param psetting: scenario.parameter
-        :param surr: which surrogate to use
         :param results: list, results of points evaluated so far
+        :param surr: which surrogate to use
         :return dyn_feats: list, computed features of suggested points
         """
-        uncertainty = sm.uncertainty(suggests, psetting, surrogate=surr)
-        if not all(v == 0 for v in uncertainty):
-            dyn_feats = []
-            result_quals = []
-            for res in results.values():
-                for p, r in res.items():
-                    result_quals.append(r)
+        best_val = min(min(list(d.values())) for d in list(results.values()))
+        sm.surrogates[surr].aafpi.update(eta=best_val,
+                                         model=sm.surrogates[surr].rafo)
 
-            expimp = sm.expected_value(suggests, psetting, cot,
-                                       surrogate=surr)
-            expected_im = []
-            for exim in expimp:
-                for ei in exim.values():
-                    expected_im.append(ei['qual'])
+        dyn_feats = []
+        try:
+            if surr is Surrogates.SMAC:
+                if sm.surrogates[surr].aafpi.eta is not None and \
+                        sm.surrogates[surr].surr.model.rf is not None:
+                    expimp = sm.pi(surr, suggests, cot)
 
-            probim = norm(expected_im, uncertainty).cdf(np.min(result_quals))
-            for pe in probim:
-                dyn_feats.append([pe])
-        else:
+                    for ei in expimp:
+                        dyn_feats.append(list(ei))
+
+                    max_val = float(max(max(d) for d in dyn_feats))
+                    for d in dyn_feats:
+                        if max_val != 0.0:
+                            d[0] = d[0] / max_val
+
+                else:
+                    dyn_feats = [[0] for _ in suggests]
+            else:
+                dyn_feats = [[0] for _ in suggests]
+
+        except:
             dyn_feats = [[0] for _ in suggests]
 
         return dyn_feats
 
-    def uncertainty_improve(self, suggests, psetting, sm, surr):
+    def uncertainty_improve(self, suggests, sm, cot, surr):
         """Probability of quality of points to improve.
 
         :param suggests: list, suggested points
-        :param sm: initialized surrogates.SurrogateManager()
+        :param sm: object, surrogates.SurrogateManager()
         :param cot: int, cut off time
-        :param psetting: scenario.parameter
         :param surr: which surrogate to use
-        :param results: list, results of points evaluated so far
         :return dyn_feats: list, computed features of suggested points
         """
-        uncertainty = sm.uncertainty(suggests, psetting, surrogate=surr)
-        if not all(v == 0 for v in uncertainty):
-            dyn_feats = [[uncert] for uncert in uncertainty]
-        else:
+        dyn_feats = []
+        try:
+            expimp = sm.predict(surr, suggests, cot)
+
+            for exim in expimp:
+                for ei in exim.values():
+                    dyn_feats.append([ei['var']])
+
+            max_val = float(max(max(d) for d in dyn_feats))
+            for d in dyn_feats:
+                if max_val != 0.0:
+                    d[0] = d[0] / max_val
+
+        except:
+            dyn_feats = [[0] for _ in suggests]
+
+        return dyn_feats
+
+    def expected_improve(self, suggests, sm, cot, surr):
+        """Probability of quality of points to improve.
+
+        :param suggests: list, suggested points
+        :param sm: object, surrogates.SurrogateManager()
+        :param cot: int, cut off time
+        :param surr: which surrogate to use
+        :return dyn_feats: list, computed features of suggested points
+        """
+        dyn_feats = []
+        try:
+            expimp = sm.ei(surr, suggests)
+
+            for ei in expimp:
+                dyn_feats.append(list(ei))
+
+            max_val = float(max(max(d) for d in dyn_feats))
+            for d in dyn_feats:
+                d[0] = d[0] / max_val
+
+        except:
             dyn_feats = [[0] for _ in suggests]
 
         return dyn_feats
@@ -405,48 +487,76 @@ class FeatureGenerator:
         for sf in range(len(static_feats)):
             static_feats[sf].append(epoch / max_epoch)
 
+        max_val = float(max(max(sf) for sf in static_feats))
+        for sf in static_feats:
+            sf[0] = sf[0] / max_val
+
         return np.array(static_feats)
 
     def dynamic_feature_gen(self, suggestions, data, predicted_quals, sm,
-                            cot, psetting, results):
+                            cot, results):
         """Generate dynamic features.
 
         :param suggestions: list, suggested configurations
         :param data: data object, contains historic data
+        :param predicted_quals: nested list, predicted performance/quality for
+            suggested configurations
+        :param sm: object, surrogates.SurrogateManager()
+        :param cot: int, cut off time
+        :param results: list, results of points evaluated so far
         :return dyn_feats: list, dynamic features
         """
-        # TODO
         dyn_feats = []
 
-        # Features based on GBM (Gradient Boosting Tree)
-        '''
+        # Features based on surrogates
         dyn_feats = self.expected_qual(suggestions, sm,
-                                       cot, psetting, surr='SMAC')
+                                       cot, surr=Surrogates.SMAC)
+        # TODO
+        '''
         dyn_feats = \
             np.concatenate((dyn_feats,
-                            self.expected_improve(suggestions,
-                                                  predicted_quals,
-                                                  surr='GGA')),
+                            self.expected_qual(suggestions, sm,
+                                       cot, surr=Surrogates.GGA)),
                            axis=1)
+        '''
         dyn_feats = \
             np.concatenate((dyn_feats,
-                            self.prob_qual_improve(suggestions,
-                                                   data, surr='SMAC')),
+                            self.prob_qual_improve(suggestions, sm, cot,
+                                                   results,
+                                                   surr=Surrogates.SMAC)),
                            axis=1)
-         dyn_feats = \
+        # TODO
+        '''
+        dyn_feats = \
             np.concatenate((dyn_feats,
                             self.prob_qual_improve(suggestions, data,
-                                                   surr='GGA')),
+                                                   surr=Surrogates.GGA)),
                            axis=1)
-         dyn_feats = \
+        '''
+        dyn_feats = \
+            np.concatenate((dyn_feats,
+                            self.uncertainty_improve(suggestions, sm, cot,
+                                                     surr=Surrogates.SMAC)),
+                           axis=1)
+        # TODO
+        '''
+        dyn_feats = \
             np.concatenate((dyn_feats,
                             self.uncertainty_improve(suggestions, data,
-                                                     surr='SMAC')),
+                                                     surr=Surrogates.GGA)),
                            axis=1)
-         dyn_feats = \
+        '''
+        dyn_feats = \
             np.concatenate((dyn_feats,
-                            self.uncertainty_improve(suggestions, data,
-                                                     surr='GGA')),
+                           self.expected_improve(suggestions, sm, cot,
+                                                 surr=Surrogates.SMAC)),
+                           axis=1)
+        # TODO
+        '''
+        dyn_feats = \
+            np.concatenate((dyn_feats,
+                           self.expected_improve(suggestions, sm, cot,
+                                                 surr=Surrogates.GGA)),
                            axis=1)
         '''
 
@@ -462,7 +572,7 @@ class FeatureGenerator:
         :param cot: float, cut off time for tournaments
         :param psetting: scenario.parameter
         :param predicted_quals: list, predicted qualities of
-                                all points evaluated so far
+            points evaluated so far
         :param evaluated: list, all evaluated points so far
         :param sm: initialized surrogates.SurrogateManager()
         :return div_feats: list, diversity features
@@ -493,14 +603,13 @@ class FeatureGenerator:
                                                     generators, results,
                                                     cot)),
                            axis=1)
-        '''
+
         div_feats = \
             np.concatenate((div_feats,
                            self.diff_pred_real_qual(suggestions, data,
                                                     predicted_quals,
                                                     results)),
                            axis=1)
-        '''
 
         # Features based on points evaluated so far
         div_feats = \

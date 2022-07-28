@@ -45,3 +45,15 @@ class Generator(Enum):
     random = 2
     var_graph = 3
     lhc = 4
+    smac = 5
+
+class Status(Enum):
+    win = 1
+    cap = 2
+    timeout = 3
+    stop = 4
+    running = 5
+
+class Surrogates(Enum):
+    SMAC = 1
+    GGA = 2
