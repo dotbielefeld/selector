@@ -45,7 +45,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     point_selector = RandomSelector()
     hp_seletor = HyperparameterizedSelector()
     tournament_dispatcher = MiniTournamentDispatcher()
-    global_cache = TargetAlgorithmObserver.remote()
+    global_cache = TargetAlgorithmObserver.remote(scenario)
     monitor = Monitor.remote(1, global_cache, scenario)
     #monitor = InstanceMonitor.remote(1, global_cache)
     random_generator = PointGen(scenario, random_point)
@@ -264,6 +264,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
 
         overall_best_update(tournaments, results, scenario)
 
+    global_cache.save_rt_results.remote()
     print("DONE")
     logger.info("DONE")
     time.sleep(30)
