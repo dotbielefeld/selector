@@ -34,11 +34,11 @@ def save_latest_logs(folder_for_run):
 def log_termination_setting(logger, scenario):
     if scenario.termination_criterion == "total_runtime":
         logger.info(f"The termination criterion is: {scenario.termination_criterion}")
-        logger.info(f"The total runtime is: {scenario.total_runtime}")
+        logger.info(f"The total runtime is: {scenario.wallclock_limit}")
     elif scenario.termination_criterion == "total_tournament_number":
         logger.info(f"The termination criterion is: {scenario.termination_criterion}")
         logger.info(f"The total number of tournaments is: {scenario.total_tournament_number}")
     else:
         logger.info(f"No valid termination criterion has been parsed. "
                     f"The termination criterion will be set to runtime.")
-        logger.info(f"The total runtime is: {scenario.total_runtime}")
+        logger.info(f"The total runtime is: {scenario.wallclock_limit}")

@@ -118,7 +118,7 @@ def tae_from_cmd_wrapper(conf, instance_path, cache, ta_command_creator, scenari
                 memory_p = p.memory_info().rss / 1024 ** 2
 
                 if float(cpu_time_p) > float(scenario.cutoff_time) or float(memory_p) > float(
-                        1024 * 3) and timeout == False:
+                        scenario.memory_limit) and timeout == False:
                     timeout = True
                     logging.info(f"Timeout or memory reached, terminating: {conf}, {instance_path} {time.time() - start}")
                     if p.poll() is None:

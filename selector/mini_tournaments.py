@@ -94,7 +94,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     bug_handel = []
     tournament_history = {}
 
-    while termination_check(scenario.termination_criterion, main_loop_start, scenario.total_runtime,
+    while termination_check(scenario.termination_criterion, main_loop_start, scenario.wallclock_limit,
                             scenario.total_tournament_number, tournament_counter):
 
         winner, not_ready = ray.wait(tasks)
