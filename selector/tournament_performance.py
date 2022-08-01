@@ -4,6 +4,7 @@ import os
 import ray
 import pickle
 import math
+import copy
 
 def get_conf_time_out(results, configuration_id, instances_set):
     """
@@ -82,7 +83,7 @@ def get_instances_no_results(results, configuration_id, instance_set):
     :param instance_set: List of instances
     :return: List of configuration the conf has not been run on
     """
-    not_run_on = instance_set.copy()
+    not_run_on= copy.deepcopy(instance_set)
 
     if configuration_id in results.keys():
         configuration_results = results[configuration_id]
