@@ -21,7 +21,7 @@ import numpy
 import uuid
 import random
 
-from selector.pool import ParamType, Generator, Status
+from selector.pool import ParamType, Generator
 from selector.pool import Configuration as SelConfig
 
 
@@ -159,7 +159,7 @@ class SmacSurr():
 
         return config
 
-    def update(self, history, conf, state, tourn_nr):
+    def update(self, result, conf, state, ins):
         """Update SMAC epm.
 
         :param history: Tournament history
@@ -167,33 +167,11 @@ class SmacSurr():
         :param state: object selector.pool.Status, status of this point
         :param tourn_nr: int, number of tournament, which to update with
         """
-        if tourn_nr in history[conf.id]:
-            if state == Status.win:
-                status = StatusType.SUCCESS
+        config = self.transform_values(conf)
 
-            elif state == Status.cap:
-                status = StatusType.CAPPED
+        config = Configuration(self.config_space, values=config)
 
-            elif state == Status.timeout:
-                status = StatusType.TIMEOUT
-
-            elif state == Status.stop:
-                status = StatusType.STOP
-
-            elif state == Status.running:
-                status = StatusType.RUNNING
-
-            else:
-                status = StatusType.RUNNING
-
-            config = self.transform_values(conf)
-
-            config = Configuration(self.config_space, values=config)
-
-            self.surr.runhistory.add(config,
-                                     history[conf.id][tourn_nr],
-                                     history[conf.id][tourn_nr],
-                                     status)
+        self.surr.runhistory.add(config, result, result, state)
 
     def get_suggestions(self, scenario, n_samples=8):
         """Get point suggestions from SMAC.

@@ -1,7 +1,11 @@
 """This module contains surrogate management functions."""
 
-from selector.pool import Surrogates
+import numpy as np
+
+from selector.pool import Surrogates, Status
 from selector.surrogates.smac_surrogate import SmacSurr
+
+from smac.tae import StatusType
 
 
 class SurrogateManager():
@@ -30,7 +34,7 @@ class SurrogateManager():
 
         return sugg
 
-    def update_surr(self, surrogate, history, conf, state, tourn_nr):
+    def update_surr(self, surrogate, history, configs, results, terminations):
         """Update surrogate model with runhistory.
 
         :param surrogate: object Surrogates, which surrogate to use
@@ -39,7 +43,28 @@ class SurrogateManager():
         :param state: object selector.pool.Status, status of this point
         :param tourn_nr: int, number of tournament, which to update with
         """
-        self.surrogates[surrogate].update(history, conf, state, tourn_nr)
+        config_dict = {}
+        for c in configs:
+            config_dict[c.id] = c
+        # instances in tournament
+        instances = history.instance_set
+        for cid in config_dict.keys():
+            # config in results
+            for ins in instances:
+                conf = config_dict[cid]
+
+                if ins in results[cid]:
+                    if not np.isnan(results[cid][ins]):
+                        state = StatusType.SUCCESS
+
+                    elif cid in terminations:
+                        state = StatusType.CAPPED
+
+                    else:
+                        state = StatusType.TIMEOUT
+
+                self.surrogates[surrogate].update(results[cid][ins], conf,
+                                                  state, ins)
 
     def predict(self, surrogate, suggestions, cot):
         """Get prediction for mean and variance concerning the points quality.

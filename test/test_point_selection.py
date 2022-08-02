@@ -59,10 +59,12 @@ def test_point_selection(scenario, parser):
 
     hist = ray.get(global_cache.get_tournament_history.remote())
 
+    result_tournament = hist[list(hist.keys())[4]]
+
     for tourn in hist.values():
         for conf in tourn.configuration_ids:
             global_cache.put_result.remote(uuid.UUID(str(conf)),
-                                           instance_id,
+                                           result_tournament.instance_set[0],
                                            np.random.randint(2, 15))
 
     default_generator = PointGen(s, default_point, seed=42)
@@ -120,7 +122,21 @@ def test_point_selection(scenario, parser):
     qap = False
     evaluated = []
 
+    results = ray.get(global_cache.get_results.remote())
+
     for epoch in range(10):
+        result_tournament = hist[list(hist.keys())[4]]
+
+        all_configs \
+            = result_tournament.best_finisher \
+            + result_tournament.worst_finisher
+
+        terminations = []
+
+        for surrogate in sm.surrogates.keys():
+            sm.update_surr(surrogate, result_tournament, all_configs,
+                           results, terminations)
+
         features = fg.static_feature_gen(confs, epoch, max_epochs)
         features = np.concatenate((features,
                                    fg.diversity_feature_gen(confs, hist,
@@ -164,17 +180,10 @@ def test_point_selection(scenario, parser):
 
         for conf in selected_ids:
             global_cache.put_result.remote(conf.id,
-                                           epoch,
+                                           result_tournament.instance_set[0],
                                            np.random.randint(2, 15))
 
         results = ray.get(global_cache.get_results.remote())
-
-        for conf in selected_ids:
-            for surrogate in sm.surrogates.keys():
-                state = np.random.choice([Status.win, Status.cap,
-                                          Status.timeout, Status.stop,
-                                          Status.running])
-                sm.update_surr(surrogate, results, conf, state, epoch)
 
         ran_conf = []
         for i in range(5):

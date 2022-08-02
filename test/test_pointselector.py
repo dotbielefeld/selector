@@ -70,10 +70,10 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
 
         for conf in generated_points:
             if generated_points[-1] == conf:
-                self.results[conf.id] = {0: np.random.randint(2, 15),
-                                         1: np.random.randint(2, 15)}
+                self.results[conf.id] = {'instance_1.cnf': np.random.randint(2, 15),
+                                         'instance_2.cnf': np.random.randint(2, 15)}
             else:
-                self.results[conf.id] = {0: np.random.randint(2, 15)}
+                self.results[conf.id] = {'instance_1.cnf': np.random.randint(2, 15)}
 
         self.hist = {}
 
@@ -122,7 +122,7 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
         sm = SurrogateManager(self.s, seed=42)
         smac_conf = sm.suggest(Surrogates.SMAC, self.s, n_samples=5)
 
-        confs = def_conf + ran_conf + var_conf + lhc_conf
+        confs = def_conf + ran_conf + var_conf + lhc_conf + smac_conf
 
         hps = HyperparameterizedSelector()
 
@@ -147,6 +147,19 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
         evaluated = []
 
         for epoch in range(2):
+
+            result_tournament = self.hist[list(self.hist.keys())[4]]
+
+            all_configs \
+                = result_tournament.best_finisher \
+                + result_tournament.worst_finisher
+
+            terminations = []
+
+            for surrogate in sm.surrogates.keys():
+                sm.update_surr(surrogate, result_tournament, all_configs,
+                               self.results, terminations)
+
             features = fg.static_feature_gen(confs, epoch, max_epochs)
             features \
                 = np.concatenate((features,
@@ -197,13 +210,6 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
                 else:
                     self.results[conf.id] = {1: np.random.randint(2, 15)}
 
-            for conf in selected_ids:
-                for surrogate in sm.surrogates.keys():
-                    state = np.random.choice([Status.win, Status.cap,
-                                              Status.timeout, Status.stop,
-                                              Status.running])
-                    sm.update_surr(surrogate, self.results, conf, state, epoch)
-
             ran_conf = []
             for i in range(5):
                 ran_conf.append(
@@ -224,7 +230,7 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
 
             smac_conf = sm.suggest(Surrogates.SMAC, self.s, n_samples=5)
 
-            confs = ran_conf + var_conf + lhc_conf
+            confs = ran_conf + var_conf + lhc_conf + smac_conf
 
         test_1 = Configuration(1,
                                {'luby': True, 'rinc': 3.1300000000000003,

@@ -16,3 +16,4 @@ strSseconds | cla-decay in {0.92, 0.93}
 
 # forbidden
 {luby=on , rinc=3}
+

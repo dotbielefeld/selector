@@ -35,7 +35,8 @@ class FeatureGenerator:
 
         max_val = float(max(max(d) for d in div_feats))
         for d in div_feats:
-            d[0] = d[0] / max_val
+            if max_val != 0.0:
+                d[0] = d[0] / max_val
 
         return div_feats
 
@@ -88,7 +89,8 @@ class FeatureGenerator:
 
         max_val = float(max(max(d) for d in div_feats))
         for d in div_feats:
-            d[0] = d[0] / max_val
+            if max_val != 0.0:
+                d[0] = d[0] / max_val
 
         return div_feats
 
@@ -128,7 +130,8 @@ class FeatureGenerator:
 
         max_val = float(max(max(d) for d in div_feats))
         for d in div_feats:
-            d[0] = d[0] / max_val
+            if max_val != 0.0:
+                d[0] = d[0] / max_val
 
         return div_feats
 
@@ -173,7 +176,8 @@ class FeatureGenerator:
 
         max_val = float(max(max(d) for d in div_feats))
         for d in div_feats:
-            d[0] = d[0] / max_val
+            if max_val != 0.0:
+                d[0] = d[0] / max_val
 
         return div_feats
 
@@ -244,7 +248,8 @@ class FeatureGenerator:
 
             max_val = float(max(max(d) for d in div_feats))
             for d in div_feats:
-                d[0] = d[0] / max_val
+                if max_val != 0.0:
+                    d[0] = d[0] / max_val
 
         return div_feats
 
@@ -272,7 +277,8 @@ class FeatureGenerator:
 
             max_val = float(max(max(d) for d in div_feats))
             for d in div_feats:
-                d[0] = d[0] / max_val
+                if max_val != 0.0:
+                    d[0] = d[0] / max_val
 
         else:
             div_feats = [[0] for _ in suggests]
@@ -298,7 +304,8 @@ class FeatureGenerator:
 
         max_val = float(max(max(d) for d in div_feats))
         for d in div_feats:
-            d[0] = d[0] / max_val
+            if max_val != 0.0:
+                d[0] = d[0] / max_val
 
         return div_feats
 
@@ -341,7 +348,8 @@ class FeatureGenerator:
 
             max_val = float(max(max(d) for d in div_feats))
             for d in div_feats:
-                d[0] = d[0] / max_val
+                if max_val != 0.0:
+                    d[0] = d[0] / max_val
 
         else:
             div_feats = [[0] for _ in suggests]
@@ -367,7 +375,8 @@ class FeatureGenerator:
 
             max_val = float(max(max(d) for d in dyn_feats))
             for d in dyn_feats:
-                d[0] = d[0] / max_val
+                if max_val != 0.0:
+                    d[0] = d[0] / max_val
 
         except:
             dyn_feats = [[0] for _ in suggests]
@@ -458,7 +467,8 @@ class FeatureGenerator:
 
             max_val = float(max(max(d) for d in dyn_feats))
             for d in dyn_feats:
-                d[0] = d[0] / max_val
+                if max_val != 0.0:
+                    d[0] = d[0] / max_val
 
         except:
             dyn_feats = [[0] for _ in suggests]
@@ -489,7 +499,8 @@ class FeatureGenerator:
 
         max_val = float(max(max(sf) for sf in static_feats))
         for sf in static_feats:
-            sf[0] = sf[0] / max_val
+            if max_val != 0.0:
+                sf[0] = sf[0] / max_val
 
         return np.array(static_feats)
 
