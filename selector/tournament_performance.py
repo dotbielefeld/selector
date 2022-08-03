@@ -1,7 +1,10 @@
 import numpy as np
+import json
+import os
 import ray
 import pickle
 import math
+import copy
 
 def get_conf_time_out(results, configuration_id, instances_set):
     """
@@ -80,7 +83,7 @@ def get_instances_no_results(results, configuration_id, instance_set):
     :param instance_set: List of instances
     :return: List of configuration the conf has not been run on
     """
-    not_run_on = instance_set.copy()
+    not_run_on= copy.deepcopy(instance_set)
 
     if configuration_id in results.keys():
         configuration_results = results[configuration_id]
@@ -93,7 +96,7 @@ def get_instances_no_results(results, configuration_id, instance_set):
 
     return not_run_on
 
-def overall_best_update(tournaments, results):
+def overall_best_update(tournaments, results, scenario):
     """
     Over all tournaments get the best finisher with the most instance runs and shortest runtime and save that conf
     to a file.
@@ -121,9 +124,9 @@ def overall_best_update(tournaments, results):
         conf_with_min_runtime = min(list(conf_r_w_max_i.values()))
         conf_with_min_runtime = [k for k, v in conf_r_w_max_i.items() if v == conf_with_min_runtime]
 
-
-        with open("selector/output/best_conf.txt", 'wb') as fp:
-            pickle.dump(confs[conf_with_min_runtime[0]], fp)
+        with open(f"./selector/logs/{scenario.log_folder}/trajectory.json", 'a') as f:
+            json.dump({str(confs[conf_with_min_runtime[0]]): confs[conf_with_min_runtime[0]].conf}, f)
+            f.write(os.linesep)
 
 
 

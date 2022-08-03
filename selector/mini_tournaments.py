@@ -45,7 +45,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     point_selector = RandomSelector()
     hp_seletor = HyperparameterizedSelector()
     tournament_dispatcher = MiniTournamentDispatcher()
-    global_cache = TargetAlgorithmObserver.remote()
+    global_cache = TargetAlgorithmObserver.remote(scenario)
     monitor = Monitor.remote(1, global_cache, scenario)
     #monitor = InstanceMonitor.remote(1, global_cache)
     random_generator = PointGen(scenario, random_point)
@@ -94,7 +94,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     bug_handel = []
     tournament_history = {}
 
-    while termination_check(scenario.termination_criterion, main_loop_start, scenario.total_runtime,
+    while termination_check(scenario.termination_criterion, main_loop_start, scenario.wallclock_limit,
                             scenario.total_tournament_number, tournament_counter):
 
         winner, not_ready = ray.wait(tasks)
@@ -117,7 +117,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             instance = conf_instance[0][1]
             # We check if we have killed the conf and only messed up the termination of the process
 
-            termination_check_c_i = ray.get(global_cache.get_termination_single(conf.id , instance))
+            termination_check_c_i = ray.get(global_cache.get_termination_single.remote(conf.id , instance))
             if termination_check_c_i:
                 result_conf = conf
                 result_instance = instance
@@ -139,8 +139,8 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
         if len(ob_t.configurations) == 1:
             i_no_result = get_instances_no_results(results, ob_t.configurations[0].id, ob_t.instance_set)
             if len(i_no_result) == 1:
-                termination = ray.get(global_cache.get_termination_single.remote(ob_t.configurations[0],i_no_result[0]))
-                result = ray.get(global_cache.get_results_single.remote(ob_t.configurations[0],i_no_result[0]))
+                termination = ray.get(global_cache.get_termination_single.remote(ob_t.configurations[0].id, i_no_result[0]))
+                result = ray.get(global_cache.get_results_single.remote(ob_t.configurations[0].id, i_no_result[0]))
                 if termination and result == False and [ob_t.configurations[0],i_no_result[0]] not in bug_handel:
                     logger.info(f"Stale tournament: {time.strftime('%X %x %Z')}, {ob_t.configurations[0]}, {i_no_result[0]} , {first_task}, {bug_handel}")
                     ready_ids, _remaining_ids = ray.wait([first_task], timeout=0)
@@ -262,8 +262,9 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             #global_cache.put_tournament_update.remote(tournaments)
             global_cache.put_tournament_update.remote(result_tournament)
 
-        overall_best_update(tournaments, results)
+        overall_best_update(tournaments, results, scenario)
 
+    global_cache.save_rt_results.remote()
     print("DONE")
     logger.info("DONE")
     time.sleep(30)

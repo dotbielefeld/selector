@@ -45,6 +45,7 @@ class Scenario:
             setattr(self, arg_name, arg_value)
 
         self.cutoff_time = float(self.cutoff_time)
+        self.wallclock_limit = float(self.wallclock_limit)
 
         self.verify_scenario()
 
@@ -158,22 +159,28 @@ def parse_args():
 
     hp.add_argument('--check_path', default=False)
     hp.add_argument('--seed', default=42)
-    hp.add_argument('--ta_run_type',type=str, default="import_wrapper")
-    hp.add_argument('--ta_pid_name', type=str, default="glucose")
+    hp.add_argument('--ta_pid_name', type=str, default="")
+    hp.add_argument('--log_folder', type=str, default="latest")
+    hp.add_argument('--memory_limit', type=int, default=1023*3)
+
+    hp.add_argument('--ta_run_type', type=str, default="import_wrapper")
+    hp.add_argument('--wrapper_mod_name', type=str, default="", required='--ta_run_type' in sys.argv)
+    hp.add_argument('--wrapper_class_name', type=str, default="", required='--ta_run_type' in sys.argv)
 
     hp.add_argument('--winners_per_tournament', type=int, default=1)
     hp.add_argument('--tournament_size', type=int, default=5 )
     hp.add_argument('--number_tournaments', type=int, default=2)
 
+    hp.add_argument('--par', type=int, default=1)
+
     hp.add_argument('--termination_criterion', type=str, default="runtime")
-    hp.add_argument('--total_runtime', type=int, default=1200)
     hp.add_argument('--total_tournament_number', type=int, default=10)
 
     hp.add_argument('--generator_multiple', type=int, default=5)
-    hp.add_argument('--initial_instance_set_size', type=int, default=2)
-    hp.add_argument('--set_size', type=int, default=10)
+    hp.add_argument('--initial_instance_set_size', type=int, default=5)
+    hp.add_argument('--set_size', type=int, default=50)
 
-    so.add_argument('--scenario_file', type=str)
+    so.add_argument('--scenario_file', type=str, required=True)
     so.add_argument('--ta_cmd', type=str)
     so.add_argument('--deterministic', type=str)
     so.add_argument('--run_obj', type=str)
@@ -181,7 +188,6 @@ def parse_args():
     so.add_argument('--cutoff_time', type=str)
     so.add_argument('--wallclock_limit', type=str)
     so.add_argument('--instance_file', type=str)
-    so.add_argument('--test_instance_file', type=str)
     so.add_argument('--feature_file', type=str)
     so.add_argument('--paramfile', type=str)
 

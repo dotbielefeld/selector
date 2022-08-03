@@ -2,6 +2,7 @@ import numpy as np
 import ray
 import uuid
 import time
+import copy
 
 from selector.pool import Tournament
 from selector.tournament_performance import get_censored_runtime_for_instance_set, get_instances_no_results, get_conf_time_out, get_runtime_for_instance_set_with_timeout
@@ -41,10 +42,10 @@ class MiniTournamentDispatcher:
         else:
             first_instance = np.random.choice(instance_partition)
 
-            configurations_not_run_on_all = configurations
+            configurations_not_run_on_all = copy.deepcopy(configurations)
             configurations_not_run_on_all.remove(most_run_conf)
 
-            extra_instances = instance_partition
+            extra_instances = copy.deepcopy(instance_partition)
             extra_instances.remove(first_instance)
 
             extra_assignment = [np.random.choice(configurations_not_run_on_all), np.random.choice(extra_instances)]
@@ -53,7 +54,8 @@ class MiniTournamentDispatcher:
 
             best_finisher = [most_run_conf]
 
-        configuration_ids = [c.id for c in configurations]
+        configuration_ids = [c.id for c in configurations] + [b.id for b in best_finisher if len(best_finisher) >= 1]
+
         return Tournament(uuid.uuid4(), best_finisher, [], configurations, configuration_ids, {}, instance_partition,
                           instance_partition_id), \
                initial_instance_conf_assignments
