@@ -54,7 +54,8 @@ class MiniTournamentDispatcher:
 
             best_finisher = [most_run_conf]
 
-        configuration_ids = [c.id for c in configurations]
+        configuration_ids = [c.id for c in configurations] + [b.id for b in best_finisher if len(best_finisher) >= 1]
+
         return Tournament(uuid.uuid4(), best_finisher, [], configurations, configuration_ids, {}, instance_partition,
                           instance_partition_id), \
                initial_instance_conf_assignments
