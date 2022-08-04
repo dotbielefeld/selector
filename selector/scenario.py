@@ -147,6 +147,11 @@ class Scenario:
                     scenario_dict[key] = pairs[1]
         return scenario_dict
 
+class LoadOptionsFromFile (argparse.Action):
+    def __call__ (self, parser, namespace, values, option_string = None):
+        with values as f:
+            parser.parse_args(f.read().split(), namespace)
+
 def parse_args():
     """
     Argparser
@@ -156,6 +161,8 @@ def parse_args():
     parser = argparse.ArgumentParser()
     hp = parser.add_argument_group("Hyperparameters of selector")
     so = parser.add_argument_group("Scenario options")
+
+    hp.add_argument('--file', type=open, action=LoadOptionsFromFile)
 
     hp.add_argument('--check_path', default=False)
     hp.add_argument('--seed', default=42)
@@ -180,7 +187,7 @@ def parse_args():
     hp.add_argument('--initial_instance_set_size', type=int, default=5)
     hp.add_argument('--set_size', type=int, default=50)
 
-    so.add_argument('--scenario_file', type=str, required=True)
+    so.add_argument('--scenario_file', type=str)
     so.add_argument('--ta_cmd', type=str)
     so.add_argument('--deterministic', type=str)
     so.add_argument('--run_obj', type=str)
