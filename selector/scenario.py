@@ -1,7 +1,7 @@
 import os
 import warnings
 import argparse
-
+import pickle
 import sys
 sys.path.append(os.getcwd())
 
@@ -48,6 +48,9 @@ class Scenario:
         self.wallclock_limit = float(self.wallclock_limit)
 
         self.verify_scenario()
+
+        with open(f'./selector/logs/{self.log_folder}/scenario.pkl', 'wb') as out:
+            pickle.dump(scenario, out)
 
 
 
