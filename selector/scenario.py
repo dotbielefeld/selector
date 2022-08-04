@@ -190,7 +190,7 @@ def parse_args():
     hp.add_argument('--initial_instance_set_size', type=int, default=5)
     hp.add_argument('--set_size', type=int, default=50)
 
-    so.add_argument('--scenario_file', type=str)
+    so.add_argument('--scenario_file', type=str, required=True)
     so.add_argument('--ta_cmd', type=str)
     so.add_argument('--deterministic', type=str)
     so.add_argument('--run_obj', type=str)
