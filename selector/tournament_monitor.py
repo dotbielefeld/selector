@@ -9,7 +9,7 @@ from tournament_performance import get_censored_runtime_for_instance_set,get_con
 
 @ray.remote(num_cpus=1)
 class Monitor:
-    def __init__(self, sleep_time, cache, number_of_finisher):
+    def __init__(self, sleep_time, cache, scenario):
         """
         Monitor whether the live total runtime of a running conf is exceeding the accumulated runtime of the worst finisher,
          given that we have already enough finisher. While up the monitor may kill multiple conf/instance pairs. To avoid
@@ -21,10 +21,10 @@ class Monitor:
         """
         self.sleep_time = sleep_time
         self.cache = cache
-        self.number_of_finisher = number_of_finisher
+        self.number_of_finisher = scenario.winners_per_tournament
         self.tournaments = []
 
-        logging.basicConfig(filename=f'./selector/logs/monitor.log', level=logging.INFO,
+        logging.basicConfig(filename=f'./selector/logs/{scenario.log_folder}/monitor.log', level=logging.INFO,
                             format='%(asctime)s %(message)s')
 
     def monitor(self):
