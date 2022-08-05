@@ -1,11 +1,13 @@
 import ray
 import logging
+import json
+import os
 
 
 @ray.remote(num_cpus=1)
 class TargetAlgorithmObserver:
 
-    def __init__(self):
+    def __init__(self, scenario):
         self.intermediate_output = {}
         self.results = {}
         self.start_time = {}
@@ -13,9 +15,10 @@ class TargetAlgorithmObserver:
         self.termination_history = {}
         self.tournaments = {}
         self.read_from = {"conf id":1 , "instance_id":1 , "index":1 }
+        self.scenario = scenario
 
         # todo logging dic should be provided somewhere else -> DOTAC-37
-        logging.basicConfig(filename='./selector/logs/latest/Target_Algorithm_Cache.logger', level=logging.INFO,
+        logging.basicConfig(filename=f'./selector/logs/{self.scenario.log_folder}/Target_Algorithm_Cache.logger', level=logging.INFO,
                             format='%(asctime)s %(message)s')
 
     def put_intermediate_output(self, conf_id, instance_id, value):
@@ -45,6 +48,13 @@ class TargetAlgorithmObserver:
     def get_results(self):
         logging.info(f"Publishing results")
         return self.results
+
+    def get_results_single(self, conf_id, instance_id):
+        result = False
+        if conf_id in list(self.results.keys()):
+            if instance_id in list(self.results[conf_id].keys()):
+                result = self.results[conf_id][instance_id]
+        return result
 
     def put_start(self,conf_id, instance_id, start):
         logging.info(f"Getting start: {conf_id}, {instance_id}, {start} ")
@@ -84,3 +94,17 @@ class TargetAlgorithmObserver:
 
     def get_termination_history(self):
         return self.termination_history
+
+    def get_termination_single(self, conf_id, instance_id):
+        termination = False
+        if conf_id in list(self.termination_history.keys()):
+            if instance_id in list(self.termination_history[conf_id]):
+                termination = True
+        return termination
+
+    def save_rt_results(self):
+        with open(f"./selector/logs/{self.scenario.log_folder}/run_history.json", 'a') as f:
+            history = {str(k):v for k,v in self.results.items()}
+            json.dump(history, f)
+            f.write(os.linesep)
+
