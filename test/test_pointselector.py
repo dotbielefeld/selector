@@ -2,7 +2,13 @@
 import unittest
 import numpy as np
 import pickle
-from selector.pool import Configuration, Generator, Tournament
+from selector.pool import (
+    Configuration,
+    Generator,
+    Tournament,
+    Surrogates,
+    Status
+)
 from selector.pointselector import RandomSelector, HyperparameterizedSelector
 from selector.point_gen import PointGen
 from selector.random_point_generator import random_point
@@ -10,7 +16,7 @@ from selector.default_point_generator import default_point
 from selector.variable_graph_point_generator import variable_graph_point, Mode
 from selector.lhs_point_generator import lhc_points, LHSType, Criterion
 from selector.selection_features import FeatureGenerator
-# from selector.surrogates.surrogates import SurrogateManager
+from selector.surrogates.surrogates import SurrogateManager
 import uuid
 import copy
 
@@ -64,10 +70,10 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
 
         for conf in generated_points:
             if generated_points[-1] == conf:
-                self.results[conf.id] = {0: np.random.randint(2, 15),
-                                         1: np.random.randint(2, 15)}
+                self.results[conf.id] = {'instance_1.cnf': np.random.randint(2, 15),
+                                         'instance_2.cnf': np.random.randint(2, 15)}
             else:
-                self.results[conf.id] = {0: np.random.randint(2, 15)}
+                self.results[conf.id] = {'instance_1.cnf': np.random.randint(2, 15)}
 
         self.hist = {}
 
@@ -113,7 +119,10 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
                                                lhs_type=LHSType.centered,
                                                criterion=Criterion.maximin)
 
-        confs = def_conf + ran_conf + var_conf + lhc_conf
+        sm = SurrogateManager(self.s, seed=42)
+        smac_conf = sm.suggest(Surrogates.SMAC, self.s, n_samples=5)
+
+        confs = def_conf + ran_conf + var_conf + lhc_conf + smac_conf
 
         hps = HyperparameterizedSelector()
 
@@ -130,42 +139,69 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
         evaluated = []
 
         fg = FeatureGenerator()
-        # sm = SurrogateManager(self.s.parameter)
+
+        cutoff_time = float(self.s.cutoff_time)
+        predicted_perf = []
+        predicted_quals = []
+        qap = False
+        evaluated = []
 
         for epoch in range(2):
 
+            result_tournament = self.hist[list(self.hist.keys())[4]]
+
+            all_configs \
+                = result_tournament.best_finisher \
+                + result_tournament.worst_finisher
+
+            terminations = []
+
+            for surrogate in sm.surrogates.keys():
+                sm.update_surr(surrogate, result_tournament, all_configs,
+                               self.results, terminations)
+
             features = fg.static_feature_gen(confs, epoch, max_epochs)
-            features = np.concatenate(
-                (features, fg.diversity_feature_gen(confs, self.hist,
-                                                    self.results, cutoff_time,
-                                                    self.s.parameter,
-                                                    predicted_quals,
-                                                    evaluated)),
-                axis=1)
-            '''
+            features \
+                = np.concatenate((features,
+                                  fg.diversity_feature_gen(confs, self.hist,
+                                                           self.results,
+                                                           cutoff_time,
+                                                           self.s.parameter,
+                                                           predicted_quals,
+                                                           evaluated)),
+                                 axis=1)
+
+            for surrogate in sm.surrogates.keys():
+                if sm.surrogates[surrogate].surr.model.rf is not None:
+                    predicted_perf = sm.predict(surrogate,
+                                                confs,
+                                                cutoff_time)
+
             features = np.concatenate((features,
                                       fg.dynamic_feature_gen(confs, self.hist,
-                                                             predicted_quals,
+                                                             predicted_perf,
                                                              sm, cutoff_time,
-                                                             self.s.parameter,
                                                              self.results)),
                                       axis=1)
-            '''
 
-            selected_ids.append(hps.select_points(self.s, confs,
-                                                  configs_requested, epoch,
-                                                  max_epochs, features,
-                                                  weights, self.results,
-                                                  max_evals=100, seed=42)[0])
+            selected_ids = hps.select_points(self.s, confs, configs_requested,
+                                             epoch, max_epochs, features,
+                                             weights, self.results,
+                                             max_evals=100, seed=42)
+
+            for surrogate in sm.surrogates.keys():
+                if sm.surrogates[surrogate].surr.model.rf is not None:
+                    if qap:
+                        predicted_quals.extend(sm.predict(surrogate,
+                                                          selected_ids,
+                                                          cutoff_time))
+                    else:
+                        predicted_quals.extend(sm.predict(surrogate,
+                                                          evaluated,
+                                                          cutoff_time))
+                        qap = True
 
             evaluated.extend(selected_ids)
-
-            '''
-            predicted_quals.extend(sm.expected_value(selected_ids,
-                                                     self.s.parameter,
-                                                     cutoff_time,
-                                                     surrogate='SMAC'))
-            '''
 
             for conf in selected_ids:
                 if selected_ids[-1] == conf:
@@ -174,21 +210,36 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
                 else:
                     self.results[conf.id] = {1: np.random.randint(2, 15)}
 
-            '''
-            for conf in selected_ids:
-                for surrogate in sm.surrogates.keys():
-                    sm.observe(conf.conf, self.results[conf.id][epoch],
-                               self.s.parameter, cutoff_time, surrogate)
-            '''
+            ran_conf = []
+            for i in range(5):
+                ran_conf.append(
+                    self.random_generator.point_generator(seed=42 + i))
+
+            var_conf = []
+
+            for i in range(5):
+                var_conf.append(self.variable_graph_generator.point_generator(
+                    mode=Mode.random,
+                    alldata=self.hist, lookback=i + 1, seed=(42 + i)))
+
+            lhc_conf \
+                = self.lhc_generator.point_generator(n_samples=5, seed=42,
+                                                     lhs_type=LHSType.centered,
+                                                     criterion=Criterion.
+                                                     maximin)
+
+            smac_conf = sm.suggest(Surrogates.SMAC, self.s, n_samples=5)
+
+            confs = ran_conf + var_conf + lhc_conf + smac_conf
 
         test_1 = Configuration(1,
-                               {'luby': False, 'rinc': 1.3900000000000001,
-                                'cla-decay': 0.9299970000000001,
-                                'phase-saving': 2, 'bce-limit': 20090000,
-                                'param_1': -1},
+                               {'luby': True, 'rinc': 3.1300000000000003,
+                                'cla-decay': 0.909999,
+                                'phase-saving': 1, 'bce-limit': 60070000,
+                                'param_1': -2, 'strSseconds': '150'},
                                Generator.var_graph)
 
-        self.assertEqual(selected_ids[0].conf, test_1.conf)
+        self.assertEqual(selected_ids[1].conf, test_1.conf)
 
 if __name__ == '__main__':
     unittest.main()
