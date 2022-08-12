@@ -193,6 +193,7 @@ def pairwise_distances(sugg_i, sugg_j):
                         s += (float(s_i.conf[key]) - float(s_j.conf[key]))**2
                     else:
                         s += (s_i.conf[key] - s_j.conf[key])**2
+                        
             m[i, j] = s**0.5
 
     return np.array(m)

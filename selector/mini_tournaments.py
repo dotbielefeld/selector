@@ -15,11 +15,13 @@ from ta_result_store import TargetAlgorithmObserver
 from ta_execution import dummy_task
 
 from selector.point_gen import PointGen
+from selector.pool import Status, Surrogates
 from selector.random_point_generator import random_point
 from selector.default_point_generator import default_point
 from selector.variable_graph_point_generator import variable_graph_point, Mode
 from selector.lhs_point_generator import lhc_points, LHSType, Criterion
 from selector.selection_features import FeatureGenerator
+from selector.surrogates.surrogates import SurrogateManager
 # from selector.surrogates.surrogates import SurrogateManager
 
 from tournament_dispatcher import MiniTournamentDispatcher
@@ -87,10 +89,14 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
 
     cutoff_time = scenario.cutoff_time
     predicted_quals = []
+    predicted_perf = []
     evaluated = []
+    qap = False
 
     # sm = SurrogateManager(scenario.parameter)
     fg = FeatureGenerator()
+    sm = SurrogateManager(scenario, seed=42)
+    smac_conf = sm.suggest(Surrogates.SMAC, scenario, n_samples=5)
     bug_handel = []
     tournament_history = {}
 
@@ -153,6 +159,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
 
 
         results = ray.get(global_cache.get_results.remote())
+
         result_tournament = get_tournament_membership(tournaments, result_conf)
 
         # Check whether we canceled a task or if the TA terminated regularly
@@ -180,6 +187,14 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             print("Iteration:", time.time() - main_loop_start, tournament_counter)
             tournament_counter += 1
 
+            all_configs = result_tournament.best_finisher + result_tournament.worst_finisher
+
+            terminations = ray.get(global_cache.get_termination_history.remote())
+
+            for conf in all_configs:
+                for surrogate in sm.surrogates.keys():
+                    sm.update_surr(surrogate, result_tournament, all_configs, results, terminations)
+
             # Generate and select
 
             #generated_points = [random_generator.point_generator() for _ in range(scenario.tournament_size * scenario.generator_multiple)]
@@ -203,8 +218,10 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
                 lhs_type=LHSType.centered,
                 criterion=Criterion.maximin)
 
+            smac_conf = sm.suggest(Surrogates.SMAC, scenario, n_samples=5)
+
             generated_points = random_points + default_ps + \
-                vg_points + lhc_ps
+                vg_points + lhc_ps + smac_conf
 
             features = fg.static_feature_gen(generated_points, epoch, max_epochs)
             features = np.concatenate(
@@ -215,6 +232,20 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
                                                     evaluated)),
                 axis=1)
 
+            for surrogate in sm.surrogates.keys():
+                if sm.surrogates[surrogate].surr.model.rf is not None:
+                    predicted_perf = sm.predict(surrogate,
+                                                generated_points,
+                                                cutoff_time)
+
+            features = np.concatenate((features,
+                                      fg.dynamic_feature_gen(generated_points,
+                                                             hist,
+                                                             predicted_perf,
+                                                             sm, cutoff_time,
+                                                             results)),
+                                      axis=1)
+
             weights = [1 for _ in generated_points]
             weights = [weights for _ in features]
             weights = np.array(weights)
@@ -223,6 +254,18 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
                                                      scenario.tournament_size - 1,
                                                      epoch, max_epochs, features, weights, results,
                                                      max_evals=100)
+
+            for surrogate in sm.surrogates.keys():
+                if sm.surrogates[surrogate].surr.model.rf is not None:
+                    if qap:
+                        predicted_quals.extend(sm.predict(surrogate,
+                                                          points_to_run,
+                                                          cutoff_time))
+                    else:
+                        predicted_quals.extend(sm.predict(surrogate,
+                                                          evaluated,
+                                                          cutoff_time))
+                        qap = True
 
             evaluated.extend(points_to_run)
 

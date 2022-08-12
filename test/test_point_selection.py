@@ -12,7 +12,8 @@ from selector.default_point_generator import default_point
 from selector.variable_graph_point_generator import variable_graph_point, Mode
 from selector.lhs_point_generator import lhc_points, LHSType, Criterion
 from selector.selection_features import FeatureGenerator
-# from selector.surrogates.surrogates import SurrogateManager
+from selector.surrogates.surrogates import SurrogateManager
+from selector.pool import Status, Surrogates, Generator
 
 
 def test_point_selection(scenario, parser):
@@ -46,6 +47,8 @@ def test_point_selection(scenario, parser):
                                                               instances,
                                                               instance_id)
 
+        tourn.configurations[i].generator = np.random.choice([*Generator])
+
         tourn.best_finisher = [tourn.configurations[i]]
 
         tourn.configurations.pop(i)
@@ -56,10 +59,12 @@ def test_point_selection(scenario, parser):
 
     hist = ray.get(global_cache.get_tournament_history.remote())
 
+    result_tournament = hist[list(hist.keys())[4]]
+
     for tourn in hist.values():
         for conf in tourn.configuration_ids:
             global_cache.put_result.remote(uuid.UUID(str(conf)),
-                                           instance_id,
+                                           result_tournament.instance_set[0],
                                            np.random.randint(2, 15))
 
     default_generator = PointGen(s, default_point, seed=42)
@@ -93,7 +98,10 @@ def test_point_selection(scenario, parser):
 
     # print('\n LHC configurations:\n\n', *lhc_conf, sep="\n\n")
 
-    confs = def_conf + ran_conf + var_conf + lhc_conf
+    sm = SurrogateManager(s, seed=42)
+    smac_conf = sm.suggest(Surrogates.SMAC, s, n_samples=5)
+
+    confs = def_conf + ran_conf + var_conf + lhc_conf + smac_conf
 
     hps = HyperparameterizedSelector()
 
@@ -106,14 +114,29 @@ def test_point_selection(scenario, parser):
     max_epochs = 256
 
     fg = FeatureGenerator()
-    # sm = SurrogateManager(s.parameter)
 
     cutoff_time = s.cutoff_time
     results = ray.get(global_cache.get_results.remote())
+    predicted_perf = []
     predicted_quals = []
+    qap = False
     evaluated = []
 
-    for epoch in range(3):
+    results = ray.get(global_cache.get_results.remote())
+
+    for epoch in range(10):
+        result_tournament = hist[list(hist.keys())[4]]
+
+        all_configs \
+            = result_tournament.best_finisher \
+            + result_tournament.worst_finisher
+
+        terminations = []
+
+        for surrogate in sm.surrogates.keys():
+            sm.update_surr(surrogate, result_tournament, all_configs,
+                           results, terminations)
+
         features = fg.static_feature_gen(confs, epoch, max_epochs)
         features = np.concatenate((features,
                                    fg.diversity_feature_gen(confs, hist,
@@ -123,41 +146,62 @@ def test_point_selection(scenario, parser):
                                                             predicted_quals,
                                                             evaluated)),
                                   axis=1)
-        '''
+
+        for surrogate in sm.surrogates.keys():
+            if sm.surrogates[surrogate].surr.model.rf is not None:
+                predicted_perf = sm.predict(surrogate,
+                                            confs,
+                                            cutoff_time)
+
         features = np.concatenate((features,
                                   fg.dynamic_feature_gen(confs, hist,
-                                                         predicted_quals,
+                                                         predicted_perf,
                                                          sm, cutoff_time,
-                                                         s.parameter,
                                                          results)),
                                   axis=1)
-        '''
 
         selected_ids = hps.select_points(s, confs, configs_requested, epoch,
                                          max_epochs, features, weights,
                                          results, max_evals=100, seed=42)
 
-        evaluated.extend(selected_ids)
+        for surrogate in sm.surrogates.keys():
+            if sm.surrogates[surrogate].surr.model.rf is not None:
+                if qap:
+                    predicted_quals.extend(sm.predict(surrogate,
+                                                      selected_ids,
+                                                      cutoff_time))
+                else:
+                    predicted_quals.extend(sm.predict(surrogate,
+                                                      evaluated,
+                                                      cutoff_time))
+                    qap = True
 
-        '''
-        predicted_quals.extend(sm.expected_value(selected_ids, s.parameter,
-                                                 cutoff_time,
-                                                 surrogate='GPR'))
-        '''
+        evaluated.extend(selected_ids)
 
         for conf in selected_ids:
             global_cache.put_result.remote(conf.id,
-                                           epoch,
+                                           result_tournament.instance_set[0],
                                            np.random.randint(2, 15))
 
         results = ray.get(global_cache.get_results.remote())
 
-        '''
-        for conf in selected_ids:
-            for surrogate in sm.surrogates.keys():
-                sm.observe(conf.conf, results[conf.id][epoch], s.parameter,
-                           cutoff_time, surrogate)
-        '''
+        ran_conf = []
+        for i in range(5):
+            ran_conf.append(random_generator.point_generator(seed=42 + i))
 
-        print(selected_ids)
-        print(len(selected_ids))
+        var_conf = []
+
+        for i in range(5):
+            var_conf.append(variable_graph_generator.point_generator(
+                mode=Mode.random,
+                alldata=hist, lookback=i + 1, seed=(42 + i)))
+
+        lhc_conf = lhc_generator.point_generator(n_samples=5, seed=42,
+                                                 lhs_type=LHSType.centered,
+                                                 criterion=Criterion.maximin)
+
+        smac_conf = sm.suggest(Surrogates.SMAC, s, n_samples=5)
+
+        confs = ran_conf + var_conf + lhc_conf + smac_conf
+
+        print('\n', selected_ids)
