@@ -11,6 +11,12 @@ from selector.default_point_generator import default_point
 from selector.variable_graph_point_generator import variable_graph_point, Mode
 from selector.lhs_point_generator import lhc_points, LHSType, Criterion
 from selector.scenario import Scenario, parse_args
+from selector.surrogates.surrogates import SurrogateManager
+from selector.pool import Surrogates, Tournament
+import pickle
+import uuid
+import copy
+import numpy as np
 
 
 class PointGenTest(unittest.TestCase):
@@ -18,60 +24,60 @@ class PointGenTest(unittest.TestCase):
 
     def setUp(self):
         """Set up unittest."""
-        parser = parse_args()
-        self.s = Scenario("./test_data/test_scenario.txt", parser)
+        file = open('./test/s', 'rb')
+        self.s = pickle.load(file)
+        file.close()
         self.random_generator = PointGen(self.s, random_point)
         # Set up a tournament with mock data
-        global_cache = TargetAlgorithmObserver.remote()
         point_selector = RandomSelector()
         for i in range(2):
             instance_selector = InstanceSet(self.s.instance_set, 1, 1)
             generated_points = [self.random_generator.point_generator(seed=42)
                                 for _ in range(self.s.tournament_size *
                                                self.s.generator_multiple)]
-            points_to_run = point_selector.select_points(
+            point_selector.select_points(
                 generated_points,
                 self.s.tournament_size, 0)
             instance_id, instances = instance_selector.get_subset(0)
+            tourn = {}
 
-            tourn, _ = MiniTournamentDispatcher().init_tournament(
-                global_cache,
-                points_to_run,
-                instances,
-                instance_id)
+            tourn_id = uuid.uuid4()
+            gp = copy.deepcopy(generated_points)
+            best_finisher = np.random.choice(gp)
+            configuration_ids = []
+            worst_finisher = np.random.choice(gp, size=5).tolist()
+            for conf in generated_points:
+                configuration_ids.append(conf.id)
 
-            tourn.best_finisher = [tourn.configurations[i]]
+            tourn[tourn_id] = \
+                Tournament(tourn_id, [best_finisher], worst_finisher,
+                           generated_points, configuration_ids, {},
+                           ['instance_1.cnf'], 0)
 
-            tourn.configurations.pop(i)
-            tourn.worst_finisher = tourn.configurations
-            tourn.configurations = []
-            global_cache.put_tournament_history.remote(tourn)
+            tourn[tourn_id].best_finisher = [tourn[tourn_id].configurations[0]]
 
-        self.hist = ray.get(global_cache.get_tournament_history.remote())
+            tourn[tourn_id].configurations.pop(i)
+            tourn[tourn_id].worst_finisher = tourn[tourn_id].configurations
+            tourn[tourn_id].configurations = []
+
+        self.hist = tourn
         self.default_generator = PointGen(self.s, default_point)
         self.variable_graph_generator = PointGen(self.s, variable_graph_point)
         self.lhc_generator = PointGen(self.s, lhc_points)
+        self.sm = SurrogateManager(self.s, seed=42)
 
     def test_default_point(self):
-        """
-        Testing default point generation.
-
-        : param conf: generated default configuration
-        """
+        """Testing default point generation."""
         conf = self.default_generator.point_generator()
         self.assertEqual(conf.conf, {'luby': False, 'rinc': 2.0,
                                      'cla-decay': 0.999,
                                      'phase-saving': 2,
-                                     'strSseconds': 150.0,
+                                     'strSseconds': '150',
                                      'bce-limit': 100000000,
                                      'param_1': -1})
 
     def test_random_point(self):
-        """
-        Testing random point generation.
-
-        : param conf: generated default configuration
-        """
+        """Testing random point generation."""
         conf = self.random_generator.point_generator(seed=42)
         self.assertEqual(conf.conf, {'luby': True,
                                      'rinc': 3.409974661894675,
@@ -81,14 +87,11 @@ class PointGenTest(unittest.TestCase):
                                      'param_1': -1})
 
     def test_vg_point(self):
-        """
-        Testing variable graph point generation.
-
-        : param conf: generated default configuration
-        """
+        """Testing variable graph point generation."""
         conf = self.variable_graph_generator.point_generator(
             mode=Mode.best_and_random,
-            alldata=self.hist, lookback=2, seed=42)
+            alldata=self.hist, lookback=0, seed=42)
+        print('\nconf\n', conf)
         self.assertEqual(conf.conf, {'luby': True,
                                      'rinc': 3.409974661894675,
                                      'cla-decay': 0.9175615966761705,
@@ -97,11 +100,7 @@ class PointGenTest(unittest.TestCase):
                                      'param_1': -1})
 
     def test_lhc_point(self):
-        """
-        Testing variable graph point generation.
-
-        : param conf: generated default configuration
-        """
+        """Testing variable graph point generation."""
         conf = self.lhc_generator.point_generator(
             n_samples=2, seed=42,
             lhs_type=LHSType.centered,
@@ -110,7 +109,7 @@ class PointGenTest(unittest.TestCase):
                                         'rinc': 3.275,
                                         'cla-decay': 0.9249975,
                                         'phase-saving': 0,
-                                        'strSseconds': 200.0,
+                                        'strSseconds': '250',
                                         'bce-limit': 50075000,
                                         'param_1': -2})
 

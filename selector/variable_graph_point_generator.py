@@ -269,10 +269,17 @@ def choose_parents(mode, data, lookback):
             conf_list.extend(tourn.best_finisher)
             conf_list.extend(tourn.worst_finisher)
 
-        C = np.random.choice(conf_list)
-        C_ind = conf_list.index(C)
-        conf_list.pop(C_ind)
-        N = np.random.choice(conf_list)
+        if conf_list:
+            C = np.random.choice(conf_list)
+            C_ind = conf_list.index(C)
+            conf_list.pop(C_ind)
+        else:
+            C = np.random.choice(tourn.configurations)
+
+        if conf_list:
+            N = np.random.choice(conf_list)
+        else:
+            N = np.random.choice(tourn.configurations)
 
     elif mode == Mode.only_best:
         all_best = []
