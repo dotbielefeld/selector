@@ -1,7 +1,7 @@
 import os
 import warnings
 import argparse
-
+import pickle
 import sys
 sys.path.append(os.getcwd())
 
@@ -48,6 +48,9 @@ class Scenario:
         self.wallclock_limit = float(self.wallclock_limit)
 
         self.verify_scenario()
+
+        with open(f'./selector/logs/{self.log_folder}/scenario.pkl', 'wb') as out:
+            pickle.dump(scenario, out)
 
 
 
@@ -147,6 +150,11 @@ class Scenario:
                     scenario_dict[key] = pairs[1]
         return scenario_dict
 
+class LoadOptionsFromFile (argparse.Action):
+    def __call__ (self, parser, namespace, values, option_string = None):
+        with values as f:
+            parser.parse_args(f.read().split(), namespace)
+
 def parse_args():
     """
     Argparser
@@ -156,6 +164,8 @@ def parse_args():
     parser = argparse.ArgumentParser()
     hp = parser.add_argument_group("Hyperparameters of selector")
     so = parser.add_argument_group("Scenario options")
+
+    hp.add_argument('--file', type=open, action=LoadOptionsFromFile)
 
     hp.add_argument('--check_path', default=False)
     hp.add_argument('--seed', default=42)

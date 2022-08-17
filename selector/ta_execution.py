@@ -7,6 +7,7 @@ import numpy as np
 import psutil
 import os
 import signal
+import traceback
 
 from threading  import Thread
 from queue import Queue, Empty
@@ -164,6 +165,8 @@ def tae_from_cmd_wrapper(conf, instance_path, cache, ta_command_creator, scenari
         cache.put_result.remote(conf.id, instance_path, np.nan)
         logging.info(f"Killing status: {p.poll()} {conf.id} {instance_path}")
         return  conf, instance_path, True
+    except Exception:
+        logging.info(f"Exception in TA execution: {traceback.format_exc()}")
 
 
 @ray.remote(num_cpus=1)
