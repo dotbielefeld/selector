@@ -14,8 +14,11 @@ import numpy as np
 import itertools
 from enum import Enum, IntEnum
 from selector.pool import Configuration, ParamType, Generator
-from selector.random_point_generator import random_set_conf
-from selector.default_point_generator import check_conditionals, check_no_goods
+from selector.generators.random_point_generator import random_set_conf
+from selector.generators.default_point_generator import (
+    check_conditionals,
+    check_no_goods
+)
 
 
 class LabelType(IntEnum):

@@ -4,7 +4,10 @@ import numpy as np
 import math
 import sys
 from selector.pool import Configuration, ParamType, Generator
-from selector.default_point_generator import check_conditionals, check_no_goods
+from selector.generators.default_point_generator import (
+    check_conditionals,
+    check_no_goods
+)
 
 
 def reset_no_goods(s, config_setting):

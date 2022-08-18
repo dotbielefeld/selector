@@ -2,8 +2,8 @@
 
 import numpy as np
 
-from selector.pool import Surrogates, Status
-from selector.surrogates.smac_surrogate import SmacSurr
+from selector.pool import Surrogates
+from selector.generators.surrogates.smac_surrogate import SmacSurr
 
 from smac.tae import StatusType
 

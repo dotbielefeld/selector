@@ -35,7 +35,7 @@ class SmacSurr():
         :param seed: int, random seed
         """
         if not seed:
-            self.seed = numpy.random.randint(2**32 - 1)
+            self.seed = False
         else:
             self.seed = seed
         self.stats = Stats
@@ -46,10 +46,11 @@ class SmacSurr():
         self.rh2epm = RunHistory2EPM4Cost(scenario=self.scenario,
                                           num_params=len(self.config_space),
                                           success_states=StatusType)
-        self.rafo = RandomForestWithInstances(configspace=self.config_space,
-                                              types=self.types,
-                                              bounds=self.bounds,
-                                              seed=self.seed)
+        self.rafo \
+            = RandomForestWithInstances(configspace=self.config_space,
+                                        types=self.types,
+                                        bounds=self.bounds,
+                                        seed=self.seed)
         self.aaf = EI(model=self.rafo)
         self.aafpi = PI(model=self.rafo)
         self.afm = LocalSearch(acquisition_function=self.aaf,
@@ -181,10 +182,8 @@ class SmacSurr():
         :return suggestions: list, list of configurations
         """
         suggestions = []
-        config_setting = {}
         added = 0
         param_order = []
-
         params = scenario.parameter
         for p in params:
             param_order.append(p.name)
@@ -199,6 +198,7 @@ class SmacSurr():
                         identity = uuid.UUID(int=random.getrandbits(self.seed))
 
                     sugg_items = s.get_dictionary()
+                    config_setting = {}
                     for po in param_order:
                         if po in sugg_items:
                             config_setting[po] = sugg_items[po]
@@ -231,7 +231,9 @@ class SmacSurr():
                             = int(list(
                                 self.config_space[c].choices)
                             .index(config[c]))
-            configs.append(numpy.array(list(config.values())))
+            conf_vals = [float(x) for x in list(config.values())]
+
+            configs.append(numpy.array(conf_vals))
 
         configs = numpy.array(configs)
 

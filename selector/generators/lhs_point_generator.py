@@ -5,8 +5,11 @@ from skopt.sampler import Lhs
 from enum import Enum
 import uuid
 from selector.pool import Configuration, ParamType, Generator
-from selector.default_point_generator import check_conditionals, check_no_goods
-from selector.random_point_generator import reset_no_goods
+from selector.generators.default_point_generator import (
+    check_conditionals,
+    check_no_goods
+)
+from selector.generators.random_point_generator import reset_no_goods
 
 
 class LHSType(Enum):

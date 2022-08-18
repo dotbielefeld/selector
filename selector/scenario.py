@@ -206,3 +206,7 @@ def parse_args():
 if __name__ == "__main__":
 
     parser = parse_args()
+
+    from test.test_point_selection import test_point_selection
+
+    test_point_selection(Scenario, parser)

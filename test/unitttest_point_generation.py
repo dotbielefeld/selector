@@ -6,12 +6,12 @@ from selector.tournament_dispatcher import MiniTournamentDispatcher
 from selector.pointselector import RandomSelector
 from selector.instance_sets import InstanceSet
 from selector.point_gen import PointGen
-from selector.random_point_generator import random_point
-from selector.default_point_generator import default_point
-from selector.variable_graph_point_generator import variable_graph_point, Mode
-from selector.lhs_point_generator import lhc_points, LHSType, Criterion
+from selector.generators.random_point_generator import random_point
+from selector.generators.default_point_generator import default_point
+from selector.generators.variable_graph_point_generator import variable_graph_point, Mode
+from selector.generators.lhs_point_generator import lhc_points, LHSType, Criterion
 from selector.scenario import Scenario, parse_args
-from selector.surrogates.surrogates import SurrogateManager
+from selector.generators.surrogates.surrogates import SurrogateManager
 from selector.pool import Surrogates, Tournament
 import pickle
 import uuid
@@ -24,7 +24,7 @@ class PointGenTest(unittest.TestCase):
 
     def setUp(self):
         """Set up unittest."""
-        file = open('./test/s', 'rb')
+        file = open('./test/scenario', 'rb')
         self.s = pickle.load(file)
         file.close()
         self.random_generator = PointGen(self.s, random_point)
