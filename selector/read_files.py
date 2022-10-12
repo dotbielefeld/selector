@@ -6,7 +6,7 @@ import numpy as np
 
 boolean_yes = ["on", "yes", "true"]
 boolean_no = ["no", "off", "false"]
-boolean_options = boolean_yes + boolean_no
+boolean_options =  boolean_no + boolean_yes
 
 def get_ta_arguments_from_pcs(para_file):
     """
@@ -109,8 +109,8 @@ def get_categorical(param_name, param_info):
             defaults = False
         else:
             raise ValueError(f"For parameter {param_name} the parsed defaults are not within [yes, no, on, off]")
-
         bounds = [b in boolean_yes for b in bounds]
+        bounds = sorted(bounds)
 
     elif isinstance(str(bounds[0]), str) & isinstance(str(defaults[0]), str):
         param_type = ParamType.categorical
