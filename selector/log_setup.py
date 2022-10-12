@@ -1,6 +1,11 @@
 import os
 import shutil
 from datetime import datetime
+import dataclasses
+import json
+import uuid
+from enum import Enum
+import ray
 
 def clear_logs(folder_for_run = None):
     """
@@ -42,3 +47,22 @@ def log_termination_setting(logger, scenario):
         logger.info(f"No valid termination criterion has been parsed. "
                     f"The termination criterion will be set to runtime.")
         logger.info(f"The total runtime is: {scenario.wallclock_limit}")
+
+class TournamentEncoder(json.JSONEncoder):
+    def default(self, o):
+        if dataclasses.is_dataclass(o):
+            data_dic = dataclasses.asdict(o)
+            data_dic["ray_object_store"] = {}
+            return data_dic
+        elif isinstance(o, uuid.UUID):
+            return str(o)
+        elif isinstance(o, Enum):
+            return str(o)
+        elif isinstance(o, ray._raylet.ObjectRef):
+            return str(o)
+        elif isinstance(o, dict):
+            for k in o.keys():
+                if isinstance(k, uuid.UUID):
+                    o[str(k)] = o.pop(k)
+            return o
+        return super().default(o)

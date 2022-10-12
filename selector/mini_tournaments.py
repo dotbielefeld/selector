@@ -72,7 +72,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
         tournament, initial_assignments = tournament_dispatcher.init_tournament(results, points_to_run,
                                                                                 instances, instance_id)
         tournaments.append(tournament)
-        global_cache.put_tournament_history.remote(tournament)
+        #global_cache.put_tournament_history.remote(tournament)
         global_cache.put_tournament_update.remote(tournament)
         tasks = update_tasks(tasks, initial_assignments, tournament, global_cache, ta_wrapper, scenario)
 
@@ -180,7 +180,6 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
                                                                                      scenario.winners_per_tournament,
                                                                                      scenario.cutoff_time, scenario.par)
 
-        global_cache.put_tournament_history.remote(result_tournament)
         logger.info(f"Result tournament update: {result_tournament}")
 
         if tournament_stop:
@@ -285,11 +284,11 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             # Remove that old tournament
             tournaments.remove(result_tournament)
             tournament_history[result_tournament.id] = result_tournament
+            global_cache.put_tournament_history.remote(result_tournament)
 
             # Add the new tournament and update the ray tasks with the new conf/instance assignments
             tournaments.append(new_tournament)
             tasks = update_tasks(tasks, initial_assignments_new_tournament, new_tournament, global_cache,  ta_wrapper, scenario)
-            global_cache.put_tournament_history.remote(new_tournament)
 
             global_cache.put_tournament_update.remote(new_tournament)
             global_cache.remove_tournament.remote(result_tournament)
@@ -309,6 +308,8 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
         overall_best_update(tournaments, results, scenario)
 
     global_cache.save_rt_results.remote()
+    global_cache.save_tournament_history.remote()
+
     print("DONE")
     logger.info("DONE")
     time.sleep(30)
