@@ -187,6 +187,9 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             print("Iteration:", time.time() - main_loop_start, tournament_counter)
             tournament_counter += 1
 
+            # Get the instances for the new tournament
+            instance_id, instances = instance_selector.get_subset(result_tournament.instance_set_id + 1)
+
             all_configs = result_tournament.best_finisher + result_tournament.worst_finisher
 
             terminations = ray.get(global_cache.get_termination_history.remote())
@@ -273,8 +276,6 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
 
             points_to_run = points_to_run + [result_tournament.best_finisher[0]]
 
-            # Get the instances for the new tournament
-            instance_id, instances = instance_selector.get_subset(result_tournament.instance_set_id + 1)
 
             # Create new tournament
             new_tournament, initial_assignments_new_tournament = tournament_dispatcher.init_tournament(results,
