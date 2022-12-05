@@ -63,11 +63,10 @@ def get_ta_arguments_from_pcs(para_file):
                                  f" the structure adheres to AClib")
 
     # adding conditionals to parameters
-
     for pc in conditionals:
         condition_found = False
         for parameter in parameters:
-            if pc in parameter.name:
+            if re.search(r'\b' + str(pc) + r'\b', parameter.name):
                 parameter.condition.update(conditionals[pc])
                 condition_found = True
         # This should only be a warning: We may have conditions for cat. parameters that are not configurable.

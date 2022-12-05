@@ -49,8 +49,8 @@ class Scenario:
 
         self.verify_scenario()
 
-        with open(f'./selector/logs/{self.log_folder}/scenario.pkl', 'wb') as out:
-            pickle.dump(scenario, out)
+#        with open(f'./selector/logs/{self.log_folder}/scenario.pkl', 'wb') as out:
+#            pickle.dump(scenario, out)
 
 
 
@@ -106,7 +106,7 @@ class Scenario:
         # check if the named instances are really available
         if self.check_path:
             for i in (self.instance_set + self.test_instances):
-                if not os.path.exists(f".{i}".strip("\n")):
+                if not os.path.exists(f"./selector{i}".strip("\n")):
                     raise FileExistsError(f"Instance file {i} does not exist")
 
         for i in (self.instance_set + self.test_instances):
@@ -167,15 +167,17 @@ def parse_args():
 
     hp.add_argument('--file', type=open, action=LoadOptionsFromFile)
 
-    hp.add_argument('--check_path', default=False)
-    hp.add_argument('--seed', default=42)
+    parser.add_argument('--check_path', dest='check_path', action='store_true')
+    parser.add_argument('--check_path', default=False, type=lambda x: (str(x).lower() == 'true'))
+
+    hp.add_argument('--seed', default=42, type=int)
     hp.add_argument('--ta_pid_name', type=str, default="")
     hp.add_argument('--log_folder', type=str, default="latest")
     hp.add_argument('--memory_limit', type=int, default=1023*3)
 
     hp.add_argument('--ta_run_type', type=str, default="import_wrapper")
-    hp.add_argument('--wrapper_mod_name', type=str, default="", required='--ta_run_type' in sys.argv)
-    hp.add_argument('--wrapper_class_name', type=str, default="", required='--ta_run_type' in sys.argv)
+    hp.add_argument('--wrapper_mod_name', type=str, default="")
+    hp.add_argument('--wrapper_class_name', type=str, default="")
 
     hp.add_argument('--winners_per_tournament', type=int, default=1)
     hp.add_argument('--tournament_size', type=int, default=5 )
@@ -189,8 +191,9 @@ def parse_args():
     hp.add_argument('--generator_multiple', type=int, default=5)
     hp.add_argument('--initial_instance_set_size', type=int, default=5)
     hp.add_argument('--set_size', type=int, default=50)
+    hp.add_argument('--instances_dir', type=str, default="")
 
-    so.add_argument('--scenario_file', type=str, required=True)
+    so.add_argument('--scenario_file', type=str)
     so.add_argument('--ta_cmd', type=str)
     so.add_argument('--deterministic', type=str)
     so.add_argument('--run_obj', type=str)
