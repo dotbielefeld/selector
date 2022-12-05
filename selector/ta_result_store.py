@@ -2,7 +2,7 @@ import ray
 import logging
 import json
 import os
-from log_setup import TournamentEncoder
+from selector.log_setup import TournamentEncoder
 
 
 @ray.remote(num_cpus=1)

@@ -6,6 +6,7 @@ import json
 import uuid
 from enum import Enum
 import ray
+import numpy as np
 
 def clear_logs(folder_for_run = None):
     """
@@ -41,6 +42,7 @@ def log_termination_setting(logger, scenario):
         logger.info(f"The termination criterion is: {scenario.termination_criterion}")
         logger.info(f"The total runtime is: {scenario.wallclock_limit}")
     elif scenario.termination_criterion == "total_tournament_number":
+        print(scenario.termination_criterion)
         logger.info(f"The termination criterion is: {scenario.termination_criterion}")
         logger.info(f"The total number of tournaments is: {scenario.total_tournament_number}")
     else:
@@ -65,4 +67,12 @@ class TournamentEncoder(json.JSONEncoder):
                 if isinstance(k, uuid.UUID):
                     o[str(k)] = o.pop(k)
             return o
+        if isinstance(o, np.bool_):
+            return bool(o)
         return super().default(o)
+
+class ConfEncoder(json.JSONEncoder):
+    def default(self, obj):
+        return super().encode(bool(obj)) \
+            if isinstance(obj, np.bool_) \
+            else super().default(obj)
