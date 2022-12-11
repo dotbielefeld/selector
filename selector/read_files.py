@@ -182,10 +182,14 @@ def get_conditional(param_name, param_info):
 
     if condition[0] in boolean_options:
         condition = [c in boolean_yes for c in condition]
-    elif isinstance(float(condition[0]), float):
-        condition = [float(c) for c in condition]    
-    else:
-        raise ValueError(f"For parameter {param_name} the parsed conditions could not be read")
+    else:# We may have categorical condionals
+        try:
+            if isinstance(float(condition[0]), float):
+                condition = [float(c) for c in condition]
+        except ValueError:
+            condition = [c for c in condition]
+        except:
+            raise ValueError(f"For parameter {param_name} the parsed conditions could not be read")
 
     return condition_param, condition
 
