@@ -91,7 +91,7 @@ class Scenario:
         """
         # TODO: verify algo and execdir
 
-        if self.run_obj not in ["runtime"]:
+        if self.run_obj not in ["runtime", "quality"]:
             raise ValueError("The specified run objective is not supported")
 
         if self.overall_obj not in ["mean", "mean10", "PAR10"]:
@@ -167,7 +167,7 @@ def parse_args():
 
     hp.add_argument('--file', type=open, action=LoadOptionsFromFile)
 
-    parser.add_argument('--check_path', dest='check_path', action='store_true')
+    #parser.add_argument('--check_path', dest='check_path', action='store_true')
     parser.add_argument('--check_path', default=False, type=lambda x: (str(x).lower() == 'true'))
 
     hp.add_argument('--seed', default=42, type=int)
@@ -178,6 +178,8 @@ def parse_args():
     hp.add_argument('--ta_run_type', type=str, default="import_wrapper")
     hp.add_argument('--wrapper_mod_name', type=str, default="")
     hp.add_argument('--wrapper_class_name', type=str, default="")
+    hp.add_argument('--quality_match', type=str, default="")
+    hp.add_argument('--quality_extract', type=str, default="")
 
     hp.add_argument('--winners_per_tournament', type=int, default=1)
     hp.add_argument('--tournament_size', type=int, default=5 )

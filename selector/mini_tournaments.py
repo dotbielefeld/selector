@@ -48,8 +48,11 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     hp_seletor = HyperparameterizedSelector()
     tournament_dispatcher = MiniTournamentDispatcher()
     global_cache = TargetAlgorithmObserver.remote(scenario)
-    #monitor = Monitor.remote(1, global_cache, scenario)
-    monitor = InstanceMonitor.remote(1, global_cache, scenario)
+    if scenario.run_obj == "runtime":
+        monitor = Monitor.remote(1, global_cache, scenario)
+        #monitor = InstanceMonitor.remote(1, global_cache, scenario)
+        monitor.monitor.remote()
+
     random_generator = PointGen(scenario, random_point)
     default_point_generator = PointGen(scenario, default_point)
     vg_point_generator = PointGen(scenario, variable_graph_point)
@@ -78,7 +81,6 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
 
     #starting the monitor
     #global_cache.put_tournament_update.remote(tournaments)
-    monitor.monitor.remote()
 
     logger.info(f"Initial Tournaments {tournaments}")
     logger.info(f"Initial Tasks, {[get_tasks(o.ray_object_store, tasks) for o in tournaments]}")
