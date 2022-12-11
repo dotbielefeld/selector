@@ -5,7 +5,7 @@ import ray
 import pickle
 import math
 import copy
-from log_setup import ConfEncoder
+from selector.log_setup import ConfEncoder
 
 def get_conf_time_out(results, configuration_id, instances_set):
     """
