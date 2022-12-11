@@ -251,7 +251,8 @@ def read_instance_features(feature_set_path):
 
         for line in lines[1:]:
             line = line.strip().split(",")
-            features[line[0]] = np.array(line[1:], dtype=np.single)
+            if line[0] != "" :
+                features[line[0]] = np.array(line[1:], dtype=np.single)
 
     return features, feature_names
 
