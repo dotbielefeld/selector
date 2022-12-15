@@ -62,13 +62,20 @@ class TournamentEncoder(json.JSONEncoder):
             return str(o)
         elif isinstance(o, ray._raylet.ObjectRef):
             return str(o)
+        elif isinstance(o, np.bool_):
+            return bool(o)
+        elif isinstance(o, np.integer):
+            return int(o)
+        elif isinstance(o, np.floating):
+            return float(o)
+        elif isinstance(o, np.ndarray):
+            return o.tolist()
         elif isinstance(o, dict):
             for k in o.keys():
                 if isinstance(k, uuid.UUID):
                     o[str(k)] = o.pop(k)
             return o
-        if isinstance(o, np.bool_):
-            return bool(o)
+
         return super().default(o)
 
 class ConfEncoder(json.JSONEncoder):
