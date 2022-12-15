@@ -49,8 +49,10 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     tournament_dispatcher = MiniTournamentDispatcher()
     global_cache = TargetAlgorithmObserver.remote(scenario)
     if scenario.run_obj == "runtime":
-        monitor = Monitor.remote(1, global_cache, scenario)
-        #monitor = InstanceMonitor.remote(1, global_cache, scenario)
+        if scenario.monitor == "tournament_level":
+            monitor = Monitor.remote(1, global_cache, scenario)
+        elif scenario.monitor == "instance_level":
+            monitor = InstanceMonitor.remote(1, global_cache, scenario)
         monitor.monitor.remote()
 
     random_generator = PointGen(scenario, random_point)

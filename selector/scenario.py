@@ -186,6 +186,7 @@ def parse_args():
     hp.add_argument('--number_tournaments', type=int, default=2)
 
     hp.add_argument('--par', type=int, default=1)
+    hp.add_argument('--monitor', type=str, default="tournament_level")
 
     hp.add_argument('--termination_criterion', type=str, default="runtime")
     hp.add_argument('--total_tournament_number', type=int, default=10)
