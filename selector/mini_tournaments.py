@@ -301,6 +301,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             logger.info(f"Final results tournament {result_tournament}")
             logger.info(f"New tournament {new_tournament}")
             epoch += 1
+            overall_best_update(tournaments, results, scenario)
         else:
             # If the tournament does not terminate we get a new conf/instance assignment and add that as ray task
             next_task = tournament_dispatcher.next_tournament_run(results, result_tournament, result_conf)
@@ -309,7 +310,6 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             #global_cache.put_tournament_update.remote(tournaments)
             global_cache.put_tournament_update.remote(result_tournament)
 
-        overall_best_update(tournaments, results, scenario)
 
     global_cache.save_rt_results.remote()
     global_cache.save_tournament_history.remote()
