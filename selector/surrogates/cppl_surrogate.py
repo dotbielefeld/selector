@@ -141,14 +141,12 @@ class CPPL:
                     cat_params_on_conf[self.cat_params_names.index(param)] = str(int(value))
                 else:
                     cat_params_on_conf[self.cat_params_names.index(param)] = value
-                print(param, value, cat_params_on_conf)
             else:
                 cont_int_params_of_conf[self.cont_int_params_names .index(param)] = value
 
         cont_int_scaled = (cont_int_params_of_conf - self.lower_b_params) / (self.upper_b_params - self.lower_b_params).reshape(1, -1)
 
         if len(self.cat_params_names) > 0:
-            print(self.o_h_enc.categories_, cat_params_on_conf, configuration)
             cat_params_on_conf = self.o_h_enc.transform(cat_params_on_conf.reshape(1, -1)).toarray()
 
         return np.concatenate((cont_int_scaled, cat_params_on_conf), axis=None)
@@ -424,7 +422,6 @@ class CPPL:
         discard_index = []
         for c in range(self.pool_size):
             for oc in range(self.pool_size):
-                # TODO if they are the same we have a problem. I think we would discard both...
                 if c != oc and v_hat_s[oc] - confidence_s[oc] > v_hat_s[c] + confidence_s[c]:
                     discard_index.append(c)
                     break
