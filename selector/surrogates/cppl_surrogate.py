@@ -17,6 +17,8 @@ from selector.point_gen import PointGen
 from selector.default_point_generator import default_point
 from selector.default_point_generator import check_no_goods
 np.set_printoptions(threshold=sys.maxsize)
+from selector.generators.random_point_generator import reset_conditionals
+
 
 #import warnings
 #warnings.filterwarnings("error")
@@ -25,7 +27,8 @@ np.set_printoptions(threshold=sys.maxsize)
 
 class CPPL:
     def __init__(self, scenario, seed,features, pool_size = 15, alpha=1, gamma=0.1,w=0.1,random_prob=0.2, mutation_prob=0.8,
-                 pca_dimension_configurations=2,pca_dimension_instances=2, model_update="Batch", v_hat_norm=None, theta_norm=None, feature_normaliser=None): #10, 9
+                 pca_dimension_configurations=8,pca_dimension_instances=8, model_update="Batch", v_hat_norm=None, theta_norm="zero_one", feature_normaliser="max"): #10, 9
+
 
 
         """
@@ -466,6 +469,10 @@ class CPPL:
                                           new_conf,
                                           Generator.cppl)
 
+            cond_vio = check_conditionals(self.scenario, new_conf.conf)
+            if cond_vio:
+                new_conf.conf= reset_conditionals(self.scenario, new_conf.conf, cond_vio)
+
             no_good = check_no_goods(self.scenario, new_conf.conf)
         return new_conf
 
@@ -527,6 +534,10 @@ class CPPL:
             results_on_instance = {}
 
             for c in self.pool + confs_w_feedback:
+                cond_vio = check_conditionals(self.scenario, c.conf)
+                if cond_vio:
+                    c.conf = reset_conditionals(self.scenario, c.conf, cond_vio)
+
                 self.update_feature_store(c, instance)
 
             for c in previous_tournament.configuration_ids:
@@ -596,9 +607,9 @@ class CPPL:
             for c in conf_set:
                 self.update_feature_store(c, instance)
 
-        suggest, _ = self.select_from_set(conf_set, next_instance_set, n_to_select)
+        suggest, ranking = self.select_from_set(conf_set, next_instance_set, n_to_select)
 
-        return suggest
+        return suggest, ranking
 
 
 
