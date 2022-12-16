@@ -80,6 +80,13 @@ class TournamentEncoder(json.JSONEncoder):
 
 class ConfEncoder(json.JSONEncoder):
     def default(self, obj):
-        return super().encode(bool(obj)) \
-            if isinstance(obj, np.bool_) \
-            else super().default(obj)
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, np.bool_):
+            return bool(obj)
+        else:
+            return super().default(obj)
