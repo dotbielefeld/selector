@@ -383,7 +383,7 @@ class CPPL:
             elif self.v_hat_norm == "zero_one":
                 confidence_s = (confidence_s - min(confidence_s)) / (max(confidence_s) - min(confidence_s))
         else:
-            confidence_s = np.zeros(self.pool_size)
+            confidence_s = np.zeros(v_hat_s.shape)
 
         quality = v_hat_s + confidence_s
 
@@ -420,7 +420,7 @@ class CPPL:
             elif self.v_hat_norm == "zero_one":
                 confidence_s = (confidence_s - min(confidence_s)) / (max(confidence_s) - min(confidence_s))
         else:
-            confidence_s = np.zeros(self.pool_size)
+            confidence_s = np.zeros(v_hat_s.shape)
 
         discard_index = []
         for c in range(self.pool_size):
