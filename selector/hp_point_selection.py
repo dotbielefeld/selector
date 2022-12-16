@@ -19,7 +19,7 @@ def get_relatives(suggested):
                       if sugg != s and sugg.generator == gen_type]
         relatives.append(index_list)
 
-    return np.array(relatives)
+    return np.array(relatives, dtype=object)
 
 
 def distance_stats(smfeatures, distances):

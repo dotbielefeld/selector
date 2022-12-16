@@ -8,6 +8,7 @@ import psutil
 import os
 import signal
 import traceback
+import re
 
 from threading  import Thread
 from queue import Queue, Empty
@@ -46,7 +47,7 @@ def termination_check(process_pid, process_status, ta_process_name, python_pid, 
             f"Successfully terminated {conf_id}, {instance} on {python_pid} with {process_status}")
 
 @ray.remote(num_cpus=1)#, max_retries=0,  retry_exceptions= False)
-def tae_from_cmd_wrapper(conf, instance_path, cache, ta_command_creator, scenario):
+def tae_from_cmd_wrapper_rt(conf, instance_path, cache, ta_command_creator, scenario):
     """
     Execute the target algorithm with a given conf/instance pair by calling a user provided Wrapper that created a cmd
     line argument that can be executed
@@ -62,9 +63,8 @@ def tae_from_cmd_wrapper(conf, instance_path, cache, ta_command_creator, scenari
 
     try:
         logging.info(f"Wrapper TAE start {conf}, {instance_path}")
-        runargs = {'instance': f'{instance_path}', 'seed': scenario.seed if scenario.seed else -1, "id":f"{conf.id}"}
+        runargs = {'instance': f'{scenario.instances_dir + instance_path}', 'seed': scenario.seed if scenario.seed else -1, "id":f"{conf.id}"}
 
-        # TODO should i also measure the time from the main thread to here?
         cmd = ta_command_creator.get_command_line_args(runargs, conf.conf)
         start = time.time()
         cache.put_start.remote(conf.id, instance_path, start)
@@ -95,8 +95,8 @@ def tae_from_cmd_wrapper(conf, instance_path, cache, ta_command_creator, scenari
                 empty_line = True
                 if p.poll() is None:
                     cpu_time_p = p.cpu_times().user
-                    memory_p =  p.memory_info().rss / 1024 ** 2      # TODO adjust the mem limit below
-                if float(time.time() - start) > float(scenario.cutoff_time) or float(memory_p) > float(1024 * 3) and timeout ==False:
+                    memory_p =  p.memory_info().rss / 1024 ** 2
+                if float(cpu_time_p) > float(scenario.cutoff_time) or float(memory_p) > float(scenario.memory_limit) and timeout ==False:
                     timeout = True
                     logging.info(f"Timeout or memory reached, terminating: {conf}, {instance_path} {time.time() - start}")
                     print(f"Timeout or memory reached, terminating: {conf}, {instance_path} {time.time() - start}")
@@ -105,6 +105,10 @@ def tae_from_cmd_wrapper(conf, instance_path, cache, ta_command_creator, scenari
                     time.sleep(1)
                     if p.poll() is None:
                         p.kill()
+                    try:
+                        os.killpg(p.pid, signal.SIGKILL)
+                    except Exception:
+                        pass
                     # if scenario.ta_pid_name is not None:
                     #    termination_check(p.pid, p.poll(), scenario.ta_pid_name, os.getpid(),conf.id, instance_path)
                 pass
@@ -115,8 +119,12 @@ def tae_from_cmd_wrapper(conf, instance_path, cache, ta_command_creator, scenari
 
             if p.poll() is None:
                 # Get the cpu time and memory of the process
-                cpu_time_p = p.cpu_times().user
-                memory_p = p.memory_info().rss / 1024 ** 2
+                try:
+                    cpu_time_p = p.cpu_times().user
+                    memory_p = p.memory_info().rss / 1024 ** 2
+                except Exception as e:
+                    print("Looking for this", e, p.poll(), cpu_time_p)
+                    pass
 
                 if float(cpu_time_p) > float(scenario.cutoff_time) or float(memory_p) > float(
                         scenario.memory_limit) and timeout == False:
@@ -129,7 +137,7 @@ def tae_from_cmd_wrapper(conf, instance_path, cache, ta_command_creator, scenari
                         p.kill()
                     try:
                         os.killpg(p.pid, signal.SIGKILL)
-                    except Exception as e:
+                    except Exception:
                         pass
                     # if scenario.ta_pid_name is not None:
                     #    termination_check(p.pid, p.poll(), scenario.ta_pid_name, os.getpid(),conf.id, instance_path)
@@ -163,11 +171,86 @@ def tae_from_cmd_wrapper(conf, instance_path, cache, ta_command_creator, scenari
             #if scenario.ta_pid_name is not None:
              #   termination_check(p.pid, p.poll(), scenario.ta_pid_name, os.getpid(), conf.id, instance_path)
         cache.put_result.remote(conf.id, instance_path, np.nan)
-        logging.info(f"Killing status: {p.poll()} {conf.id} {instance_path}")
+        try:
+            logging.info(f"Killing status: {p.poll()} {conf.id} {instance_path}")
+        except:
+            pass
         return  conf, instance_path, True
     except Exception:
         logging.info(f"Exception in TA execution: {traceback.format_exc()}")
 
+@ray.remote(num_cpus=1)
+def tae_from_cmd_wrapper_quality(conf, instance_path, cache, ta_command_creator, scenario):
+    """
+    Execute the target algorithm with a given conf/instance pair by calling a user provided Wrapper that created a cmd
+    line argument that can be executed
+    :param conf: Configuration
+    :param instance: Instances
+    :param cache: Cache
+    :param ta_command_creator: Wrapper that creates a
+    :return:
+    """
+    logging.basicConfig(filename=f'./selector/logs/{scenario.log_folder}/wrapper_log_for{conf.id}.log', level=logging.INFO,
+                        format='%(asctime)s %(message)s')
+
+    try:
+        logging.info(f"Wrapper TAE start {conf}, {instance_path}")
+        runargs = {'instance': f'{scenario.instances_dir + instance_path}', 'seed': scenario.seed if scenario.seed else -1, "id":f"{conf.id}", "timeout": scenario.cutoff_time}
+
+        cmd = ta_command_creator.get_command_line_args(runargs, conf.conf)
+        start = time.time()
+        cache.put_start.remote(conf.id, instance_path, start)
+        print(cmd)
+
+        p = psutil.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                             close_fds=True)
+
+        # Blocks
+        #for line in iter(p.stdout.readline, ''):
+        #     line = line.decode("utf-8")
+         #    print(line)
+        q = Queue()
+        t = Thread(target=enqueue_output, args=(p.stdout, q))
+        t.daemon = True
+        t.start()
+
+        timeout = False
+        empty_line = False
+        memory_p = 0
+        cpu_time_p = 0
+
+        while True:
+            try:
+                line = q.get(timeout=.5)
+                empty_line = False
+                # Get the cpu time and memory of the process
+            except Empty:
+                empty_line = True
+                pass
+            else: # write intemediate feedback
+                if "placeholder" in line:
+                    cache.put_intermediate_output.remote(conf.id, instance_path, line)
+                    logging.info(f"Wrapper TAE intermediate feedback {conf}, {instance_path} {line}")
+
+                if scenario.run_obj == "quality":
+                    output_tigger = re.search(scenario.quality_match, line)
+                    if output_tigger:
+                        quality = re.findall(f"{scenario.quality_extract}", line)
+
+
+            # Break the while loop when the ta was killed or finished
+            if empty_line and p.poll() != None:
+                break
+
+
+        cache.put_result.remote(conf.id, instance_path, float(quality[0]))
+
+        time.sleep(0.2)
+        logging.info(f"Wrapper TAE end {conf}, {instance_path}")
+        return  conf, instance_path, False
+
+    except Exception:
+        logging.info(f"Exception in TA execution: {traceback.format_exc()}")
 
 @ray.remote(num_cpus=1)
 def dummy_task(conf, instance_path, cache):
