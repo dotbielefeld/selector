@@ -97,13 +97,17 @@ def tae_from_cmd_wrapper_rt(conf, instance_path, cache, ta_command_creator, scen
                 if p.poll() is None:
                     cpu_time_p = p.cpu_times().user
                     memory_p =  p.memory_info().rss / 1024 ** 2
-                if float(cpu_time_p) > float(scenario.cutoff_time) or float(memory_p) > float(scenario.memory_limit) and timeout ==False:
+                if float(cpu_time_p) > float(scenario.cutoff_time) or float(memory_p) > float(scenario.memory_limit) and timeout == False:
                     timeout = True
                     logging.info(f"Timeout or memory reached, terminating: {conf}, {instance_path} {time.time() - start}")
                     print(f"Timeout or memory reached, terminating: {conf}, {instance_path} {time.time() - start}")
                     if p.poll() is None:
                         p.terminate()
-                    time.sleep(1)
+                    try:
+                        time.sleep(1)
+                    except:
+                        print("Got sleep interupt",conf, instance_path)
+                        pass
                     if p.poll() is None:
                         p.kill()
                     try:
@@ -133,7 +137,11 @@ def tae_from_cmd_wrapper_rt(conf, instance_path, cache, ta_command_creator, scen
                     logging.info(f"Timeout or memory reached, terminating: {conf}, {instance_path} {time.time() - start}")
                     if p.poll() is None:
                         p.terminate()
-                    time.sleep(1)
+                    try:
+                        time.sleep(1)
+                    except:
+                        print("Got sleep interupt", conf, instance_path)
+                        pass
                     if p.poll() is None:
                         p.kill()
                     try:
@@ -162,7 +170,11 @@ def tae_from_cmd_wrapper_rt(conf, instance_path, cache, ta_command_creator, scen
         if 'p' in vars():
             if p.poll() is None:
                 p.terminate()
-            time.sleep(1)
+            try:
+                time.sleep(1)
+            except:
+                print("Got sleep interupt", conf, instance_path)
+                pass
             if p.poll() is None:
                 p.kill()
             try:
