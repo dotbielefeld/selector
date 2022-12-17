@@ -85,8 +85,9 @@ def tae_from_cmd_wrapper_rt(conf, instance_path, cache, ta_command_creator, scen
         empty_line = False
         memory_p = 0
         cpu_time_p = 0
+        reading = True
 
-        while True:
+        while reading:
             try:
                 line = q.get(timeout=.5)
                 empty_line = False
@@ -144,7 +145,7 @@ def tae_from_cmd_wrapper_rt(conf, instance_path, cache, ta_command_creator, scen
 
             # Break the while loop when the ta was killed or finished
             if empty_line and p.poll() != None:
-                break
+                reading = False
 
         if timeout:
             cache.put_result.remote(conf.id, instance_path, np.nan)
@@ -213,13 +214,9 @@ def tae_from_cmd_wrapper_quality(conf, instance_path, cache, ta_command_creator,
         t = Thread(target=enqueue_output, args=(p.stdout, q))
         t.daemon = True
         t.start()
+        reading = True
 
-        timeout = False
-        empty_line = False
-        memory_p = 0
-        cpu_time_p = 0
-
-        while True:
+        while reading:
             try:
                 line = q.get(timeout=.5)
                 empty_line = False
@@ -240,7 +237,7 @@ def tae_from_cmd_wrapper_quality(conf, instance_path, cache, ta_command_creator,
 
             # Break the while loop when the ta was killed or finished
             if empty_line and p.poll() != None:
-                break
+                reading = False
 
 
         cache.put_result.remote(conf.id, instance_path, float(quality[0]))
