@@ -4,7 +4,7 @@ import time
 import numpy as np
 
 
-from tournament_performance import get_censored_runtime_for_instance_set,get_conf_time_out
+from tournament_performance import get_censored_runtime_for_instance_set,get_conf_time_out, get_runtime_for_instance_set_with_timeout
 
 
 @ray.remote(num_cpus=1)
@@ -23,6 +23,8 @@ class Monitor:
         self.cache = cache
         self.number_of_finisher = scenario.winners_per_tournament
         self.tournaments = []
+        self.time_out = scenario.cutoff_time
+        self.par = scenario.par
 
         logging.basicConfig(filename=f'./selector/logs/{scenario.log_folder}/monitor.log', level=logging.INFO,
                             format='%(asctime)s %(message)s')
@@ -58,14 +60,14 @@ class Monitor:
                 if len(t.best_finisher) == self.number_of_finisher:
                     # Compare runtime to the worst best finisher
                     worst_best_finisher = t.best_finisher[-1]
-                    runtime_worst_best_finisher = get_censored_runtime_for_instance_set(results, worst_best_finisher.id,
-                                                                                        t.instance_set)
+                    runtime_worst_best_finisher = get_runtime_for_instance_set_with_timeout(results, worst_best_finisher.id,
+                                                                                        t.instance_set, self.time_out, self.par)
                     # We need to compare each configuration that is still in the running to the worst finisher
                     for conf in t.configurations:
                         # Here we figured out which instances the conf is still running and which one it already finished
                         if conf.id in list(results.keys()):
                             instances_conf_finished = list(results[conf.id].keys())
-                            conf_runtime_f = get_censored_runtime_for_instance_set(results, conf.id, t.instance_set)
+                            conf_runtime_f = get_runtime_for_instance_set_with_timeout(results, conf.id, t.instance_set, self.time_out, self.par)
                         else:
                             instances_conf_finished = []
                             conf_runtime_f = 0
