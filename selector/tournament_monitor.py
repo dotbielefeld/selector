@@ -82,14 +82,12 @@ class Monitor:
                         # (or at least very very little) so we ignore it for the cancel computation
                         conf_runtime_p = sum([(time.time() - start_time[conf.id][i]) for i in instances_conf_still_runs if i in list(start_time[conf.id].keys())])
                         conf_runtime = conf_runtime_f + conf_runtime_p
-                        conf_time_out = get_conf_time_out(results, conf.id, t.instance_set)
+                        #conf_time_out = get_conf_time_out(results, conf.id, t.instance_set)
 
                         logging.info(f"Monitor kill check,{conf.id} {conf_runtime}, {runtime_worst_best_finisher}"
-                                     f"{worst_best_finisher.id,},{conf_time_out}, {[m. id for m in t.configurations]}")
+                                     f"{worst_best_finisher.id,}, {[m. id for m in t.configurations]}")
 
-
-                        # We also kill in case there has been a time out recorded for the conf
-                        if conf_runtime > runtime_worst_best_finisher or conf_time_out:
+                        if conf_runtime > runtime_worst_best_finisher:# or conf_time_out:
                             # We can only kill still running tasks
                             for i in instances_conf_still_runs:
                                 # We check if we have killed the conf/instance pair before.
