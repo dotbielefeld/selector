@@ -142,24 +142,25 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
 
 
         # Getting the tournament of the first task id
-        first_task = tasks[0]
-        ob_t = get_get_tournament_membership_with_ray_id(first_task, tournaments)
+        if len(tasks) > 0:
+            first_task = tasks[0]
+            ob_t = get_get_tournament_membership_with_ray_id(first_task, tournaments)
 
-        # Figure out if the tournament of the first task is stale. If so cancel the task and start dummy task.
-        if len(ob_t.configurations) == 1:
-            i_no_result = get_instances_no_results(results, ob_t.configurations[0].id, ob_t.instance_set)
-            if len(i_no_result) == 1:
-                termination = ray.get(global_cache.get_termination_single.remote(ob_t.configurations[0].id, i_no_result[0]))
-                result = ray.get(global_cache.get_results_single.remote(ob_t.configurations[0].id, i_no_result[0]))
-                if termination and result == False and [ob_t.configurations[0],i_no_result[0]] not in bug_handel:
-                    logger.info(f"Stale tournament: {time.strftime('%X %x %Z')}, {ob_t.configurations[0]}, {i_no_result[0]} , {first_task}, {bug_handel}")
-                    ready_ids, _remaining_ids = ray.wait([first_task], timeout=0)
-                    if len(_remaining_ids) == 1:
-                        ray.cancel(first_task)
-                        tasks.remove(first_task)
-                        task = dummy_task.remote(ob_t.configurations[0],i_no_result[0], global_cache)
-                        tasks.append(task)
-                        bug_handel.append([ob_t.configurations[0],i_no_result[0]])
+            # Figure out if the tournament of the first task is stale. If so cancel the task and start dummy task.
+            if len(ob_t.configurations) == 1:
+                i_no_result = get_instances_no_results(results, ob_t.configurations[0].id, ob_t.instance_set)
+                if len(i_no_result) == 1:
+                    termination = ray.get(global_cache.get_termination_single.remote(ob_t.configurations[0].id, i_no_result[0]))
+                    result = ray.get(global_cache.get_results_single.remote(ob_t.configurations[0].id, i_no_result[0]))
+                    if termination and result == False and [ob_t.configurations[0],i_no_result[0]] not in bug_handel:
+                        logger.info(f"Stale tournament: {time.strftime('%X %x %Z')}, {ob_t.configurations[0]}, {i_no_result[0]} , {first_task}, {bug_handel}")
+                        ready_ids, _remaining_ids = ray.wait([first_task], timeout=0)
+                        if len(_remaining_ids) == 1:
+                            ray.cancel(first_task)
+                            tasks.remove(first_task)
+                            task = dummy_task.remote(ob_t.configurations[0],i_no_result[0], global_cache)
+                            tasks.append(task)
+                            bug_handel.append([ob_t.configurations[0],i_no_result[0]])
 
 
         #results = ray.get(global_cache.get_results.remote())
