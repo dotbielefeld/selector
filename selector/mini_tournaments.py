@@ -114,7 +114,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             result_conf, result_instance, cancel_flag = result[0], result[1], result[2]
 
         # Some time a ray worker may crash. We handel that here. I.e if the TA did not run to the end, we reschedule
-        except (ray.exceptions.WorkerCrashedError, ray.exceptions.TaskCancelledError) as e:
+        except (ray.exceptions.WorkerCrashedError, ray.exceptions.TaskCancelledError, ray.exceptions.RayTaskError) as e:
             logger.info(f'Crashed TA worker, {time.ctime()}, {winner}, {e}')
             # Figure out which tournament conf. belongs to
             for t in tournaments:
