@@ -162,7 +162,13 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
                         bug_handel.append([ob_t.configurations[0],i_no_result[0]])
 
 
-        results = ray.get(global_cache.get_results.remote())
+        #results = ray.get(global_cache.get_results.remote())
+        if result_conf.id in list(results.keys()):
+            results[result_conf.id][result_instance] = ray.get(global_cache.get_results_single.remote(result_conf.id,result_instance ))
+        else:
+            results[result_conf.id]= {}
+            results[result_conf.id][result_instance] = ray.get(global_cache.get_results_single.remote(result_conf.id,result_instance ))
+
 
         result_tournament = get_tournament_membership(tournaments, result_conf)
 
