@@ -103,6 +103,10 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     smac_conf = sm.suggest(Surrogates.SMAC, scenario, n_samples=5)
     bug_handel = []
     tournament_history = {}
+    model_update = 0
+    surrogate_amortized_time = 30
+    next_surrogate_update = 1
+    surrogate_update_counter = 1
 
     while termination_check(scenario.termination_criterion, main_loop_start, scenario.wallclock_limit,
                             scenario.total_tournament_number, tournament_counter):
@@ -231,7 +235,29 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
                 lhs_type=LHSType.centered,
                 criterion=Criterion.maximin)
 
-            smac_conf = sm.suggest(Surrogates.SMAC, scenario, n_samples=5)
+            #future_smac = suggest.remote(surrogates, Surrogates.SMAC, scenario, n_samples=5)
+            #smac_conf = ray.get(future_smac)
+
+
+            if surrogate_update_counter == next_surrogate_update:
+                start_smac_update = time.time()
+                smac_conf_for_future = suggest(surrogates, Surrogates.SMAC, scenario, n_samples=scenario.tournament_size *
+                           scenario.generator_multiple*(next_surrogate_update + 1))
+                surrogate_time = time.time() - start_smac_update
+                smac_conf = smac_conf_for_future[:scenario.tournament_size *
+                           scenario.generator_multiple]
+                surrogate_update_counter = 0
+            else:
+                smac_conf = smac_conf_for_future[scenario.tournament_size *
+                           scenario.generator_multiple * surrogate_update_counter:scenario.tournament_size *
+                           scenario.generator_multiple* (surrogate_update_counter + 1)]
+
+            surrogate_update_counter = surrogate_update_counter + 1
+
+            # print(i, smac_conf_for_future,smac_conf,  next_surrogate_update)
+            if surrogate_time >= surrogate_amortized_time:
+                next_surrogate_update = next_surrogate_update + 1
+                surrogate_amortized_time = surrogate_amortized_time + scenario.surrogate_amortized_time
 
             generated_points = random_points + default_ps + \
                 vg_points + lhc_ps + smac_conf
