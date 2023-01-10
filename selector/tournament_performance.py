@@ -6,6 +6,7 @@ import pickle
 import math
 import copy
 from selector.log_setup import ConfEncoder
+from selector.generators.default_point_generator import check_conditionals
 
 def get_conf_time_out(results, configuration_id, instances_set):
     """
