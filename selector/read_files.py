@@ -235,6 +235,15 @@ def read_instance_paths(instance_set_path):
         for line in f:
             instance_set.append(line.strip())
 
+    seen = set()
+    uniq = []
+    for i in instance_set:
+        if i not in seen:
+            uniq.append(i)
+            seen.add(i)
+        else:
+            warnings.warn(f"Instance {i} is not unique in the train set")
+
     return instance_set
 
 def read_instance_features(feature_set_path):
