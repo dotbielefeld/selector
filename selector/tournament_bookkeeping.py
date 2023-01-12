@@ -1,5 +1,5 @@
 import os
-from ta_execution import tae_from_cmd_wrapper
+from ta_execution import tae_from_cmd_wrapper_rt, tae_from_cmd_wrapper_quality
 import time
 import logging
 
@@ -60,7 +60,10 @@ def update_tasks(tasks, next_task, tournament, global_cache, ta_wrapper, scenari
     for t in next_task:
         if t[1] is not None:
             # TODO need to change the wrapper to something more generic here
-            task = tae_from_cmd_wrapper.remote(t[0], t[1], global_cache, ta_wrapper, scenario)
+            if scenario.run_obj == "runtime":
+                task = tae_from_cmd_wrapper_rt.remote(t[0], t[1], global_cache, ta_wrapper, scenario)
+            elif scenario.run_obj == "quality":
+                task = tae_from_cmd_wrapper_quality.remote(t[0], t[1], global_cache, ta_wrapper, scenario)
             tasks.append(task)
             # We also add the ray object id to the tournament to latter map the id back
             if t[0].id not in tournament.ray_object_store.keys():

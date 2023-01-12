@@ -6,7 +6,7 @@ import numpy as np
 
 boolean_yes = ["on", "yes", "true"]
 boolean_no = ["no", "off", "false"]
-boolean_options = boolean_yes + boolean_no
+boolean_options = boolean_no + boolean_yes
 
 def get_ta_arguments_from_pcs(para_file):
     """
@@ -42,7 +42,7 @@ def get_ta_arguments_from_pcs(para_file):
                         parameters.append(Parameter(param_name, param_type, bounds, defaults, {}, '', original_bound))
                 # forbidden
                 elif '{' in param_name:
-                    no_good = get_no_goods(line)
+                    no_good = get_no_goods(line, parameters)
                     no_goods.append(no_good)
                 # cont.
                 elif '[' in param_info:
@@ -51,7 +51,7 @@ def get_ta_arguments_from_pcs(para_file):
 
             # conditionals
             elif '|' in param_info:
-                condition_param, condition = get_conditional(param_name, param_info)
+                condition_param, condition = get_conditional(param_name, param_info, parameters)
 
                 if param_name not in conditionals:
                     conditionals[param_name] = {condition_param: condition}
@@ -63,11 +63,10 @@ def get_ta_arguments_from_pcs(para_file):
                                  f" the structure adheres to AClib")
 
     # adding conditionals to parameters
-
     for pc in conditionals:
         condition_found = False
         for parameter in parameters:
-            if pc in parameter.name:
+            if re.search(r'\b' + str(pc) + r'\b', parameter.name):
                 parameter.condition.update(conditionals[pc])
                 condition_found = True
         # This should only be a warning: We may have conditions for cat. parameters that are not configurable.
@@ -109,8 +108,8 @@ def get_categorical(param_name, param_info):
             defaults = False
         else:
             raise ValueError(f"For parameter {param_name} the parsed defaults are not within [yes, no, on, off]")
-
         bounds = [b in boolean_yes for b in bounds]
+        bounds = sorted(bounds)
 
     elif isinstance(str(bounds[0]), str) & isinstance(str(defaults[0]), str):
         param_type = ParamType.categorical
@@ -169,7 +168,7 @@ def get_continuous(param_name, param_info):
 
     return param_type, bounds, defaults, scale
 
-def get_conditional(param_name, param_info):
+def get_conditional(param_name, param_info, parameters):
     """
     For a parameter: get the information on conditionals
     :param param_name: name of the parameter
@@ -179,18 +178,26 @@ def get_conditional(param_name, param_info):
     param_info = param_info.strip(" | ")
 
     condition = re.search(r'\{(.*)\}', param_info).group().strip("{ }").split(",")
-    condition_param = re.search(r'.+?(?=in)', param_info).group().replace(" ", "")
+    condition_param = re.search(r'.+?(?= in)', param_info).group().replace(" ", "")
+
+    for p in parameters:
+        if p.name == condition_param:
+            p_type = p.type
 
     if condition[0] in boolean_options:
         condition = [c in boolean_yes for c in condition]
-    elif isinstance(float(condition[0]), float):
-        condition = [float(c) for c in condition]    
+    elif p_type == ParamType.categorical:
+        condition = [str(c).strip(" ") for c in condition]
+    elif p_type == ParamType.continuous:
+        condition = [float(c) for c in condition]
+    elif p_type == ParamType.integer:
+        condition = [int(c) for c in condition]
     else:
         raise ValueError(f"For parameter {param_name} the parsed conditions could not be read")
 
     return condition_param, condition
 
-def get_no_goods(no_good):
+def get_no_goods(no_good, parameters):
     """
     Takes an string of form: {param_1=value_1 , param_2=value_2, ...} and returns a dic of the no good
     :param no_good: str. Takes an string of form: {param_1=value_1 , param_2=value_2, ...}
@@ -205,12 +212,20 @@ def get_no_goods(no_good):
         param = param.strip()
         value = value.strip()
 
+        for p in parameters:
+            if p.name == param:
+                p_type = p.type
+
         if value in boolean_yes:
             value = True
         elif value in boolean_no:
             value = False
-        elif isinstance(float(value), float):
+        elif p_type == ParamType.continuous:
             value = float(value)
+        elif p_type == ParamType.integer:
+            value = int(value)
+        elif p_type == ParamType.categorical:
+            value = str(value)
         else:
             raise ValueError(f"For no good {no_good} the parameter values are not known")
 
@@ -248,7 +263,7 @@ def read_instance_features(feature_set_path):
 
         for line in lines[1:]:
             line = line.strip().split(",")
-            features[line[0]] = np.array(line[1:], dtype=np.single)
+            if line[0] != "":
+                features[line[0]] = np.array(line[1:], dtype=np.single)
 
     return features, feature_names
-

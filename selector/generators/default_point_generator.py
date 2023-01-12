@@ -20,28 +20,37 @@ def check_conditionals(s, config_setting):
         for cond in s.conditionals[condition]:
             for param in s.parameter:
                 if param.name == cond:
-                    if param.type == ParamType.categorical and \
-                            (config_setting[cond] not in
-                             s.conditionals[condition][cond] and
-                             condition not in cond_vio and
-                             condition in config_setting):
-                        cond_vio.append(condition)
-                    elif (param.type == ParamType.continuous or
-                            param.type == ParamType.integer) and \
-                            (config_setting[cond] >
-                             s.conditionals[condition][cond][1] or
-                             config_setting[cond] <
-                             s.conditionals[condition][cond][0]) and \
-                            condition not in cond_vio and \
-                            condition in config_setting:
-                        cond_vio.append(condition)
+                    if cond in config_setting:
+                        if config_setting[cond] is not None:
+                            if type(s.conditionals[condition][cond][0]) == int:
+                                config_setting[cond] = \
+                                    int(config_setting[cond])
+                            if type(s.conditionals[condition][cond][0]) \
+                                    == float:
+                                config_setting[cond] = \
+                                    float(config_setting[cond])
+                            if param.type == ParamType.categorical and \
+                                    (config_setting[cond] not in
+                                     s.conditionals[condition][cond] and
+                                     condition not in cond_vio and
+                                     condition in config_setting):
+                                cond_vio.append(condition)
+                            elif (param.type == ParamType.continuous or
+                                    param.type == ParamType.integer) and \
+                                    (config_setting[cond] >
+                                     s.conditionals[condition][cond][1] or
+                                     config_setting[cond] <
+                                     s.conditionals[condition][cond][0]) and \
+                                    condition not in cond_vio and \
+                                    condition in config_setting:
+                                cond_vio.append(condition)
 
     return cond_vio
 
 
 def check_no_goods(s, config_setting):
     """
-    Check if conditionals are violated.
+    Check if no goods are violated.
 
     : param s: scenario object
     : param config_setting: configuration setting to be checked
@@ -49,10 +58,12 @@ def check_no_goods(s, config_setting):
     """
     check = False
     for ng in s.no_goods:
-        param_1, param_2 = ng.keys()
-        if param_1 in config_setting and param_2 in config_setting:
-            check = (not check and ng[param_1] == config_setting[param_1]) \
-                and (ng[param_2] == config_setting[param_2])
+        params = list(ng.keys())
+
+        if all([i in config_setting for i in params]):
+            check = all([ng[i] == config_setting[i] for i in params])
+            if check:
+                return check
 
     return check
 

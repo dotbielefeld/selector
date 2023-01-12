@@ -21,7 +21,7 @@ from selector.generators.default_point_generator import default_point
 from selector.generators.variable_graph_point_generator import variable_graph_point, Mode
 from selector.generators.lhs_point_generator import lhc_points, LHSType, Criterion
 from selector.selection_features import FeatureGenerator
-from selector.surrogates.surrogates import SurrogateManager
+from selector.generators.surrogates.surrogates import SurrogateManager
 # from selector.surrogates.surrogates import SurrogateManager
 
 from tournament_dispatcher import MiniTournamentDispatcher
@@ -48,8 +48,13 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     hp_seletor = HyperparameterizedSelector()
     tournament_dispatcher = MiniTournamentDispatcher()
     global_cache = TargetAlgorithmObserver.remote(scenario)
-    monitor = Monitor.remote(1, global_cache, scenario)
-    #monitor = InstanceMonitor.remote(1, global_cache)
+    if scenario.run_obj == "runtime":
+        if scenario.monitor == "tournament_level":
+            monitor = Monitor.remote(1, global_cache, scenario)
+        elif scenario.monitor == "instance_level":
+            monitor = InstanceMonitor.remote(1, global_cache, scenario)
+        monitor.monitor.remote()
+
     random_generator = PointGen(scenario, random_point)
     default_point_generator = PointGen(scenario, default_point)
     vg_point_generator = PointGen(scenario, variable_graph_point)
@@ -72,13 +77,12 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
         tournament, initial_assignments = tournament_dispatcher.init_tournament(results, points_to_run,
                                                                                 instances, instance_id)
         tournaments.append(tournament)
-        global_cache.put_tournament_history.remote(tournament)
+        #global_cache.put_tournament_history.remote(tournament)
         global_cache.put_tournament_update.remote(tournament)
         tasks = update_tasks(tasks, initial_assignments, tournament, global_cache, ta_wrapper, scenario)
 
     #starting the monitor
     #global_cache.put_tournament_update.remote(tournaments)
-    monitor.monitor.remote()
 
     logger.info(f"Initial Tournaments {tournaments}")
     logger.info(f"Initial Tasks, {[get_tasks(o.ray_object_store, tasks) for o in tournaments]}")
@@ -96,7 +100,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     # sm = SurrogateManager(scenario.parameter)
     fg = FeatureGenerator()
     sm = SurrogateManager(scenario)
-    smac_conf = sm.suggest(Surrogates.SMAC, scenario, n_samples=5)
+
     bug_handel = []
     tournament_history = {}
 
@@ -110,7 +114,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             result_conf, result_instance, cancel_flag = result[0], result[1], result[2]
 
         # Some time a ray worker may crash. We handel that here. I.e if the TA did not run to the end, we reschedule
-        except (ray.exceptions.WorkerCrashedError, ray.exceptions.TaskCancelledError) as e:
+        except (ray.exceptions.WorkerCrashedError, ray.exceptions.TaskCancelledError, ray.exceptions.RayTaskError) as e:
             logger.info(f'Crashed TA worker, {time.ctime()}, {winner}, {e}')
             # Figure out which tournament conf. belongs to
             for t in tournaments:
@@ -130,7 +134,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
                 cancel_flag = True
                 global_cache.put_result.remote(result_conf.id, result_instance, np.nan)
                 logger.info(f"Canceled task with no return: {result_conf}, {result_instance}")
-            else: #got no results: need to rescheulde
+            else:  # got no results: need to rescheulde
                 next_task = [[conf, instance]]
                 tasks = update_tasks(tasks, next_task, tournament_of_c_i, global_cache, ta_wrapper, scenario)
                 logger.info(f"We have no results: rescheduling {conf.id}, {instance} {[get_tasks(o.ray_object_store, tasks) for o in tournaments]}")
@@ -138,27 +142,33 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
 
 
         # Getting the tournament of the first task id
-        first_task = tasks[0]
-        ob_t = get_get_tournament_membership_with_ray_id(first_task, tournaments)
+        if len(tasks) > 0:
+            first_task = tasks[0]
+            ob_t = get_get_tournament_membership_with_ray_id(first_task, tournaments)
 
-        # Figure out if the tournament of the first task is stale. If so cancel the task and start dummy task.
-        if len(ob_t.configurations) == 1:
-            i_no_result = get_instances_no_results(results, ob_t.configurations[0].id, ob_t.instance_set)
-            if len(i_no_result) == 1:
-                termination = ray.get(global_cache.get_termination_single.remote(ob_t.configurations[0].id, i_no_result[0]))
-                result = ray.get(global_cache.get_results_single.remote(ob_t.configurations[0].id, i_no_result[0]))
-                if termination and result == False and [ob_t.configurations[0],i_no_result[0]] not in bug_handel:
-                    logger.info(f"Stale tournament: {time.strftime('%X %x %Z')}, {ob_t.configurations[0]}, {i_no_result[0]} , {first_task}, {bug_handel}")
-                    ready_ids, _remaining_ids = ray.wait([first_task], timeout=0)
-                    if len(_remaining_ids) == 1:
-                        ray.cancel(first_task)
-                        tasks.remove(first_task)
-                        task = dummy_task.remote(ob_t.configurations[0],i_no_result[0], global_cache)
-                        tasks.append(task)
-                        bug_handel.append([ob_t.configurations[0],i_no_result[0]])
+            # Figure out if the tournament of the first task is stale. If so cancel the task and start dummy task.
+            if len(ob_t.configurations) == 1:
+                i_no_result = get_instances_no_results(results, ob_t.configurations[0].id, ob_t.instance_set)
+                if len(i_no_result) == 1:
+                    termination = ray.get(global_cache.get_termination_single.remote(ob_t.configurations[0].id, i_no_result[0]))
+                    result = ray.get(global_cache.get_results_single.remote(ob_t.configurations[0].id, i_no_result[0]))
+                    if termination and result == False and [ob_t.configurations[0],i_no_result[0]] not in bug_handel:
+                        logger.info(f"Stale tournament: {time.strftime('%X %x %Z')}, {ob_t.configurations[0]}, {i_no_result[0]} , {first_task}, {bug_handel}")
+                        ready_ids, _remaining_ids = ray.wait([first_task], timeout=0)
+                        if len(_remaining_ids) == 1:
+                            ray.cancel(first_task)
+                            tasks.remove(first_task)
+                            task = dummy_task.remote(ob_t.configurations[0],i_no_result[0], global_cache)
+                            tasks.append(task)
+                            bug_handel.append([ob_t.configurations[0],i_no_result[0]])
 
 
-        results = ray.get(global_cache.get_results.remote())
+        #results = ray.get(global_cache.get_results.remote())
+        if result_conf.id in list(results.keys()):
+            results[result_conf.id][result_instance] = ray.get(global_cache.get_results_single.remote(result_conf.id,result_instance ))
+        else:
+            results[result_conf.id]= {}
+            results[result_conf.id][result_instance] = ray.get(global_cache.get_results_single.remote(result_conf.id,result_instance ))
 
         result_tournament = get_tournament_membership(tournaments, result_conf)
 
@@ -180,16 +190,23 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
                                                                                      scenario.winners_per_tournament,
                                                                                      scenario.cutoff_time, scenario.par)
 
-        global_cache.put_tournament_history.remote(result_tournament)
         logger.info(f"Result tournament update: {result_tournament}")
 
         if tournament_stop:
             print("Iteration:", time.time() - main_loop_start, tournament_counter)
             tournament_counter += 1
 
+            # Get the instances for the new tournament
+            instance_id, instances = instance_selector.get_subset(result_tournament.instance_set_id + 1)
+
             all_configs = result_tournament.best_finisher + result_tournament.worst_finisher
 
             terminations = ray.get(global_cache.get_termination_history.remote())
+
+            # Remove that old tournament
+            tournaments.remove(result_tournament)
+            tournament_history[result_tournament.id] = result_tournament
+            global_cache.put_tournament_history.remote(result_tournament)
 
             for conf in all_configs:
                 for surrogate in sm.surrogates.keys():
@@ -204,26 +221,40 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             # points_to_run = point_selector.select_points(generated_points, scenario.tournament_size-1, tournament_counter)
             default_ps = [default_point_generator.point_generator()]
 
-            hist = {**tournament_history , **{t.id : t for t in tournaments}}
+            hist = {**tournament_history, **{t.id: t for t in tournaments}}
              #   ray.get(global_cache.get_tournament_history.remote())
 
             vg_points = [vg_point_generator.point_generator(
-                         mode=Mode.random, alldata=hist, lookback=1)
+                         results=results, mode=Mode.random, alldata=hist,
+                         lookback=1)
                          for _ in range(
                          scenario.tournament_size *
                          scenario.generator_multiple)]
+
             lhc_ps = lhc_point_generator.point_generator(
                 n_samples=(scenario.tournament_size *
                            scenario.generator_multiple),
                 lhs_type=LHSType.centered,
                 criterion=Criterion.maximin)
 
-            smac_conf = sm.suggest(Surrogates.SMAC, scenario, n_samples=5)
+            smac_conf = \
+                sm.suggest(Surrogates.SMAC, scenario,
+                           scenario.tournament_size * scenario.generator_multiple,
+                           None, None, None)
+            ggapp_conf = \
+                sm.suggest(Surrogates.GGApp, scenario,
+                           scenario.tournament_size * scenario.generator_multiple,
+                           hist, results, None)
+            cppl_conf = \
+                sm.suggest(Surrogates.CPPL, scenario,
+                           scenario.tournament_size * scenario.generator_multiple,
+                           None, None, scenario.instance_set)[0]
 
             generated_points = random_points + default_ps + \
-                vg_points + lhc_ps + smac_conf
+                vg_points + lhc_ps + smac_conf + ggapp_conf + cppl_conf
 
-            features = fg.static_feature_gen(generated_points, epoch, max_epochs)
+            features = \
+                fg.static_feature_gen(generated_points, epoch, max_epochs)
             features = np.concatenate(
                 (features, fg.diversity_feature_gen(generated_points, hist,
                                                     results, cutoff_time,
@@ -233,38 +264,63 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
                 axis=1)
 
             for surrogate in sm.surrogates.keys():
-                if sm.surrogates[surrogate].surr.model.rf is not None:
+                if surrogate is Surrogates.SMAC:
+                    if sm.surrogates[surrogate].surr.model.rf is not None:
+                        predicted_perf = sm.predict(surrogate,
+                                                    generated_points,
+                                                    cutoff_time, None)
+                else:
                     predicted_perf = sm.predict(surrogate,
                                                 generated_points,
-                                                cutoff_time)
+                                                cutoff_time,
+                                                instances)
 
             features = np.concatenate((features,
                                       fg.dynamic_feature_gen(generated_points,
                                                              hist,
                                                              predicted_perf,
                                                              sm, cutoff_time,
-                                                             results)),
+                                                             results,
+                                                             instances)),
                                       axis=1)
 
-            weights = [1 for _ in generated_points]
-            weights = [weights for _ in features]
+            set_weights = [value for hp, value in s.__dict__.items()
+                           if hp[:2] == 'w_']
+            weights = [set_weights for _ in generated_points]
             weights = np.array(weights)
 
-            points_to_run = hp_seletor.select_points(scenario, generated_points,
-                                                     scenario.tournament_size - 1,
-                                                     epoch, max_epochs, features, weights, results,
-                                                     max_evals=100)
+            points_to_run = \
+                hp_seletor.select_points(scenario, generated_points,
+                                         scenario.tournament_size - 1,
+                                         epoch, max_epochs, features, weights,
+                                         results, max_evals=100)
 
             for surrogate in sm.surrogates.keys():
-                if sm.surrogates[surrogate].surr.model.rf is not None:
+                if surrogate is Surrogates.SMAC:
+                    if sm.surrogates[surrogate].surr.model.rf is not None:
+                        if qap:
+                            predicted_quals.extend(sm.predict(surrogate,
+                                                              points_to_run,
+                                                              cutoff_time,
+                                                              None))
+                        else:
+                            predicted_quals.extend(sm.predict(surrogate,
+                                                              evaluated,
+                                                              cutoff_time,
+                                                              None))
+                            qap = True
+
+                else:
                     if qap:
                         predicted_quals.extend(sm.predict(surrogate,
                                                           points_to_run,
-                                                          cutoff_time))
+                                                          cutoff_time,
+                                                          instances))
                     else:
                         predicted_quals.extend(sm.predict(surrogate,
                                                           evaluated,
-                                                          cutoff_time))
+                                                          cutoff_time,
+                                                          instances))
                         qap = True
 
             evaluated.extend(points_to_run)
@@ -273,22 +329,16 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
 
             points_to_run = points_to_run + [result_tournament.best_finisher[0]]
 
-            # Get the instances for the new tournament
-            instance_id, instances = instance_selector.get_subset(result_tournament.instance_set_id + 1)
-
             # Create new tournament
             new_tournament, initial_assignments_new_tournament = tournament_dispatcher.init_tournament(results,
                                                                                                        points_to_run,
                                                                                                        instances,
+
                                                                                                        instance_id)
-            # Remove that old tournament
-            tournaments.remove(result_tournament)
-            tournament_history[result_tournament.id] = result_tournament
 
             # Add the new tournament and update the ray tasks with the new conf/instance assignments
             tournaments.append(new_tournament)
             tasks = update_tasks(tasks, initial_assignments_new_tournament, new_tournament, global_cache,  ta_wrapper, scenario)
-            global_cache.put_tournament_history.remote(new_tournament)
 
             global_cache.put_tournament_update.remote(new_tournament)
             global_cache.remove_tournament.remote(result_tournament)
@@ -297,6 +347,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             logger.info(f"Final results tournament {result_tournament}")
             logger.info(f"New tournament {new_tournament}")
             epoch += 1
+            overall_best_update(tournaments, results, scenario)
         else:
             # If the tournament does not terminate we get a new conf/instance assignment and add that as ray task
             next_task = tournament_dispatcher.next_tournament_run(results, result_tournament, result_conf)
@@ -305,9 +356,10 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             #global_cache.put_tournament_update.remote(tournaments)
             global_cache.put_tournament_update.remote(result_tournament)
 
-        overall_best_update(tournaments, results, scenario)
 
     global_cache.save_rt_results.remote()
+    global_cache.save_tournament_history.remote()
+
     print("DONE")
     logger.info("DONE")
     time.sleep(30)
@@ -319,16 +371,18 @@ if __name__ == "__main__":
 
     parser = {"check_path": False, "seed": 42, "ta_run_type": "import_wrapper", "winners_per_tournament": 1, #import_wrapper
               "initial_instance_set_size": 2, "tournament_size": 2, "number_tournaments": 2, "total_tournament_number": 2,
-              "total_runtime": 1200, "generator_multiple": 3, "set_size": 50,
-              "termination_criterion": "total_tournament_number", "par": 1, "ta_pid_name": "glucose-simp", "memory_limit":1023*3, "log_folder":"run_1"}
+              "total_runtime": 1200, "generator_multiple": 3, "set_size": 50, "monitor": "tournament_level",
+              "termination_criterion": "total_tournament_number", "par": 1, "ta_pid_name": "glucose-simp", "memory_limit":1023*3, "log_folder":"run_1",
+              "wrapper_mod_name": "selector.wrapper.cadical_wrapper", "wrapper_class_name": "Cadical_Wrapper"}
 
     scenario = Scenario("./selector/input/scenarios/test_example.txt", parser)#my_glucose_example #my_cadical_example
+
 
     check_log_folder(scenario.log_folder)
     clear_logs(scenario.log_folder)
 
-    logging.basicConfig( level=logging.INFO,
-                        format='%(asctime)s %(message)s', handlers = [
+    logging.basicConfig(level=logging.INFO,
+                        format='%(asctime)s %(message)s', handlers=[
         logging.FileHandler(f"./selector/logs/{scenario.log_folder}/main.log"),
     ])
 
@@ -342,8 +396,8 @@ if __name__ == "__main__":
     ta_wrapper = TAP_Work_Wrapper()
 
     # init
-    #ray.init(address="auto")
-    ray.init()
+    ray.init(address="auto")
+    # ray.init()
 
     logger.info("Ray info: {}".format(ray.cluster_resources()))
     logger.info("Ray nodes {}".format(ray.nodes()))
@@ -353,9 +407,3 @@ if __name__ == "__main__":
 
     save_latest_logs(scenario.log_folder)
     ray.shutdown()
-
-
-
-
-
-

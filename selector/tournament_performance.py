@@ -5,6 +5,7 @@ import ray
 import pickle
 import math
 import copy
+from selector.log_setup import ConfEncoder
 
 def get_conf_time_out(results, configuration_id, instances_set):
     """
@@ -108,7 +109,7 @@ def overall_best_update(tournaments, results, scenario):
     runtime = {}
     confs = {}
     # For each tournament get the best finisher
-    for  t in tournaments:
+    for t in tournaments:
         if t.best_finisher:
             best_winner = t.best_finisher[0]
             number_of_instances_run[best_winner.id] = len(results[best_winner.id])
@@ -125,9 +126,5 @@ def overall_best_update(tournaments, results, scenario):
         conf_with_min_runtime = [k for k, v in conf_r_w_max_i.items() if v == conf_with_min_runtime]
 
         with open(f"./selector/logs/{scenario.log_folder}/trajectory.json", 'a') as f:
-            json.dump({str(confs[conf_with_min_runtime[0]]): confs[conf_with_min_runtime[0]].conf}, f)
+            json.dump({str(confs[conf_with_min_runtime[0]].id): confs[conf_with_min_runtime[0]].conf}, f, cls=ConfEncoder)
             f.write(os.linesep)
-
-
-
-

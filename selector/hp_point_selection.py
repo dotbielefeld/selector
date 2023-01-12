@@ -19,7 +19,7 @@ def get_relatives(suggested):
                       if sugg != s and sugg.generator == gen_type]
         relatives.append(index_list)
 
-    return np.array(relatives)
+    return np.array(relatives, dtype=object)
 
 
 def distance_stats(smfeatures, distances):
@@ -137,7 +137,11 @@ def normalize_plus_cond_acc(sugg, s):
     for param in psetting:
         if param.type == ParamType.categorical:
             if len(param.bound) > 2:
-                maximums[param.name] = float(param.bound[len(param.bound) - 1])
+                if isinstance(param.bound[0], (str, np.str_)):
+                    maximums[param.name] = len(param.bound)
+                else:
+                    maximums[param.name] = \
+                        float(param.bound[len(param.bound) - 1])
             else:
                 maximums[param.name] = 1
             cat_params.append(param.name)
@@ -193,7 +197,7 @@ def pairwise_distances(sugg_i, sugg_j):
                         s += (float(s_i.conf[key]) - float(s_j.conf[key]))**2
                     else:
                         s += (s_i.conf[key] - s_j.conf[key])**2
-                        
+
             m[i, j] = s**0.5
 
     return np.array(m)

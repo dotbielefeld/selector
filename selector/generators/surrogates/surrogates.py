@@ -1,11 +1,10 @@
 """This module contains surrogate management functions."""
 
-import numpy as np
-
+import copy
 from selector.pool import Surrogates
 from selector.generators.surrogates.smac_surrogate import SmacSurr
-
-from smac.tae import StatusType
+from selector.generators.surrogates.ggapp_surrogate import GGAppSurr
+from selector.generators.surrogates.cppl_surrogate import CPPL
 
 
 class SurrogateManager():
@@ -19,10 +18,14 @@ class SurrogateManager():
         """
         self.seed = seed
         self.surrogates = {
-            Surrogates.SMAC: SmacSurr(scenario, seed=self.seed)
+            Surrogates.SMAC: SmacSurr(scenario, seed=self.seed),
+            Surrogates.GGApp: GGAppSurr(scenario, seed=self.seed),
+            Surrogates.CPPL: CPPL(scenario, seed=self.seed,
+                                  features=scenario.features)
         }
 
-    def suggest(self, suggestor, scenario, n_samples=1):
+    def suggest(self, suggestor, scenario, n_samples, data, results,
+                next_instance_set):
         """Suggest points based on surrogate.
 
         :param suggestor: object Surrogates, which surrogate to use
@@ -30,7 +33,11 @@ class SurrogateManager():
         :param n_samples: int, how many points to suggest
         :return sugg: list, suggested points
         """
-        sugg = self.surrogates[suggestor].get_suggestions(scenario, n_samples)
+        sugg = \
+            self.surrogates[suggestor].get_suggestions(scenario,
+                                                       n_samples,
+                                                       data, results,
+                                                       next_instance_set)
 
         return sugg
 
@@ -43,30 +50,11 @@ class SurrogateManager():
         :param state: object selector.pool.Status, status of this point
         :param tourn_nr: int, number of tournament, which to update with
         """
-        config_dict = {}
-        for c in configs:
-            config_dict[c.id] = c
-        # instances in tournament
-        instances = history.instance_set
-        for cid in config_dict.keys():
-            # config in results
-            for ins in instances:
-                conf = config_dict[cid]
+        confs = copy.deepcopy(configs)
+        self.surrogates[surrogate].update(history, confs, results,
+                                          terminations)
 
-                if ins in results[cid]:
-                    if not np.isnan(results[cid][ins]):
-                        state = StatusType.SUCCESS
-
-                    elif cid in terminations:
-                        state = StatusType.CAPPED
-
-                    else:
-                        state = StatusType.TIMEOUT
-
-                self.surrogates[surrogate].update(results[cid][ins], conf,
-                                                  state, ins)
-
-    def predict(self, surrogate, suggestions, cot):
+    def predict(self, surrogate, configs, cot, next_instance_set):
         """Get prediction for mean and variance concerning the points quality.
 
         :param surrogate: object Surrogates, which surrogate to use
@@ -75,11 +63,19 @@ class SurrogateManager():
         :return predictions: list of dicts, contains info and predictions
             for regarded configurations
         """
+        suggestions = copy.deepcopy(configs)
+        if surrogate == Surrogates.SMAC:
+            predict = self.surrogates[surrogate].predict(suggestions,
+                                                         next_instance_set)
+
         try:
-            predict = self.surrogates[surrogate].predict(suggestions)
+            predict = self.surrogates[surrogate].predict(suggestions,
+                                                         next_instance_set)
+
             mean = predict[0]
             var = predict[1]
-            return [{sugg.id: {'qual': mean[s][0], 'var': var[s][0],
+
+            return [{sugg.id: {'qual': mean[s], 'var': var[s],
                                'gen': sugg.generator}}
                     for s, sugg in enumerate(suggestions)]
         except:
@@ -87,20 +83,23 @@ class SurrogateManager():
                                'gen': sugg.generator}}
                     for sugg in suggestions]
 
-    def ei(self, surrogate, suggestions):
+    def ei(self, surrogate, suggestions, next_instance_set):
         """Compute expected improvement.
 
         :param surrogate: object Surrogates, which surrogate to use
         :param suggestions: list, suggested configurations
         :return ei: nested list, expected improvements
         """
+        suggs = copy.deepcopy(suggestions)
         try:
-            ei = self.surrogates[surrogate].expected_improvement(suggestions)
+            ei = self.surrogates[surrogate].\
+                expected_improvement(suggs, next_instance_set)
+
             return ei
         except:
             return [[0] for sugg in suggestions]
 
-    def pi(self, surrogate, suggestions, cot):
+    def pi(self, surrogate, suggestions, cot, results, next_instance_set):
         """Compute probability of improvement.
 
         :param surrogate: object Surrogates, which surrogate to use
@@ -108,6 +107,8 @@ class SurrogateManager():
         :param cot: float, cut off time for tournaments
         :return pi: nested list, probabilities of improvement
         """
-        pi = self.surrogates[surrogate].probability_improvement(suggestions)
+        suggs = copy.deepcopy(suggestions)
+        pi = self.surrogates[surrogate].\
+            probability_improvement(suggs, results, next_instance_set)
 
         return pi

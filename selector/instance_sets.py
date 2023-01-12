@@ -2,7 +2,7 @@ import numpy as np
 
 
 class InstanceSet:
-    def __init__(self, instance_set, start_instance_size, set_size=None):
+    def __init__(self, instance_set, start_instance_size, set_size=None, instance_increment_size= None):
         """
 
         :param instance_set: set of instances available.
@@ -20,7 +20,10 @@ class InstanceSet:
         else:
             self.set_size = len(instance_set)
 
-        self.instance_increment_size = len(self.instance_set) / np.floor(len(self.instance_set)/self.start_instance_size)
+        if instance_increment_size:
+            self.instance_increment_size = 1
+        else:
+            self.instance_increment_size = len(self.instance_set) / np.floor(len(self.instance_set)/self.start_instance_size)
 
 
     def next_set(self):

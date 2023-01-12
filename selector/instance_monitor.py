@@ -5,7 +5,7 @@ import time
 
 @ray.remote(num_cpus=1)
 class InstanceMonitor:
-    def __init__(self, sleep_time, cache, delta_cap=2):
+    def __init__(self, sleep_time, cache, scenario, delta_cap=1):
         """
         Monitor whether the runtime of a configuration on an instance exceeds the best runtime of any configuration
         on that instance multiplied by a constant (delta_cap).
@@ -22,12 +22,15 @@ class InstanceMonitor:
         self.termination_history = {}
         self.best_instance_results = {}
         self.delta_cap = delta_cap
+        self.last_t_check = 0
+        self.scenario = scenario
 
-        logging.basicConfig(filename=f'./selector/logs/inst_monitor.log', level=logging.INFO,
+        logging.basicConfig(filename=f'./selector/logs/{scenario.log_folder}/inst_monitor.log', level=logging.INFO,
                             format='%(asctime)s %(message)s')
 
     def monitor(self):
         logging.info("Starting monitor")
+        worst_finisher = []
 
         while True:
 
@@ -49,48 +52,71 @@ class InstanceMonitor:
             dur = time.time() - start
             logging.info(f"Monitor getting tournaments {dur}")
 
+            start = time.time()
+            tournament_history = ray.get(self.cache.get_tournament_history.remote())
+            dur = time.time() - start
+            logging.info(f"Monitor getting tournament history {dur}")
+
+            current_instance_set = tournaments[0].instance_set_id
+            tournaments_to_consider = len(tournaments)
+
+            # finding the worst finisher for the tournaments with the most seen instances
+            if len(tournament_history) != self.last_t_check and len(tournament_history) >= 2:
+                last_tournaments = {}
+                set_counter = {}
+                for finished_tournament in tournament_history.values():
+                    if finished_tournament.instance_set_id in  [current_instance_set, current_instance_set+1, current_instance_set-1]:
+                        last_tournaments[finished_tournament.id] = finished_tournament
+                        set_counter[finished_tournament.id] = finished_tournament.instance_set_id
+
+                tournament_ids_to_consider = sorted(set_counter)[:tournaments_to_consider]
+                worst_finisher = [last_tournaments[x].best_finisher[-1] for x in tournament_ids_to_consider]
+                self.last_t_check = len(tournament_history)
+
             # Creating a dictionary containing the best runtime for each instance
-            for conf in results:
-                for instance in results[conf]:
+            for conf in worst_finisher:
+                # need to figure out which tournamnet has the highest instance number and then wich conf the smallest runtime
+                for instance in results[conf.id]:
                     if instance in self.best_instance_results and \
-                            results[conf][instance] < self.best_instance_results[instance]:
-                        self.best_instance_results[instance] = results[conf][instance]
+                            results[conf.id][instance] < self.best_instance_results[instance]:
+                        self.best_instance_results[instance] = results[conf.id][instance]
                     elif instance not in self.best_instance_results:
-                        self.best_instance_results[instance] = results[conf][instance]
+                        self.best_instance_results[instance] = results[conf.id][instance]
 
             logging.info(f"best_instance_results: {self.best_instance_results}")
 
+
             for t in tournaments:
-                for conf in t.configurations:
-                    instances_conf_finished = []
-                    if conf.id in list(results.keys()):
-                        instances_conf_finished = list(results[conf.id].keys())
+                if len(t.ray_object_store.keys()) >= 1:
+                    for conf in t.configurations:
+                        instances_conf_finished = []
+                        if conf.id in list(results.keys()):
+                            instances_conf_finished = list(results[conf.id].keys())
+                        instances_conf_planned = list(t.ray_object_store[conf.id].keys())
+                        instances_conf_still_runs = [i for i in instances_conf_planned if i not in instances_conf_finished]
 
-                    instances_conf_planned = list(t.ray_object_store[conf.id].keys())
-                    instances_conf_still_runs = [i for i in instances_conf_planned if i not in instances_conf_finished]
-
-                    # We kill a configuration/instance pair, when the runtime exceeds the current best runtime so far
-                    # for that instance multiplied by delta_cap or when the configuration timed out
-                    for instance in instances_conf_still_runs:
-                        if conf.id in start_time and instance in start_time[conf.id] \
-                                and instance in self.best_instance_results:
-                            instance_runtime = time.time() - start_time[conf.id][instance]
-                            logging.info(
-                                f"Monitor kill check: conf.id: {conf.id}, "
-                                f"instance: {instance}, "
-                                f"instance_runtime: {instance_runtime}, "
-                                f"best_instance_runtime: {self.best_instance_results[instance]}")
-                            if instance_runtime > \
-                                    self.best_instance_results[instance] * self.delta_cap:
-                                if self.termination_check(conf.id, instance):
-                                    logging.info(
-                                        f"Monitor is killing: {conf} {instance} "
-                                        f"with id: {t.ray_object_store[conf.id][instance]}")
-                                    print(f"Monitor is killing: {time.ctime()} {t.ray_object_store[conf.id][instance]}")
-                                    self.update_termination_history(conf.id, instance)
-                                    [ray.cancel(t.ray_object_store[conf.id][instance])]
-                                else:
-                                    continue
+                        # We kill a configuration/instance pair, when the runtime exceeds the current best runtime so far
+                        # for that instance multiplied by delta_cap or when the configuration timed out
+                        for instance in instances_conf_still_runs:
+                            if conf.id in start_time and instance in start_time[conf.id] \
+                                    and instance in self.best_instance_results:
+                                instance_runtime = time.time() - start_time[conf.id][instance]
+                                logging.info(
+                                    f"Monitor kill check: conf.id: {conf.id}, "
+                                    f"instance: {instance}, "
+                                    f"instance_runtime: {instance_runtime}, "
+                                    f"best_instance_runtime: {self.best_instance_results[instance]}")
+                                if instance_runtime > \
+                                        self.best_instance_results[instance] * self.delta_cap:
+                                    if self.termination_check(conf.id, instance):
+                                        logging.info(
+                                            f"Monitor is killing: {conf} {instance} "
+                                            f"with id: {t.ray_object_store[conf.id][instance]}")
+                                        print(f"Monitor is killing: {time.ctime()} {t.ray_object_store[conf.id][instance]}")
+                                        self.update_termination_history(conf.id, instance)
+                                        [ray.cancel(t.ray_object_store[conf.id][instance])]
+                                    else:
+                                        continue
 
             time.sleep(self.sleep_time)
 

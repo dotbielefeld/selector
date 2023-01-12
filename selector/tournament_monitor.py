@@ -4,7 +4,7 @@ import time
 import numpy as np
 
 
-from tournament_performance import get_censored_runtime_for_instance_set,get_conf_time_out
+from tournament_performance import get_censored_runtime_for_instance_set,get_conf_time_out, get_runtime_for_instance_set_with_timeout
 
 
 @ray.remote(num_cpus=1)
@@ -23,6 +23,8 @@ class Monitor:
         self.cache = cache
         self.number_of_finisher = scenario.winners_per_tournament
         self.tournaments = []
+        self.time_out = scenario.cutoff_time
+        self.par = scenario.par
 
         logging.basicConfig(filename=f'./selector/logs/{scenario.log_folder}/monitor.log', level=logging.INFO,
                             format='%(asctime)s %(message)s')
@@ -58,14 +60,14 @@ class Monitor:
                 if len(t.best_finisher) == self.number_of_finisher:
                     # Compare runtime to the worst best finisher
                     worst_best_finisher = t.best_finisher[-1]
-                    runtime_worst_best_finisher = get_censored_runtime_for_instance_set(results, worst_best_finisher.id,
-                                                                                        t.instance_set)
+                    runtime_worst_best_finisher = get_runtime_for_instance_set_with_timeout(results, worst_best_finisher.id,
+                                                                                        t.instance_set, self.time_out, self.par)
                     # We need to compare each configuration that is still in the running to the worst finisher
                     for conf in t.configurations:
                         # Here we figured out which instances the conf is still running and which one it already finished
                         if conf.id in list(results.keys()):
                             instances_conf_finished = list(results[conf.id].keys())
-                            conf_runtime_f = get_censored_runtime_for_instance_set(results, conf.id, t.instance_set)
+                            conf_runtime_f = get_runtime_for_instance_set_with_timeout(results, conf.id, t.instance_set, self.time_out, self.par)
                         else:
                             instances_conf_finished = []
                             conf_runtime_f = 0
@@ -80,14 +82,12 @@ class Monitor:
                         # (or at least very very little) so we ignore it for the cancel computation
                         conf_runtime_p = sum([(time.time() - start_time[conf.id][i]) for i in instances_conf_still_runs if i in list(start_time[conf.id].keys())])
                         conf_runtime = conf_runtime_f + conf_runtime_p
-                        conf_time_out = get_conf_time_out(results, conf.id, t.instance_set)
+                        #conf_time_out = get_conf_time_out(results, conf.id, t.instance_set)
 
                         logging.info(f"Monitor kill check,{conf.id} {conf_runtime}, {runtime_worst_best_finisher}"
-                                     f"{worst_best_finisher.id,},{conf_time_out}, {[m. id for m in t.configurations]}")
+                                     f"{worst_best_finisher.id,}, {[m. id for m in t.configurations]}")
 
-
-                        # We also kill in case there has been a time out recorded for the conf
-                        if conf_runtime > runtime_worst_best_finisher or conf_time_out:
+                        if conf_runtime > runtime_worst_best_finisher:# or conf_time_out:
                             # We can only kill still running tasks
                             for i in instances_conf_still_runs:
                                 # We check if we have killed the conf/instance pair before.

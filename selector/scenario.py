@@ -19,7 +19,7 @@ class Scenario:
         :param scenario: dic or string. If string, a scenario file will be read in.
         :param cmd: dic, Command line arguments which augment the scenario file/dic
         """
-        
+
         if isinstance(scenario, str):
             scenario = self.scenario_from_file(scenario)
 
@@ -49,8 +49,8 @@ class Scenario:
 
         self.verify_scenario()
 
-        with open(f'./selector/logs/{self.log_folder}/scenario.pkl', 'wb') as out:
-            pickle.dump(scenario, out)
+        # with open(f'./selector/logs/{self.log_folder}/scenario.pkl', 'wb') as out:
+        #    pickle.dump(scenario, out)
 
 
 
@@ -91,7 +91,7 @@ class Scenario:
         """
         # TODO: verify algo and execdir
 
-        if self.run_obj not in ["runtime"]:
+        if self.run_obj not in ["runtime", "quality"]:
             raise ValueError("The specified run objective is not supported")
 
         if self.overall_obj not in ["mean", "mean10", "PAR10"]:
@@ -106,15 +106,15 @@ class Scenario:
         # check if the named instances are really available
         if self.check_path:
             for i in (self.instance_set + self.test_instances):
-                if not os.path.exists(f".{i}".strip("\n")):
+                if not os.path.exists(f"./selector{i}".strip("\n")):
                     raise FileExistsError(f"Instance file {i} does not exist")
 
         for i in (self.instance_set + self.test_instances):
             if i not in self.features:
                 raise ValueError(f"For instance {i} no features were provided")
 
-        if  "log_folder" not in list(self.__dict__.keys()):
-            setattr(self, "log_folder" , "latest")
+        if "log_folder" not in list(self.__dict__.keys()):
+            setattr(self, "log_folder", "latest")
         elif self.log_folder == "None":
             self.log_folder = "latest"
 
@@ -167,21 +167,27 @@ def parse_args():
 
     hp.add_argument('--file', type=open, action=LoadOptionsFromFile)
 
-    hp.add_argument('--check_path', default=False)
-    hp.add_argument('--seed', default=42)
+    #parser.add_argument('--check_path', dest='check_path', action='store_true')
+    parser.add_argument('--check_path', default=False, type=lambda x: (str(x).lower() == 'true'))
+
+    hp.add_argument('--seed', default=42, type=int)
     hp.add_argument('--ta_pid_name', type=str, default="")
     hp.add_argument('--log_folder', type=str, default="latest")
     hp.add_argument('--memory_limit', type=int, default=1023*3)
 
     hp.add_argument('--ta_run_type', type=str, default="import_wrapper")
-    hp.add_argument('--wrapper_mod_name', type=str, default="", required='--ta_run_type' in sys.argv)
-    hp.add_argument('--wrapper_class_name', type=str, default="", required='--ta_run_type' in sys.argv)
+    hp.add_argument('--wrapper_mod_name', type=str, default="")
+    hp.add_argument('--wrapper_class_name', type=str, default="")
+    hp.add_argument('--quality_match', type=str, default="")
+    hp.add_argument('--quality_extract', type=str, default="")
 
     hp.add_argument('--winners_per_tournament', type=int, default=1)
     hp.add_argument('--tournament_size', type=int, default=5 )
     hp.add_argument('--number_tournaments', type=int, default=2)
 
     hp.add_argument('--par', type=int, default=1)
+    hp.add_argument('--monitor', type=str, default="tournament_level")
+    hp.add_argument('--surrogate_amortized_time', type=int, default=30)
 
     hp.add_argument('--termination_criterion', type=str, default="runtime")
     hp.add_argument('--total_tournament_number', type=int, default=10)
@@ -189,8 +195,9 @@ def parse_args():
     hp.add_argument('--generator_multiple', type=int, default=5)
     hp.add_argument('--initial_instance_set_size', type=int, default=5)
     hp.add_argument('--set_size', type=int, default=50)
+    hp.add_argument('--instances_dir', type=str, default="")
 
-    so.add_argument('--scenario_file', type=str, required=True)
+    so.add_argument('--scenario_file', type=str)
     so.add_argument('--ta_cmd', type=str)
     so.add_argument('--deterministic', type=str)
     so.add_argument('--run_obj', type=str)
@@ -201,6 +208,43 @@ def parse_args():
     so.add_argument('--feature_file', type=str)
     so.add_argument('--paramfile', type=str)
 
+    so.add_argument('--w_1', type=float)
+    so.add_argument('--w_2', type=float)
+    so.add_argument('--w_3', type=float)
+    so.add_argument('--w_4', type=float)
+    so.add_argument('--w_5', type=float)
+    so.add_argument('--w_6', type=float)
+    so.add_argument('--w_7', type=float)
+    so.add_argument('--w_8', type=float)
+    so.add_argument('--w_9', type=float)
+    so.add_argument('--w_10', type=float)
+    so.add_argument('--w_11', type=float)
+    so.add_argument('--w_12', type=float)
+    so.add_argument('--w_13', type=float)
+    so.add_argument('--w_14', type=float)
+    so.add_argument('--w_15', type=float)
+    so.add_argument('--w_16', type=float)
+    so.add_argument('--w_17', type=float)
+    so.add_argument('--w_18', type=float)
+    so.add_argument('--w_19', type=float)
+    so.add_argument('--w_20', type=float)
+    so.add_argument('--w_21', type=float)
+    so.add_argument('--w_22', type=float)
+    so.add_argument('--w_23', type=float)
+    so.add_argument('--w_24', type=float)
+    so.add_argument('--w_25', type=float)
+    so.add_argument('--w_26', type=float)
+    so.add_argument('--w_27', type=float)
+    so.add_argument('--w_28', type=float)
+    so.add_argument('--w_29', type=float)
+    so.add_argument('--w_30', type=float)
+    so.add_argument('--w_31', type=float)
+    so.add_argument('--w_32', type=float)
+    so.add_argument('--w_33', type=float)
+    so.add_argument('--w_34', type=float)
+    so.add_argument('--w_35', type=float)
+    so.add_argument('--w_36', type=float)
+
     return vars(parser.parse_args())
 
 if __name__ == "__main__":
@@ -208,5 +252,7 @@ if __name__ == "__main__":
     parser = parse_args()
 
     from test.test_point_selection import test_point_selection
+
+    Scenario = Scenario("./test_data/test_scenario.txt", parser)
 
     test_point_selection(Scenario, parser)
