@@ -105,8 +105,13 @@ class TargetAlgorithmObserver:
 
     def save_rt_results(self):
         with open(f"./selector/logs/{self.scenario.log_folder}/run_history.json", 'a') as f:
-            history = {str(k): v for k, v in self.results.items()}
+            history = {str(k):v for k,v in self.results.items()}
             json.dump(history, f, indent=2)
+
+    def save_tournament_history(self):
+        with open(f"./selector/logs/{self.scenario.log_folder}/tournament_history.json", 'a') as f:
+            history = {str(k): v for k, v in self.tournament_history.items()}
+            json.dump(history, f, indent=4, cls=TournamentEncoder)
 
     def save_tournament_history(self):
         with open(f"./selector/logs/{self.scenario.log_folder}/tournament_history.json", 'a') as f:

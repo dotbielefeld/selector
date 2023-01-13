@@ -263,22 +263,10 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
                                                     evaluated)),
                 axis=1)
 
-            for surrogate in sm.surrogates.keys():
-                if surrogate is Surrogates.SMAC:
-                    if sm.surrogates[surrogate].surr.model.rf is not None:
-                        predicted_perf = sm.predict(surrogate,
-                                                    generated_points,
-                                                    cutoff_time, None)
-                else:
-                    predicted_perf = sm.predict(surrogate,
-                                                generated_points,
-                                                cutoff_time,
-                                                instances)
-
             features = np.concatenate((features,
                                       fg.dynamic_feature_gen(generated_points,
                                                              hist,
-                                                             predicted_perf,
+                                                             None,
                                                              sm, cutoff_time,
                                                              results,
                                                              instances)),
@@ -333,7 +321,6 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             new_tournament, initial_assignments_new_tournament = tournament_dispatcher.init_tournament(results,
                                                                                                        points_to_run,
                                                                                                        instances,
-
                                                                                                        instance_id)
 
             # Add the new tournament and update the ray tasks with the new conf/instance assignments
