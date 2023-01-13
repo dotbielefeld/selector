@@ -11,6 +11,8 @@ certifi==2021.10.8
 charset-normalizer==2.0.10
 click==8.0.3
 colorful==0.5.4
+ConfigSpace==0.5.0
+costcla==0.6
 Deprecated==1.2.13
 filelock==3.4.2
 frozenlist==1.2.0
@@ -24,6 +26,7 @@ idna==3.3
 importlib-metadata==4.10.0
 importlib-resources==5.4.0
 jsonschema==4.4.0
+joblib==1.1.0
 msgpack==1.0.3
 multidict==5.2.0
 numpy==1.21.5
