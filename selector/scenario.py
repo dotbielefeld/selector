@@ -32,7 +32,7 @@ class Scenario:
         # add and overwrite cmd line args
         for key, value in cmd.items():
 
-            if key in scenario and value != None:
+            if key in scenario and value is not None:
                 warnings.warn(f"Setting: {key} of the scenario file is overwritten by parsed command line arguments")
                 scenario[key] = value
 
@@ -97,10 +97,10 @@ class Scenario:
         if self.overall_obj not in ["mean", "mean10", "PAR10"]:
             raise ValueError("The specified objective is not supported")
 
-        if not isinstance(float(self.cutoff_time), float) :
+        if not isinstance(float(self.cutoff_time), float):
             raise ValueError("The cutoff_time needs to be a float")
 
-        if not isinstance(float(self.wallclock_limit), float) :
+        if not isinstance(float(self.wallclock_limit), float):
             raise ValueError("The wallclock_limit needs to be a float")
 
         # check if the named instances are really available
@@ -151,7 +151,7 @@ class Scenario:
         return scenario_dict
 
 class LoadOptionsFromFile (argparse.Action):
-    def __call__ (self, parser, namespace, values, option_string = None):
+    def __call__ (self, parser, namespace, values, option_string=None):
         with values as f:
             parser.parse_args(f.read().split(), namespace)
 
@@ -182,7 +182,7 @@ def parse_args():
     hp.add_argument('--quality_extract', type=str, default="")
 
     hp.add_argument('--winners_per_tournament', type=int, default=1)
-    hp.add_argument('--tournament_size', type=int, default=5 )
+    hp.add_argument('--tournament_size', type=int, default=5)
     hp.add_argument('--number_tournaments', type=int, default=2)
 
     hp.add_argument('--par', type=int, default=1)
@@ -250,3 +250,12 @@ def parse_args():
 if __name__ == "__main__":
 
     parser = parse_args()
+
+    from test.test_point_selection import test_point_selection
+
+    s = \
+        Scenario(
+            '/media/dweiss/Transcend5/AC_architecture/Selector/selector/' +
+            'test_data/test_scenario.txt', parser)
+
+    test_point_selection(s, parser)

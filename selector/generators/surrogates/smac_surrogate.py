@@ -34,7 +34,10 @@ from selector.generators.default_point_generator import (
     check_conditionals,
     check_no_goods
 )
-from selector.generators.random_point_generator import reset_no_goods
+from selector.generators.random_point_generator import (
+    reset_no_goods,
+    random_set_conf
+)
 
 
 class SmacSurr():
@@ -454,6 +457,16 @@ class SmacSurr():
                             else:  # for ints
                                 config_setting[k] = str(int(v) -
                                                         self.neg_cat[k])
+
+                    # For consistency, set random value for turned off
+                    # parameters (due to conditionals), since SMAC accounts
+                    # for conditionals in config generation and all other
+                    # generators do not
+                    for param in self.s.parameter:
+                        if param.name in self.s.conditionals and \
+                                param.name not in config_setting:
+                            config_setting[param.name] = \
+                                random_set_conf([param])[param.name]
 
                     suggestions.append(
                         SelConfig(identity,

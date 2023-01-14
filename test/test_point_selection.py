@@ -127,7 +127,7 @@ def test_point_selection(scenario, parser):
 
     results = ray.get(global_cache.get_results.remote())
 
-    for epoch in range(2):
+    for epoch in range(5):
         result_tournament = hist[list(hist.keys())[4]]
 
         all_configs \
