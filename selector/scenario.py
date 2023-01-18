@@ -250,12 +250,3 @@ def parse_args():
 if __name__ == "__main__":
 
     parser = parse_args()
-
-    from test.test_point_selection import test_point_selection
-
-    s = \
-        Scenario(
-            '/media/dweiss/Transcend5/AC_architecture/Selector/selector/' +
-            'test_data/test_scenario.txt', parser)
-
-    test_point_selection(s, parser)
