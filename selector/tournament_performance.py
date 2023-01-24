@@ -128,7 +128,7 @@ def overall_best_update(tournaments, results, scenario):
         conf_with_min_runtime = [k for k, v in conf_r_w_max_i.items() if v == conf_with_min_runtime]
 
 
-        clean_conf = copy.copy(confs[conf_with_min_runtime[0]].conf.conf)
+        clean_conf = copy.copy(confs[conf_with_min_runtime[0]].conf)
         # Check conditionals and turn off parameters if violated
         cond_vio = check_conditionals(scenario, clean_conf)
         for cv in cond_vio:
