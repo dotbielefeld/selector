@@ -27,11 +27,11 @@ sys.path.append(os.getcwd())
 class CPPL:
     """Surrogate from CPPL."""
 
-    def __init__(self, scenario, seed, features, pool_size=15, alpha=1,
+    def __init__(self, scenario, seed, features, pool_size=192, alpha=1,
                  gamma=0.1, w=0.1, random_prob=0.2, mutation_prob=0.8,
                  pca_dimension_configurations=8, pca_dimension_instances=8,
                  model_update="Batch", v_hat_norm=None, theta_norm="zero_one",
-                 feature_normaliser="max"):  # 10, 9
+                 feature_normaliser="max", ensemble=True):  # 10, 9
         """
         CPPL Initializition.
 
@@ -41,6 +41,7 @@ class CPPL:
         self.scenario = scenario
         self.features = features
         self.seed = seed
+        self.ensemble = ensemble
 
         self.v_hat_norm = v_hat_norm
         self.theta_norm = theta_norm
@@ -65,15 +66,13 @@ class CPPL:
         self.pca_dimension_configurations = pca_dimension_configurations
         if len(scenario.parameter) < self.pca_dimension_configurations:
             self.pca_dimension_configurations = len(scenario.parameter)
-        else:
-            pass
+
         self.pca_dimension_instances = pca_dimension_instances
         if len(list(self.features.values())[0]) < self.pca_dimension_instances:
             self.pca_dimension_instances = len(list(self.features.values())[0])
         elif len(self.features) < self.pca_dimension_instances:
             self.pca_dimension_instances = len(self.features)
-        else:
-            pass
+
         self.pca_number_confs_calibration = 100
 
         self.context_dim = self.pca_dimension_configurations * 2 + \
@@ -99,6 +98,7 @@ class CPPL:
 
         self.calibrate_pca()
         self.best_q = None
+        self.identity_store = {}
 
     def process_parameter(self):
         """
@@ -147,8 +147,8 @@ class CPPL:
         self.cont_int_params_names = [p.name for p in cont_int_params]
 
         if len(self.cat_params_names) > 0:
-            self.o_h_enc = OneHotEncoder(categories=list_of_bounds, handle_unknown='ignore')
-            self.o_h_enc.fit(np.array(list_o_of_default).reshape(1, -1))
+            self.o_h_enc = OneHotEncoder(categories=list_of_bounds)
+            self.o_h_enc.fit(np.array(list_o_of_default).reshape(1, -1) )
 
     def scale_conf(self, configuration):
         """
@@ -159,16 +159,10 @@ class CPPL:
         cat_params_on_conf = np.zeros(len(self.cat_params_names), dtype=object)
         cont_int_params_of_conf = np.zeros(len(self.cont_int_params_names), dtype=float)
 
-        param_bounds = {}
-        for param in self.scenario.parameter:
-            param_bounds[param.name] = param.bound
-
         for param, value in configuration.conf.items():
             if param in self.cat_params_names:
                 if isinstance(value, (bool, np.bool_)):
                     cat_params_on_conf[self.cat_params_names.index(param)] = str(int(value))
-                elif type(param_bounds[param][0]) is str and isinstance(value, (str, np.str_)):
-                    cat_params_on_conf[self.cat_params_names.index(param)] = param_bounds[param].index(value)
                 else:
                     cat_params_on_conf[self.cat_params_names.index(param)] = value
             else:
@@ -177,7 +171,6 @@ class CPPL:
         cont_int_scaled = (cont_int_params_of_conf - self.lower_b_params) / (self.upper_b_params - self.lower_b_params).reshape(1, -1)
 
         if len(self.cat_params_names) > 0:
-            cat_params_on_conf = np.array([str(int(float(r))) for r in cat_params_on_conf], dtype=str)
             cat_params_on_conf = self.o_h_enc.transform(cat_params_on_conf.reshape(1, -1)).toarray()
 
         return np.concatenate((cont_int_scaled, cat_params_on_conf), axis=None)
@@ -580,12 +573,24 @@ class CPPL:
 
             best_conf_on_instance = min(results_on_instance, key=results_on_instance.get)
 
-            if results_on_instance[best_conf_on_instance] >= self.scenario.cutoff_time:
-                self.pool = [random_point(self.scenario, uuid.uuid4()) for _ in range(self.pool_size -1 )] + [default_point(self.scenario, uuid.uuid4())]
-                for c in self.pool:
-                    [self.update_feature_store(c, i) for i in previous_tournament.instance_set]
-                continue
+            if not self.ensemble:
+                if results_on_instance[best_conf_on_instance] >= self.scenario.cutoff_time:
+                    self.pool = [random_point(self.scenario, uuid.uuid4()) for _ in range(self.pool_size -1 )] + [default_point(self.scenario, uuid.uuid4())]
+                    for c in self.pool:
+                        [self.update_feature_store(c, i) for i in previous_tournament.instance_set]
+                    continue
+
             tried = previous_tournament.configuration_ids.copy()
+
+            # Through suggesting a conf multiple times with diffrent id we may get feedback for the same conf
+            # under a diffrent id. Here we map that back in order to update for the same conf.
+            if self.ensemble:
+                if best_conf_on_instance in self.identity_store:
+                    best_conf_on_instance = self.identity_store[best_conf_on_instance]
+                    for c in range(len(tried)):
+                        if tried[c] in self.identity_store:
+                            tried[c] = self.identity_store[tried[c]]
+
 
             instance_store.append(instance)
             best_conf_store.append(best_conf_on_instance)
@@ -626,8 +631,17 @@ class CPPL:
 
         suggest, ranking = self.select_from_set(self.pool, next_instance_set, n_to_select)
 
+        suggest = copy.deepcopy(suggest)
         for sugg in suggest:
             sugg.generator = Generator.cppl
+            # We have to make sure that the ids of the configurations returend are unique.
+            # I.e for two diffrent tournaments we may suggest the same conf twice.
+            # In that case the conf needs a unique id.
+            # Later update() we need to map that back
+            if self.ensemble:
+                identity = uuid.uuid4()
+                self.identity_store[identity] = sugg.id
+                sugg.id = identity
 
         return suggest, ranking
 
