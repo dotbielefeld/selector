@@ -102,8 +102,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
 
     bug_handel = []
     tournament_history = {}
-    model_update = 0
-    surrogate_amortized_time = 30
+    surrogate_amortized_time = 20
     next_surrogate_update = 1
     surrogate_update_counter = 1
 
@@ -214,8 +213,18 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             tournament_history[result_tournament.id] = result_tournament
             global_cache.put_tournament_history.remote(result_tournament)
 
-            for conf in all_configs:
-                for surrogate in sm.surrogates.keys():
+           # for conf in all_configs:
+           #     for surrogate in sm.surrogates.keys():
+            #        sm.update_surr(surrogate, result_tournament, all_configs, results, terminations)
+            for surrogate in sm.surrogates.keys():
+                if surrogate == Surrogates.GGApp:
+                    if surrogate_update_counter == next_surrogate_update:
+                        start_update = time.time()
+                        sm.update_surr(surrogate, result_tournament, all_configs, results, terminations)
+                        surrogate_time = time.time() - start_update
+
+                        surrogate_update_counter = 0
+                else:
                     sm.update_surr(surrogate, result_tournament, all_configs, results, terminations)
 
             # Generate and select
