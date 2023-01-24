@@ -2,7 +2,7 @@
 
 import uuid
 import random
-from selector.random_point_generator import random_point
+from selector.generators.random_point_generator import random_point
 
 
 class PointGen:

@@ -19,7 +19,7 @@ class Scenario:
         :param scenario: dic or string. If string, a scenario file will be read in.
         :param cmd: dic, Command line arguments which augment the scenario file/dic
         """
-        
+
         if isinstance(scenario, str):
             scenario = self.scenario_from_file(scenario)
 
@@ -32,7 +32,7 @@ class Scenario:
         # add and overwrite cmd line args
         for key, value in cmd.items():
 
-            if key in scenario and value != None:
+            if key in scenario and value is not None:
                 warnings.warn(f"Setting: {key} of the scenario file is overwritten by parsed command line arguments")
                 scenario[key] = value
 
@@ -49,8 +49,8 @@ class Scenario:
 
         self.verify_scenario()
 
-#        with open(f'./selector/logs/{self.log_folder}/scenario.pkl', 'wb') as out:
-#            pickle.dump(scenario, out)
+        # with open(f'./selector/logs/{self.log_folder}/scenario.pkl', 'wb') as out:
+        #    pickle.dump(scenario, out)
 
 
 
@@ -97,10 +97,10 @@ class Scenario:
         if self.overall_obj not in ["mean", "mean10", "PAR10"]:
             raise ValueError("The specified objective is not supported")
 
-        if not isinstance(float(self.cutoff_time), float) :
+        if not isinstance(float(self.cutoff_time), float):
             raise ValueError("The cutoff_time needs to be a float")
 
-        if not isinstance(float(self.wallclock_limit), float) :
+        if not isinstance(float(self.wallclock_limit), float):
             raise ValueError("The wallclock_limit needs to be a float")
 
         # check if the named instances are really available
@@ -113,8 +113,8 @@ class Scenario:
             if i not in self.features:
                 raise ValueError(f"For instance {i} no features were provided")
 
-        if  "log_folder" not in list(self.__dict__.keys()):
-            setattr(self, "log_folder" , "latest")
+        if "log_folder" not in list(self.__dict__.keys()):
+            setattr(self, "log_folder", "latest")
         elif self.log_folder == "None":
             self.log_folder = "latest"
 
@@ -151,7 +151,7 @@ class Scenario:
         return scenario_dict
 
 class LoadOptionsFromFile (argparse.Action):
-    def __call__ (self, parser, namespace, values, option_string = None):
+    def __call__ (self, parser, namespace, values, option_string=None):
         with values as f:
             parser.parse_args(f.read().split(), namespace)
 
@@ -182,7 +182,7 @@ def parse_args():
     hp.add_argument('--quality_extract', type=str, default="")
 
     hp.add_argument('--winners_per_tournament', type=int, default=1)
-    hp.add_argument('--tournament_size', type=int, default=5 )
+    hp.add_argument('--tournament_size', type=int, default=5)
     hp.add_argument('--number_tournaments', type=int, default=2)
 
     hp.add_argument('--par', type=int, default=1)
@@ -207,6 +207,43 @@ def parse_args():
     so.add_argument('--instance_file', type=str)
     so.add_argument('--feature_file', type=str)
     so.add_argument('--paramfile', type=str)
+
+    so.add_argument('--w_1', type=float)
+    so.add_argument('--w_2', type=float)
+    so.add_argument('--w_3', type=float)
+    so.add_argument('--w_4', type=float)
+    so.add_argument('--w_5', type=float)
+    so.add_argument('--w_6', type=float)
+    so.add_argument('--w_7', type=float)
+    so.add_argument('--w_8', type=float)
+    so.add_argument('--w_9', type=float)
+    so.add_argument('--w_10', type=float)
+    so.add_argument('--w_11', type=float)
+    so.add_argument('--w_12', type=float)
+    so.add_argument('--w_13', type=float)
+    so.add_argument('--w_14', type=float)
+    so.add_argument('--w_15', type=float)
+    so.add_argument('--w_16', type=float)
+    so.add_argument('--w_17', type=float)
+    so.add_argument('--w_18', type=float)
+    so.add_argument('--w_19', type=float)
+    so.add_argument('--w_20', type=float)
+    so.add_argument('--w_21', type=float)
+    so.add_argument('--w_22', type=float)
+    so.add_argument('--w_23', type=float)
+    so.add_argument('--w_24', type=float)
+    so.add_argument('--w_25', type=float)
+    so.add_argument('--w_26', type=float)
+    so.add_argument('--w_27', type=float)
+    so.add_argument('--w_28', type=float)
+    so.add_argument('--w_29', type=float)
+    so.add_argument('--w_30', type=float)
+    so.add_argument('--w_31', type=float)
+    so.add_argument('--w_32', type=float)
+    so.add_argument('--w_33', type=float)
+    so.add_argument('--w_34', type=float)
+    so.add_argument('--w_35', type=float)
+    so.add_argument('--w_36', type=float)
 
     return vars(parser.parse_args())
 

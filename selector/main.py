@@ -1,0 +1,61 @@
+"""Main module of selector."""
+
+import sys
+import os
+
+import importlib
+import logging
+import numpy as np
+import ray
+import pickle
+import gzip
+
+
+from scenario import Scenario, parse_args
+from log_setup import clear_logs, check_log_folder, save_latest_logs
+from mini_tournaments import offline_mini_tournament_configuration
+
+sys.path.append(os.getcwd())
+
+
+if __name__ == "__main__":
+    selector_args = parse_args()
+
+    wrapper_mod = importlib.import_module(selector_args["wrapper_mod_name"])
+
+    wrapper_name = selector_args["wrapper_class_name"]
+    wrapper_ = getattr(wrapper_mod, wrapper_name)
+    ta_wrapper = wrapper_()
+
+    scenario = Scenario(selector_args["scenario_file"], selector_args)
+
+    np.random.seed(scenario.seed)
+
+    check_log_folder(scenario.log_folder)
+    clear_logs(scenario.log_folder)
+
+    # print(scenario.features)
+
+    logging.\
+        basicConfig(level=logging.INFO,
+                    format='%(asctime)s %(message)s',
+                    handlers=[logging.FileHandler(
+                        f"./selector/logs/{scenario.log_folder}/main.log"), ])
+
+    logger = logging.getLogger(__name__)
+
+    logger.info(f"Logging to {scenario.log_folder}")
+    # print(scenario.parameter)
+
+    # init
+    ray.init(address="auto")
+    # ray.init()
+
+    logger.info("Ray info: {}".format(ray.cluster_resources()))
+    logger.info("Ray nodes {}".format(ray.nodes()))
+    logger.info("WD: {}".format(os.getcwd()))
+
+    offline_mini_tournament_configuration(scenario, ta_wrapper, logger)
+
+    save_latest_logs(scenario.log_folder)
+    ray.shutdown()

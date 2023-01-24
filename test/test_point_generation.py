@@ -5,10 +5,17 @@ from selector.tournament_dispatcher import MiniTournamentDispatcher
 from selector.pointselector import RandomSelector
 from selector.instance_sets import InstanceSet
 from selector.point_gen import PointGen
-from selector.random_point_generator import random_point
-from selector.default_point_generator import default_point
-from selector.variable_graph_point_generator import variable_graph_point, Mode
-from selector.lhs_point_generator import lhc_points, LHSType, Criterion
+from selector.generators.random_point_generator import random_point
+from selector.generators.default_point_generator import default_point
+from selector.generators.variable_graph_point_generator import (
+    variable_graph_point,
+    Mode
+)
+from selector.generators.lhs_point_generator import (
+    lhc_points,
+    LHSType,
+    Criterion
+)
 
 
 def test_gen_funcs(scenario, parser):

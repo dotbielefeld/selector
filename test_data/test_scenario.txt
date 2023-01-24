@@ -7,5 +7,5 @@ cutoff_time = 300
 instance_file = ./test_data/test_training.txt
 test_instance_file = ./test_data/test_test.txt
 feature_file = ./test_data/test_features.txt
-paramfile = ./test_data/test_params.pcs
+paramfile = ./test_data/test_params.pcs # config_space.lpg_satellite.par10.random.pcs #
 wallclock_limit = 172800

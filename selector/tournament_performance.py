@@ -110,7 +110,7 @@ def overall_best_update(tournaments, results, scenario):
     runtime = {}
     confs = {}
     # For each tournament get the best finisher
-    for  t in tournaments:
+    for t in tournaments:
         if t.best_finisher:
             best_winner = t.best_finisher[0]
             number_of_instances_run[best_winner.id] = len(results[best_winner.id])
@@ -137,7 +137,3 @@ def overall_best_update(tournaments, results, scenario):
         with open(f"./selector/logs/{scenario.log_folder}/trajectory.json", 'a') as f:
             json.dump({str(confs[conf_with_min_runtime[0]].id): clean_conf}, f, cls=ConfEncoder)
             f.write(os.linesep)
-
-
-
-

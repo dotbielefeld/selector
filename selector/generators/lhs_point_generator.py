@@ -5,8 +5,12 @@ from skopt.sampler import Lhs
 from enum import Enum
 import uuid
 from selector.pool import Configuration, ParamType, Generator
-from selector.default_point_generator import check_conditionals, check_no_goods
-from selector.random_point_generator import reset_no_goods
+from selector.generators.default_point_generator import (
+    check_conditionals,
+    check_no_goods
+)
+from selector.generators.random_point_generator import reset_no_goods,\
+    reset_conditionals
 
 
 class LHSType(Enum):
@@ -105,12 +109,13 @@ def lhc_points(s, identity, n_samples=1, seed=False, lhs_type=LHSType.classic,
             point[param_names[i]] = sample[i]
         n_points.append(point)
 
-    # Check conditionals and turn off parameters if violated
+    '''
+    # Check conditionals and reset parameters if violated
     for point in n_points:
-
         cond_vio = check_conditionals(s, point)
-        for param in cond_vio:
-            point.pop(param, None)
+        if cond_vio:
+            point = reset_conditionals(s, point, cond_vio)
+    '''
 
     # Check no goods and reset values if violated
     for point in n_points:
