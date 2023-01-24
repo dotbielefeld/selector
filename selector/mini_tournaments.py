@@ -67,11 +67,11 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     results = ray.get(global_cache.get_results.remote())
 
     # creating the first tournaments and adding first conf/instance pairs to ray tasks
-    for _ in range(scenario.number_tournaments):
-        generated_points = [random_generator.point_generator() for _ in range(scenario.tournament_size * scenario.generator_multiple)]
-
-        points_to_run = point_selector.select_points(generated_points, scenario.tournament_size, tournament_counter)
-
+    for tc in range(scenario.number_tournaments):
+        if tc == 0:
+            points_to_run = [random_generator.point_generator() for _ in range(scenario.tournament_size-1)] + [default_point_generator.point_generator()]
+        else:
+            points_to_run = [random_generator.point_generator() for _ in range(scenario.tournament_size)]
 
         instance_id, instances = instance_selector.get_subset(0)
         tournament, initial_assignments = tournament_dispatcher.init_tournament(results, points_to_run,
