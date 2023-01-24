@@ -227,6 +227,10 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
                 else:
                     sm.update_surr(surrogate, result_tournament, all_configs, results, terminations)
 
+            if surrogate_time >= surrogate_amortized_time:
+                next_surrogate_update = next_surrogate_update + 3
+                surrogate_amortized_time = surrogate_amortized_time + surrogate_amortized_time
+
             # Generate and select
 
             random_points = [random_generator.point_generator() for _ in range(scenario.tournament_size * scenario.generator_multiple)]
@@ -322,6 +326,9 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
                         qap = True
 
             evaluated.extend(points_to_run)
+
+            if tournament_counter % scenario.number_tournaments == 0:
+                points_to_run[-1] = default_point_generator.point_generator()
             points_to_run = points_to_run + [result_tournament.best_finisher[0]]
 
             # Create new tournament
