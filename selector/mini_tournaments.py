@@ -273,7 +273,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
                                                              instances)),
                                       axis=1)
 
-            set_weights = [value for hp, value in s.__dict__.items()
+            set_weights = [value for hp, value in scenario.__dict__.items()
                            if hp[:2] == 'w_']
             weights = [set_weights for _ in generated_points]
             weights = np.array(weights)
