@@ -356,18 +356,20 @@ class FeatureGenerator:
 
         return div_feats
 
-    def expected_qual(self, suggests, sm, cot, surr):
+    def expected_qual(self, suggs, sm, cot, surr, next_instance_set):
         """Expected quality of points.
 
         :param suggests: list, suggested points
         :param sm: object, surrogates.SurrogateManager()
         :param cot: int, cut off time
         :param surr: which surrogate to use
+        :param next_instance_set: next instances that will be run
         :return dyn_feats: list, computed features of suggested points
         """
+        suggests = copy.deepcopy(suggs)
         dyn_feats = []
         try:
-            expimp = sm.predict(surr, suggests, cot)
+            expimp = sm.predict(surr, suggests, cot, next_instance_set)
 
             for exim in expimp:
                 for ei in exim.values():
@@ -383,7 +385,8 @@ class FeatureGenerator:
 
         return dyn_feats
 
-    def prob_qual_improve(self, suggests, sm, cot, results, surr):
+    def prob_qual_improve(self, suggs, sm, cot, results, surr,
+                          next_instance_set):
         """Probability of quality of points to improve.
 
         :param suggests: list, suggested points
@@ -393,36 +396,25 @@ class FeatureGenerator:
         :param surr: which surrogate to use
         :return dyn_feats: list, computed features of suggested points
         """
-        best_val = min(min(list(d.values())) for d in list(results.values()))
-        sm.surrogates[surr].aafpi.update(eta=best_val,
-                                         model=sm.surrogates[surr].rafo)
-
+        suggests = copy.deepcopy(suggs)
         dyn_feats = []
         try:
-            if surr is Surrogates.SMAC:
-                if sm.surrogates[surr].aafpi.eta is not None and \
-                        sm.surrogates[surr].surr.model.rf is not None:
-                    expimp = sm.pi(surr, suggests, cot)
+            expimp = sm.pi(surr, suggests, cot, results, next_instance_set)
 
-                    for ei in expimp:
-                        dyn_feats.append(list(ei))
+            for ei in expimp:
+                dyn_feats.append(list(ei))
 
-                    max_val = float(max(max(d) for d in dyn_feats))
-                    for d in dyn_feats:
-                        if max_val != 0.0:
-                            d[0] = d[0] / max_val
-
-                else:
-                    dyn_feats = [[0] for _ in suggests]
-            else:
-                dyn_feats = [[0] for _ in suggests]
+            max_val = float(max(max(d) for d in dyn_feats))
+            for d in dyn_feats:
+                if max_val != 0.0:
+                    d[0] = d[0] / max_val
 
         except:
             dyn_feats = [[0] for _ in suggests]
 
         return dyn_feats
 
-    def uncertainty_improve(self, suggests, sm, cot, surr):
+    def uncertainty_improve(self, suggs, sm, cot, surr, next_instance_set):
         """Probability of quality of points to improve.
 
         :param suggests: list, suggested points
@@ -431,9 +423,10 @@ class FeatureGenerator:
         :param surr: which surrogate to use
         :return dyn_feats: list, computed features of suggested points
         """
+        suggests = copy.deepcopy(suggs)
         dyn_feats = []
         try:
-            expimp = sm.predict(surr, suggests, cot)
+            expimp = sm.predict(surr, suggests, cot, next_instance_set)
 
             for exim in expimp:
                 for ei in exim.values():
@@ -449,7 +442,7 @@ class FeatureGenerator:
 
         return dyn_feats
 
-    def expected_improve(self, suggests, sm, cot, surr):
+    def expected_improve(self, suggs, sm, cot, surr, next_instance_set):
         """Probability of quality of points to improve.
 
         :param suggests: list, suggested points
@@ -458,12 +451,12 @@ class FeatureGenerator:
         :param surr: which surrogate to use
         :return dyn_feats: list, computed features of suggested points
         """
+        suggests = copy.deepcopy(suggs)
         dyn_feats = []
         try:
-            expimp = sm.ei(surr, suggests)
-
+            expimp = sm.ei(surr, suggests, next_instance_set)
             for ei in expimp:
-                dyn_feats.append(list(ei))
+                dyn_feats.append([ei])
 
             max_val = float(max(max(d) for d in dyn_feats))
             for d in dyn_feats:
@@ -505,7 +498,7 @@ class FeatureGenerator:
         return np.array(static_feats)
 
     def dynamic_feature_gen(self, suggestions, data, predicted_quals, sm,
-                            cot, results):
+                            cot, results, next_instance_set):
         """Generate dynamic features.
 
         :param suggestions: list, suggested configurations
@@ -521,55 +514,86 @@ class FeatureGenerator:
 
         # Features based on surrogates
         dyn_feats = self.expected_qual(suggestions, sm,
-                                       cot, surr=Surrogates.SMAC)
-        # TODO
-        '''
+                                       cot, Surrogates.SMAC, None)
         dyn_feats = \
             np.concatenate((dyn_feats,
                             self.expected_qual(suggestions, sm,
-                                       cot, surr=Surrogates.GGA)),
+                                               cot, Surrogates.GGApp,
+                                               None)),
                            axis=1)
-        '''
+
+        dyn_feats = \
+            np.concatenate((dyn_feats,
+                            self.expected_qual(suggestions, sm,
+                                               cot, Surrogates.CPPL,
+                                               next_instance_set)),
+                           axis=1)
+
         dyn_feats = \
             np.concatenate((dyn_feats,
                             self.prob_qual_improve(suggestions, sm, cot,
                                                    results,
-                                                   surr=Surrogates.SMAC)),
+                                                   Surrogates.SMAC,
+                                                   None)),
                            axis=1)
-        # TODO
-        '''
+
         dyn_feats = \
             np.concatenate((dyn_feats,
-                            self.prob_qual_improve(suggestions, data,
-                                                   surr=Surrogates.GGA)),
+                            self.prob_qual_improve(suggestions, sm, cot,
+                                                   results,
+                                                   Surrogates.GGApp,
+                                                   None)),
                            axis=1)
-        '''
+
+        dyn_feats = \
+            np.concatenate((dyn_feats,
+                            self.prob_qual_improve(suggestions, sm, cot,
+                                                   results,
+                                                   Surrogates.CPPL,
+                                                   next_instance_set)),
+                           axis=1)
+
         dyn_feats = \
             np.concatenate((dyn_feats,
                             self.uncertainty_improve(suggestions, sm, cot,
-                                                     surr=Surrogates.SMAC)),
+                                                     Surrogates.SMAC,
+                                                     None)),
                            axis=1)
-        # TODO
-        '''
+
         dyn_feats = \
             np.concatenate((dyn_feats,
-                            self.uncertainty_improve(suggestions, data,
-                                                     surr=Surrogates.GGA)),
+                            self.uncertainty_improve(suggestions, sm, cot,
+                                                     Surrogates.GGApp,
+                                                     None)),
                            axis=1)
-        '''
+
+        dyn_feats = \
+            np.concatenate((dyn_feats,
+                            self.uncertainty_improve(suggestions, sm, cot,
+                                                     Surrogates.CPPL,
+                                                     next_instance_set)),
+                           axis=1)
+
         dyn_feats = \
             np.concatenate((dyn_feats,
                            self.expected_improve(suggestions, sm, cot,
-                                                 surr=Surrogates.SMAC)),
+                                                 Surrogates.SMAC,
+                                                 None)),
                            axis=1)
-        # TODO
-        '''
+
         dyn_feats = \
             np.concatenate((dyn_feats,
                            self.expected_improve(suggestions, sm, cot,
-                                                 surr=Surrogates.GGA)),
+                                                 Surrogates.GGApp,
+                                                 None)),
                            axis=1)
-        '''
+
+        dyn_feats = \
+            np.concatenate((dyn_feats,
+                           self.expected_improve(suggestions, sm, cot,
+                                                 Surrogates.CPPL,
+                                                 next_instance_set)),
+                           axis=1)
 
         return np.array(dyn_feats)
 

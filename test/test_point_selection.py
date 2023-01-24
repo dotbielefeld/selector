@@ -7,12 +7,14 @@ from selector.tournament_dispatcher import MiniTournamentDispatcher
 from selector.pointselector import RandomSelector, HyperparameterizedSelector
 from selector.instance_sets import InstanceSet
 from selector.point_gen import PointGen
-from selector.random_point_generator import random_point
-from selector.default_point_generator import default_point
-from selector.variable_graph_point_generator import variable_graph_point, Mode
-from selector.lhs_point_generator import lhc_points, LHSType, Criterion
+from selector.generators.random_point_generator import random_point
+from selector.generators.default_point_generator import default_point
+from selector.generators.variable_graph_point_generator import \
+    variable_graph_point, Mode
+from selector.generators.lhs_point_generator import lhc_points, LHSType, \
+    Criterion
 from selector.selection_features import FeatureGenerator
-from selector.surrogates.surrogates import SurrogateManager
+from selector.generators.surrogates.surrogates import SurrogateManager
 from selector.pool import Status, Surrogates, Generator
 
 
@@ -24,12 +26,11 @@ def test_point_selection(scenario, parser):
     """
     np.random.seed(42)
 
-    s = scenario("./test_data/test_scenario.txt", parser)
-
+    s = scenario
     random_generator = PointGen(s, random_point, seed=42)
 
     # Set up a tournament with mock data
-    global_cache = TargetAlgorithmObserver.remote()
+    global_cache = TargetAlgorithmObserver.remote(scenario)
     point_selector = RandomSelector()
     for i in range(5):
         instance_selector = InstanceSet(s.instance_set, 1, 1)
@@ -85,7 +86,7 @@ def test_point_selection(scenario, parser):
 
     for i in range(4):
         var_conf.append(variable_graph_generator.point_generator(
-            mode=Mode.random,
+            results=results, mode=Mode.random,
             alldata=hist, lookback=i + 1, seed=(42 + i)))
 
     # print('\n Variable Graph configuration:\n\n', *var_conf, sep="\n\n")
@@ -98,18 +99,20 @@ def test_point_selection(scenario, parser):
 
     # print('\n LHC configurations:\n\n', *lhc_conf, sep="\n\n")
 
-    sm = SurrogateManager(s, seed=42)
-    smac_conf = sm.suggest(Surrogates.SMAC, s, n_samples=5)
+    results = ray.get(global_cache.get_results.remote())
 
-    confs = def_conf + ran_conf + var_conf + lhc_conf + smac_conf
+    sm = SurrogateManager(s, seed=42)
+    smac_conf = sm.suggest(Surrogates.SMAC, s, 5, _, _, _)
+    ggapp_conf = sm.suggest(Surrogates.GGApp, s, 5, hist, results, _)
+    cppl_conf = sm.suggest(Surrogates.CPPL, s, 5, _, _, s.instance_set)[0]
+
+    confs = \
+        def_conf + ran_conf + var_conf + lhc_conf + smac_conf + ggapp_conf \
+        + cppl_conf
 
     hps = HyperparameterizedSelector()
 
     configs_requested = 8
-    weights = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-               1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-    weights = [weights for x in range(len(confs))]
-    weights = np.array(weights)
     epoch = 4
     max_epochs = 256
 
@@ -124,7 +127,7 @@ def test_point_selection(scenario, parser):
 
     results = ray.get(global_cache.get_results.remote())
 
-    for epoch in range(10):
+    for epoch in range(5):
         result_tournament = hist[list(hist.keys())[4]]
 
         all_configs \
@@ -132,6 +135,8 @@ def test_point_selection(scenario, parser):
             + result_tournament.worst_finisher
 
         terminations = []
+
+        # print('\nall_configs\n', all_configs, '\n')
 
         for surrogate in sm.surrogates.keys():
             sm.update_surr(surrogate, result_tournament, all_configs,
@@ -146,34 +151,67 @@ def test_point_selection(scenario, parser):
                                                             predicted_quals,
                                                             evaluated)),
                                   axis=1)
+        '''
+        predicted_perf = []
 
         for surrogate in sm.surrogates.keys():
-            if sm.surrogates[surrogate].surr.model.rf is not None:
-                predicted_perf = sm.predict(surrogate,
-                                            confs,
-                                            cutoff_time)
+            if surrogate is Surrogates.SMAC:
+                if sm.surrogates[surrogate].surr.model.rf is not None:
+                    predicted_perf.append(sm.predict(surrogate,
+                                                     confs,
+                                                     cutoff_time,
+                                                     _))
+            else:
+                predicted_perf.append(sm.predict(surrogate,
+                                                 confs,
+                                                 cutoff_time,
+                                                 s.instance_set))
+        '''
 
         features = np.concatenate((features,
                                   fg.dynamic_feature_gen(confs, hist,
-                                                         predicted_perf,
+                                                         _,
                                                          sm, cutoff_time,
-                                                         results)),
+                                                         results,
+                                                         s.instance_set)),
                                   axis=1)
+
+        print(len(features[0]))
+
+        set_weights = [value for hp, value in s.__dict__.items()
+                       if hp[:2] == 'w_']
+        weights = [set_weights for x in range(len(confs))]
+        weights = np.array(weights)
 
         selected_ids = hps.select_points(s, confs, configs_requested, epoch,
                                          max_epochs, features, weights,
                                          results, max_evals=100, seed=42)
 
         for surrogate in sm.surrogates.keys():
-            if sm.surrogates[surrogate].surr.model.rf is not None:
+            if surrogate is Surrogates.SMAC:
+                if sm.surrogates[surrogate].surr.model.rf is not None:
+                    if qap:
+                        predicted_quals.extend(sm.predict(surrogate,
+                                                          selected_ids,
+                                                          cutoff_time,
+                                                          _))
+                    else:
+                        predicted_quals.extend(sm.predict(surrogate,
+                                                          evaluated,
+                                                          cutoff_time,
+                                                          _))
+                        qap = True
+            else:
                 if qap:
                     predicted_quals.extend(sm.predict(surrogate,
                                                       selected_ids,
-                                                      cutoff_time))
+                                                      cutoff_time,
+                                                      s.instance_set))
                 else:
                     predicted_quals.extend(sm.predict(surrogate,
                                                       evaluated,
-                                                      cutoff_time))
+                                                      cutoff_time,
+                                                      s.instance_set))
                     qap = True
 
         evaluated.extend(selected_ids)
@@ -193,15 +231,18 @@ def test_point_selection(scenario, parser):
 
         for i in range(5):
             var_conf.append(variable_graph_generator.point_generator(
-                mode=Mode.random,
+                results=results, mode=Mode.best_and_random,
                 alldata=hist, lookback=i + 1, seed=(42 + i)))
 
         lhc_conf = lhc_generator.point_generator(n_samples=5, seed=42,
                                                  lhs_type=LHSType.centered,
                                                  criterion=Criterion.maximin)
 
-        smac_conf = sm.suggest(Surrogates.SMAC, s, n_samples=5)
+        smac_conf = sm.suggest(Surrogates.SMAC, s, 5, _, _, _)
+        ggapp_conf = sm.suggest(Surrogates.GGApp, s, 5, hist, results, _)
+        cppl_conf = sm.suggest(Surrogates.CPPL, s, 5, _, _, s.instance_set)[0]
 
-        confs = ran_conf + var_conf + lhc_conf + smac_conf
+        confs = ran_conf + var_conf + lhc_conf + smac_conf + ggapp_conf + \
+            cppl_conf
 
-        print('\n', selected_ids)
+        # print('\n', selected_ids)

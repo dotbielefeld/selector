@@ -46,6 +46,8 @@ class Generator(Enum):
     var_graph = 3
     lhc = 4
     smac = 5
+    ggapp = 6
+    cppl = 7
 
 class Status(Enum):
     win = 1
@@ -56,4 +58,5 @@ class Status(Enum):
 
 class Surrogates(Enum):
     SMAC = 1
-    GGA = 2
+    GGApp = 2
+    CPPL = 3

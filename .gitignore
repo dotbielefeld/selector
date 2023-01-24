@@ -12,6 +12,9 @@ selector/output/
 selector/wrapper/
 selector/logs/
 wrapper/
+cadical/
+tuned_weights_full_ensemble
+cplex.log
 
 # Distribution / packaging
 .Python

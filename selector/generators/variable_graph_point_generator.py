@@ -12,10 +12,17 @@ import random
 import copy
 import numpy as np
 import itertools
+import math
 from enum import Enum, IntEnum
 from selector.pool import Configuration, ParamType, Generator
-from selector.random_point_generator import random_set_conf
-from selector.default_point_generator import check_conditionals, check_no_goods
+from selector.generators.random_point_generator import (
+    random_set_conf,
+    reset_conditionals
+)
+from selector.generators.default_point_generator import (
+    check_conditionals,
+    check_no_goods
+)
 
 
 class LabelType(IntEnum):
@@ -150,28 +157,19 @@ def reset_no_goods(s, config_setting, label, C, N):
     return: config_setting
     """
     for ng in s.no_goods:
-        param_1, param_2 = ng.keys()
-        if ng[param_1] == config_setting[param_1]:
-            if ng[param_2] == config_setting[param_2]:
-                if label[param_1] == LabelType.C and param_1 in N.conf \
-                        and N.conf[param_1] != ng[param_1]:
-                    config_setting[param_1] = N.conf[param_1]
-                elif label[param_2] == LabelType.C and param_2 in N.conf \
-                        and N.conf[param_2] != ng[param_2]:
-                    config_setting[param_2] = N.conf[param_2]
-                elif label[param_1] == LabelType.N and param_1 in C.conf \
-                        and C.conf[param_1] != ng[param_1]:
-                    config_setting[param_1] = C.conf[param_1]
-                elif label[param_2] == LabelType.N and param_2 in C.conf \
-                        and C.conf[param_2] != ng[param_2]:
-                    config_setting[param_2] = C.conf[param_2]
+        params = list(ng.keys())
+        if all(ng[p] == config_setting[p] for p in params):
+            for p in params:
+                if label[p] == LabelType.C and p in N.conf \
+                        and N.conf[p] != ng[p]:
+                    config_setting[p] = N.conf[p]
+                elif label[p] == LabelType.N and p in C.conf \
+                        and C.conf[p] != ng[p]:
+                    config_setting[p] = C.conf[p]
                 else:
                     if random.uniform(0, 1) >= 0.5:
-                        config_setting[param_1] = \
-                            random_set_conf(s.parameter[param_1])
-                    else:
-                        config_setting[param_2] = \
-                            random_set_conf(s.parameter[param_2])
+                        config_setting[p] = \
+                            random_set_conf(s.parameter[p])
 
     return config_setting
 
@@ -184,7 +182,7 @@ def graph_crossover(graph_structure, C, N, s):
     : param C: configuration 1
     : param N: configuration 2
     : param s: scenario
-    return: default configuration
+    return: new configuration setting
     """
     params = list(graph_structure.keys())
     curr_node = params[0]
@@ -209,34 +207,38 @@ def graph_crossover(graph_structure, C, N, s):
         S.pop(0)
         child_nodes = graph_structure[curr_node]
         for cn in child_nodes:
-            if cn in paths:
-                if curr_node not in paths[cn]:
-                    paths[cn].append(cn)
+            if curr_node != cn:
+                if cn in paths:
+                    if cn not in paths[cn]:
+                            paths[cn].append(cn)
+                            config_label = set_config_label(paths,
+                                                            config_label,
+                                                            cn, C, N)
+                            S.append(cn)
+                else:
+                    paths[cn] = [*paths[curr_node], cn]
                     config_label = set_config_label(paths, config_label,
                                                     cn, C, N)
                     S.append(cn)
-            else:
-                paths[cn] = [*paths[curr_node], cn]
-                config_label = set_config_label(paths, config_label,
-                                                cn, C, N)
-                S.append(cn)
 
-            if random.uniform(0, 1) < 0.1:
-                if cn in config_label:
-                    if config_label[cn] == LabelType.N and cn in C.conf:
-                            config_label[cn] = LabelType.C
-                    elif config_label[cn] == LabelType.C and cn in N.conf:
-                            config_label[cn] = LabelType.N
-                S.append(cn)
+                if random.uniform(0, 1) < 0.1:
+                    if cn in config_label:
+                        if config_label[cn] == LabelType.N and cn in C.conf:
+                                config_label[cn] = LabelType.C
+                        elif config_label[cn] == LabelType.C and cn in N.conf:
+                                config_label[cn] = LabelType.N
+                    S.append(cn)
 
     for param, label in config_label.items():
         config_setting[param] = N.conf[param] if label == LabelType.N \
             else C.conf[param]
 
-    # Check conditionals and turn off parameters if violated
+    '''
+    # Check conditionals and reset parameters if violated
     cond_vio = check_conditionals(s, config_setting)
-    for param in cond_vio:
-        config_setting.pop(param, None)
+    if cond_vio:
+        config_setting = reset_conditionals(s, config_setting, cond_vio)
+    '''
 
     # Check no goods and reset values if violated
     ng_vio = check_no_goods(s, config_setting)
@@ -248,7 +250,7 @@ def graph_crossover(graph_structure, C, N, s):
     return config_setting
 
 
-def choose_parents(mode, data, lookback):
+def choose_parents(mode, data, lookback, results):
     """
     Pick Configurations according to mode.
 
@@ -299,22 +301,58 @@ def choose_parents(mode, data, lookback):
         all_best = []
         all_worst = []
         for tourn in data:
-            all_best.append(tourn.best_finisher[0])
-            if len(tourn.best_finisher) > 1:
-                all_worst.extend([*tourn.best_finisher[1:],
-                                 *tourn.worst_finisher])
+            all_best.extend(tourn.best_finisher)
+
+        performance = []
+        for ab in all_best:
+            perf = 0
+            for res in results[ab.id].values():
+                perf += res
+            perf = perf / len(results[ab.id])
+            performance.append(perf)
+
+        take_best = math.ceil(len(all_best) * 0.1)
+        sort_index = np.argsort(performance)
+        the_best = sort_index[:take_best]
+        best = []
+        for tb in the_best:
+            best.append(all_best[tb])
+
+        all_best = best
+        for tourn in data:
+            for tbf in tourn.best_finisher:
+                if tbf in all_best:
+                    continue
+                else:
+                    all_worst.append(tbf)
+            all_worst.extend(tourn.worst_finisher)
+
+        all_configs = []
+
+        if all_best:
+            C = np.random.choice(all_best)
+        else:
+            for tourn in data:
+                all_configs.extend(tourn.configurations)
+            C = np.random.choice(all_configs)
+
+        if all_worst:
+            N = np.random.choice(all_worst)
+        else:
+            if all_configs:
+                pass
             else:
-                all_worst.extend(tourn.worst_finisher)
-
-        C = np.random.choice(all_best)
-
-        N = np.random.choice(all_worst)
+                for tourn in data:
+                    all_configs.extend(tourn.configurations)
+            N = None
+            while N != C:
+                N = np.random.choice(all_configs)
 
     return C, N
 
 
-def variable_graph_point(s, identity, mode=Mode.random, alldata=False,
-                         lookback=1, seed=False):
+def variable_graph_point(s, identity, results, mode=Mode.best_and_random,
+                         alldata=False, lookback=1, seed=False):
     """
     Configuration is generated via variable graph method.
 
@@ -334,7 +372,7 @@ def variable_graph_point(s, identity, mode=Mode.random, alldata=False,
         exit()
     # Pick parent configurations
     data = copy.copy(alldata)
-    C, N = choose_parents(mode, data, lookback)
+    C, N = choose_parents(mode, data, lookback, results)
 
     # Generate general graph structure
     graph_structure = variable_graph_structure(s)
