@@ -103,6 +103,10 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     smac_conf = sm.suggest(Surrogates.SMAC, scenario, n_samples=5)
     bug_handel = []
     tournament_history = {}
+    model_update = 0
+    surrogate_amortized_time = 30
+    next_surrogate_update = 1
+    surrogate_update_counter = 1
 
     while termination_check(scenario.termination_criterion, main_loop_start, scenario.wallclock_limit,
                             scenario.total_tournament_number, tournament_counter):
@@ -114,7 +118,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             result_conf, result_instance, cancel_flag = result[0], result[1], result[2]
 
         # Some time a ray worker may crash. We handel that here. I.e if the TA did not run to the end, we reschedule
-        except (ray.exceptions.WorkerCrashedError, ray.exceptions.TaskCancelledError) as e:
+        except (ray.exceptions.WorkerCrashedError, ray.exceptions.TaskCancelledError, ray.exceptions.RayTaskError) as e:
             logger.info(f'Crashed TA worker, {time.ctime()}, {winner}, {e}')
             # Figure out which tournament conf. belongs to
             for t in tournaments:
@@ -142,27 +146,34 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
 
 
         # Getting the tournament of the first task id
-        first_task = tasks[0]
-        ob_t = get_get_tournament_membership_with_ray_id(first_task, tournaments)
+        if len(tasks) > 0:
+            first_task = tasks[0]
+            ob_t = get_get_tournament_membership_with_ray_id(first_task, tournaments)
 
-        # Figure out if the tournament of the first task is stale. If so cancel the task and start dummy task.
-        if len(ob_t.configurations) == 1:
-            i_no_result = get_instances_no_results(results, ob_t.configurations[0].id, ob_t.instance_set)
-            if len(i_no_result) == 1:
-                termination = ray.get(global_cache.get_termination_single.remote(ob_t.configurations[0].id, i_no_result[0]))
-                result = ray.get(global_cache.get_results_single.remote(ob_t.configurations[0].id, i_no_result[0]))
-                if termination and result == False and [ob_t.configurations[0],i_no_result[0]] not in bug_handel:
-                    logger.info(f"Stale tournament: {time.strftime('%X %x %Z')}, {ob_t.configurations[0]}, {i_no_result[0]} , {first_task}, {bug_handel}")
-                    ready_ids, _remaining_ids = ray.wait([first_task], timeout=0)
-                    if len(_remaining_ids) == 1:
-                        ray.cancel(first_task)
-                        tasks.remove(first_task)
-                        task = dummy_task.remote(ob_t.configurations[0],i_no_result[0], global_cache)
-                        tasks.append(task)
-                        bug_handel.append([ob_t.configurations[0],i_no_result[0]])
+            # Figure out if the tournament of the first task is stale. If so cancel the task and start dummy task.
+            if len(ob_t.configurations) == 1:
+                i_no_result = get_instances_no_results(results, ob_t.configurations[0].id, ob_t.instance_set)
+                if len(i_no_result) == 1:
+                    termination = ray.get(global_cache.get_termination_single.remote(ob_t.configurations[0].id, i_no_result[0]))
+                    result = ray.get(global_cache.get_results_single.remote(ob_t.configurations[0].id, i_no_result[0]))
+                    if termination and result == False and [ob_t.configurations[0],i_no_result[0]] not in bug_handel:
+                        logger.info(f"Stale tournament: {time.strftime('%X %x %Z')}, {ob_t.configurations[0]}, {i_no_result[0]} , {first_task}, {bug_handel}")
+                        ready_ids, _remaining_ids = ray.wait([first_task], timeout=0)
+                        if len(_remaining_ids) == 1:
+                            ray.cancel(first_task)
+                            tasks.remove(first_task)
+                            task = dummy_task.remote(ob_t.configurations[0],i_no_result[0], global_cache)
+                            tasks.append(task)
+                            bug_handel.append([ob_t.configurations[0],i_no_result[0]])
 
 
-        results = ray.get(global_cache.get_results.remote())
+        #results = ray.get(global_cache.get_results.remote())
+        if result_conf.id in list(results.keys()):
+            results[result_conf.id][result_instance] = ray.get(global_cache.get_results_single.remote(result_conf.id,result_instance ))
+        else:
+            results[result_conf.id]= {}
+            results[result_conf.id][result_instance] = ray.get(global_cache.get_results_single.remote(result_conf.id,result_instance ))
+
 
         result_tournament = get_tournament_membership(tournaments, result_conf)
 
@@ -224,7 +235,29 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
                 lhs_type=LHSType.centered,
                 criterion=Criterion.maximin)
 
-            smac_conf = sm.suggest(Surrogates.SMAC, scenario, n_samples=5)
+            #future_smac = suggest.remote(surrogates, Surrogates.SMAC, scenario, n_samples=5)
+            #smac_conf = ray.get(future_smac)
+
+
+            if surrogate_update_counter == next_surrogate_update:
+                start_smac_update = time.time()
+                smac_conf_for_future = suggest(surrogates, Surrogates.SMAC, scenario, n_samples=scenario.tournament_size *
+                           scenario.generator_multiple*(next_surrogate_update + 1))
+                surrogate_time = time.time() - start_smac_update
+                smac_conf = smac_conf_for_future[:scenario.tournament_size *
+                           scenario.generator_multiple]
+                surrogate_update_counter = 0
+            else:
+                smac_conf = smac_conf_for_future[scenario.tournament_size *
+                           scenario.generator_multiple * surrogate_update_counter:scenario.tournament_size *
+                           scenario.generator_multiple* (surrogate_update_counter + 1)]
+
+            surrogate_update_counter = surrogate_update_counter + 1
+
+            # print(i, smac_conf_for_future,smac_conf,  next_surrogate_update)
+            if surrogate_time >= surrogate_amortized_time:
+                next_surrogate_update = next_surrogate_update + 1
+                surrogate_amortized_time = surrogate_amortized_time + scenario.surrogate_amortized_time
 
             generated_points = random_points + default_ps + \
                 vg_points + lhc_ps + smac_conf
