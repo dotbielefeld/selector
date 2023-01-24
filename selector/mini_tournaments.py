@@ -103,6 +103,10 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
 
     bug_handel = []
     tournament_history = {}
+    model_update = 0
+    surrogate_amortized_time = 30
+    next_surrogate_update = 1
+    surrogate_update_counter = 1
 
     while termination_check(scenario.termination_criterion, main_loop_start, scenario.wallclock_limit,
                             scenario.total_tournament_number, tournament_counter):
