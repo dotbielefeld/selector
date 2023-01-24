@@ -61,7 +61,7 @@ class CPPL:
 
         self.random_prob = random_prob
         self.mutation_prob = mutation_prob
-        self.number_new_confs = 5
+        self.number_new_confs = 3
 
         self.pca_dimension_configurations = pca_dimension_configurations
         if len(scenario.parameter) < self.pca_dimension_configurations:
