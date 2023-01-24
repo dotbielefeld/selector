@@ -249,7 +249,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             cppl_conf = \
                 sm.suggest(Surrogates.CPPL, scenario,
                            scenario.tournament_size * scenario.generator_multiple,
-                           None, None, scenario.instance_set)[0]
+                           None, None, instances)[0]
 
             generated_points = random_points + default_ps + \
                 vg_points + lhc_ps + smac_conf + ggapp_conf + cppl_conf
