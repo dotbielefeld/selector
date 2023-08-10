@@ -15,7 +15,7 @@ class InstanceSet:
         self.instance_sets = []
         self.subset_counter = 0
 
-        if set_size:
+        if set_size and set_size <= len(instance_set):
             self.set_size = set_size
         else:
             self.set_size = len(instance_set)
