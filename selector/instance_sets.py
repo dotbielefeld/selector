@@ -2,7 +2,7 @@ import numpy as np
 
 
 class InstanceSet:
-    def __init__(self, instance_set, start_instance_size, set_size=None, instance_increment_size= None):
+    def __init__(self, instance_set, start_instance_size, set_size=None, instance_increment_size= None, target_reach=None):
         """
 
         :param instance_set: set of instances available.
@@ -21,9 +21,19 @@ class InstanceSet:
             self.set_size = len(instance_set)
 
         if instance_increment_size:
-            self.instance_increment_size = 1
+            self.instance_increment_size = instance_increment_size
         else:
-            self.instance_increment_size = len(self.instance_set) / np.floor(len(self.instance_set)/self.start_instance_size)
+            self.instance_increment_size = self.set_size / np.floor(self.set_size/self.start_instance_size)
+
+        if target_reach:
+            set_size = self.start_instance_size
+            counter = 0
+            while set_size <= self.set_size :
+                set_size += self.instance_increment_size
+                counter += 1
+            self.target_increment = np.ceil(target_reach / counter)
+        else:
+            self.target_increment = 1
 
 
     def next_set(self):
@@ -74,6 +84,12 @@ class InstanceSet:
         # If we have already created the required subset we return it
         if next_tournament_set_id in range(len(self.instance_sets)):
             next_set = self.instance_sets[next_tournament_set_id]
+
+        elif self.target_increment != 1 and next_tournament_set_id % self.target_increment != 0:
+            self.instance_sets.append(self.instance_sets[self.subset_counter - 1])
+            next_set = self.instance_sets[next_tournament_set_id - 1]
+            self.subset_counter += 1
+
         # In case we have not, we create the next instance subset
         else:
             self.next_set()
