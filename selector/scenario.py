@@ -191,6 +191,7 @@ def parse_args():
 
     hp.add_argument('--termination_criterion', type=str, default="runtime")
     hp.add_argument('--total_tournament_number', type=int, default=10)
+    hp.add_argument('--scenario.model_update_iteration', type=int, default=3)
 
     hp.add_argument('--generator_multiple', type=int, default=5)
     hp.add_argument('--initial_instance_set_size', type=int, default=5)

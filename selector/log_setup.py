@@ -54,7 +54,8 @@ class TournamentEncoder(json.JSONEncoder):
     def default(self, o):
         if dataclasses.is_dataclass(o):
             data_dic = dataclasses.asdict(o)
-            data_dic["ray_object_store"] = {}
+            if "ray_object_store" in data_dic.keys():
+                del data_dic["ray_object_store"]
             return data_dic
         elif isinstance(o, uuid.UUID):
             return str(o)
