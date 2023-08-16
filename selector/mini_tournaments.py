@@ -227,8 +227,10 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
                 else:
                     sm.update_surr(surrogate, result_tournament, all_configs, results, terminations)
 
+            surrogate_update_counter = surrogate_update_counter + 1
+
             if surrogate_time >= surrogate_amortized_time:
-                next_surrogate_update = next_surrogate_update + 3
+                next_surrogate_update = next_surrogate_update + scenario.model_update_iteration
                 surrogate_amortized_time = surrogate_amortized_time + surrogate_amortized_time
 
             # Generate and select
