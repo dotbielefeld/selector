@@ -42,7 +42,8 @@ class MiniTournamentDispatcher:
         else:
             first_instance = np.random.choice(instance_partition)
 
-            configurations_not_run_on_all = copy.deepcopy(configurations)
+            #configurations_not_run_on_all = copy.deepcopy(configurations)
+            configurations_not_run_on_all = configurations
             configurations_not_run_on_all.remove(most_run_conf)
 
             extra_instances = copy.deepcopy(instance_partition)

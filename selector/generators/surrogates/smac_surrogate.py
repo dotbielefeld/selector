@@ -285,7 +285,6 @@ class SmacSurr():
                                 val = str(float(val) + self.neg_cat[param])
                             else:
                                 val = str(int(val) + self.neg_cat[param])
-                            # val += self.neg_cat[param]
 
                 ng_list.append(ForbiddenEqualsClause(config_space[param], val))
 

@@ -1,14 +1,10 @@
 import os
 import warnings
 import argparse
-import pickle
 import sys
 sys.path.append(os.getcwd())
 
 from selector.read_files import get_ta_arguments_from_pcs, read_instance_paths, read_instance_features
-
-
-
 
 
 class Scenario:
@@ -51,8 +47,6 @@ class Scenario:
 
         # with open(f'./selector/logs/{self.log_folder}/scenario.pkl', 'wb') as out:
         #    pickle.dump(scenario, out)
-
-
 
     def read_scenario_files(self, scenario):
 
@@ -118,8 +112,6 @@ class Scenario:
         elif self.log_folder == "None":
             self.log_folder = "latest"
 
-
-
     def scenario_from_file(self, scenario_path):
 
         """
@@ -150,10 +142,12 @@ class Scenario:
                     scenario_dict[key] = pairs[1]
         return scenario_dict
 
+
 class LoadOptionsFromFile (argparse.Action):
     def __call__ (self, parser, namespace, values, option_string=None):
         with values as f:
             parser.parse_args(f.read().split(), namespace)
+
 
 def parse_args():
     """
@@ -191,6 +185,7 @@ def parse_args():
 
     hp.add_argument('--termination_criterion', type=str, default="runtime")
     hp.add_argument('--total_tournament_number', type=int, default=10)
+    hp.add_argument('--scenario.model_update_iteration', type=int, default=3)
 
     hp.add_argument('--generator_multiple', type=int, default=5)
     hp.add_argument('--initial_instance_set_size', type=int, default=5)
@@ -247,15 +242,7 @@ def parse_args():
 
     return vars(parser.parse_args())
 
+
 if __name__ == "__main__":
 
     parser = parse_args()
-
-    from test.test_point_selection import test_point_selection
-
-    s = \
-        Scenario(
-            '/media/dweiss/Transcend11/AC_architecture/Selector/selector/' +
-            'test_data/test_scenario.txt', parser)
-
-    test_point_selection(s, parser)

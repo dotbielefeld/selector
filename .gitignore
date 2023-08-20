@@ -11,6 +11,7 @@ selector/input/
 selector/output/
 selector/wrapper/
 selector/logs/
+selector/generators/surrogates/cppl_surrogate_BACKUP.py
 wrapper/
 cadical/
 tuned_weights_full_ensemble

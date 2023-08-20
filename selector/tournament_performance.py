@@ -6,6 +6,7 @@ import pickle
 import math
 import copy
 from selector.log_setup import ConfEncoder
+from selector.generators.default_point_generator import check_conditionals
 
 def get_conf_time_out(results, configuration_id, instances_set):
     """
@@ -113,7 +114,8 @@ def overall_best_update(tournaments, results, scenario):
         if t.best_finisher:
             best_winner = t.best_finisher[0]
             number_of_instances_run[best_winner.id] = len(results[best_winner.id])
-            runtime[best_winner.id] = get_censored_runtime_of_configuration(results, best_winner.id)
+            #runtime[best_winner.id] = get_censored_runtime_of_configuration(results, best_winner.id)
+            runtime[best_winner.id] = get_runtime_for_instance_set_with_timeout(results, best_winner.id, t.instance_set, scenario.cutoff_time, scenario.par)
             confs[best_winner.id] = best_winner
     # If we have any best finisher we get those which ran on the most instances and then get the conf with the
     # shortest runtime on those
@@ -125,6 +127,13 @@ def overall_best_update(tournaments, results, scenario):
         conf_with_min_runtime = min(list(conf_r_w_max_i.values()))
         conf_with_min_runtime = [k for k, v in conf_r_w_max_i.items() if v == conf_with_min_runtime]
 
+
+        clean_conf = copy.copy(confs[conf_with_min_runtime[0]].conf)
+        # Check conditionals and turn off parameters if violated
+        cond_vio = check_conditionals(scenario, clean_conf)
+        for cv in cond_vio:
+            clean_conf.pop(cv, None)
+
         with open(f"./selector/logs/{scenario.log_folder}/trajectory.json", 'a') as f:
-            json.dump({str(confs[conf_with_min_runtime[0]].id): confs[conf_with_min_runtime[0]].conf}, f, cls=ConfEncoder)
+            json.dump({str(confs[conf_with_min_runtime[0]].id): clean_conf}, f, cls=ConfEncoder)
             f.write(os.linesep)
