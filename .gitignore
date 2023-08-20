@@ -16,6 +16,10 @@ wrapper/
 cadical/
 tuned_weights_full_ensemble
 cplex.log
+test_data/
+test/test_data/
+ray_env/
+
 
 # Distribution / packaging
 .Python
@@ -115,6 +119,7 @@ celerybeat.pid
 # Environments
 .env
 .venv
+.idea
 env/
 venv/
 ENV/
@@ -138,3 +143,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Misc
+start_ray_env.txt
+run_selector.txt

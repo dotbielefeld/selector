@@ -1,2 +1,0 @@
-Requirement already satisfied: importlib-metadata in ./ray_env/lib/python3.8/site-packages (4.10.0)
-Requirement already satisfied: zipp>=0.5 in ./ray_env/lib/python3.8/site-packages (from importlib-metadata) (3.7.0)
