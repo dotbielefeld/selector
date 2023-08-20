@@ -1,1 +1,0 @@
-python3 selector/main.py --file "cadical/selector_args_fuzz.txt" --scenario_file "cadical/scenario_fuzz.txt" --log_folder bmc_cad_log --wallclock_limit 172900
