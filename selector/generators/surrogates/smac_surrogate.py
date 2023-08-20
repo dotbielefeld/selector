@@ -281,7 +281,11 @@ class SmacSurr():
                             val = val
                         # adjust neg categorical parameters for smac surr
                         if param in self.neg_cat:
-                            val += self.neg_cat[param]
+                            if '.' in val:
+                                val = str(float(val) + self.neg_cat[param])
+                            else:
+                                val = str(int(val) + self.neg_cat[param])
+                            # val += self.neg_cat[param]
 
                 ng_list.append(ForbiddenEqualsClause(config_space[param], val))
 

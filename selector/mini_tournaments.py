@@ -38,9 +38,6 @@ from instance_sets import InstanceSet
 
 from instance_monitor import InstanceMonitor
 
-
-
-
 def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     log_termination_setting(logger, scenario)
 
@@ -48,12 +45,14 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     hp_seletor = HyperparameterizedSelector()
     tournament_dispatcher = MiniTournamentDispatcher()
     global_cache = TargetAlgorithmObserver.remote(scenario)
+    '''
     if scenario.run_obj == "runtime":
         if scenario.monitor == "tournament_level":
             monitor = Monitor.remote(1, global_cache, scenario)
         elif scenario.monitor == "instance_level":
             monitor = InstanceMonitor.remote(1, global_cache, scenario)
         monitor.monitor.remote()
+    '''
 
     random_generator = PointGen(scenario, random_point)
     default_point_generator = PointGen(scenario, default_point)
@@ -208,9 +207,8 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             tournament_history[result_tournament.id] = result_tournament
             global_cache.put_tournament_history.remote(result_tournament)
 
-            for conf in all_configs:
-                for surrogate in sm.surrogates.keys():
-                    sm.update_surr(surrogate, result_tournament, all_configs, results, terminations)
+            for surrogate in sm.surrogates.keys():
+                sm.update_surr(surrogate, result_tournament, all_configs, results, terminations)
 
             # Generate and select
 
@@ -248,7 +246,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             cppl_conf = \
                 sm.suggest(Surrogates.CPPL, scenario,
                            scenario.tournament_size * scenario.generator_multiple,
-                           None, None, scenario.instance_set)[0]
+                           None, None, instances)[0]
 
             generated_points = random_points + default_ps + \
                 vg_points + lhc_ps + smac_conf + ggapp_conf + cppl_conf
@@ -272,7 +270,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
                                                              instances)),
                                       axis=1)
 
-            set_weights = [value for hp, value in s.__dict__.items()
+            set_weights = [value for hp, value in scenario.__dict__.items()
                            if hp[:2] == 'w_']
             weights = [set_weights for _ in generated_points]
             weights = np.array(weights)
@@ -283,6 +281,12 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
                                          epoch, max_epochs, features, weights,
                                          results, max_evals=100)
 
+            logger.info(f"All points generated \n\n{generated_points}\n\n")
+            logger.info(f"Features computed \n\n{features.tolist()}\n\n")
+            logger.info(f"Points selected to run \n\n{points_to_run}\n\n")
+            logger.info(f"Instance set \n\n{instances}\n\n")
+            logger.info(f"Terminations \n\n{terminations}\n\n")
+
             for surrogate in sm.surrogates.keys():
                 if surrogate is Surrogates.SMAC:
                     if sm.surrogates[surrogate].surr.model.rf is not None:
@@ -291,7 +295,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
                                                               points_to_run,
                                                               cutoff_time,
                                                               None))
-                        else:
+                        elif len(evaluated) != 0:
                             predicted_quals.extend(sm.predict(surrogate,
                                                               evaluated,
                                                               cutoff_time,

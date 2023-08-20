@@ -47,9 +47,9 @@ if __name__ == "__main__":
     logger.info(f"Logging to {scenario.log_folder}")
     # print(scenario.parameter)
 
-    # init
-    ray.init(address="auto")
-    # ray.init()
+    # init: ray.init(address="auto") for cluster, ray.init() for PC
+    # ray.init(address="auto")
+    ray.init()
 
     logger.info("Ray info: {}".format(ray.cluster_resources()))
     logger.info("Ray nodes {}".format(ray.nodes()))

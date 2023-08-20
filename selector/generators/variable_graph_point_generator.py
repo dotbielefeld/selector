@@ -167,9 +167,10 @@ def reset_no_goods(s, config_setting, label, C, N):
                         and C.conf[p] != ng[p]:
                     config_setting[p] = C.conf[p]
                 else:
-                    if random.uniform(0, 1) >= 0.5:
-                        config_setting[p] = \
-                            random_set_conf(s.parameter[p])
+                    for param in s.parameter:
+                        if p == param.name:
+                            config_setting[p] = \
+                                random_set_conf([param])[p]
 
     return config_setting
 
@@ -232,6 +233,23 @@ def graph_crossover(graph_structure, C, N, s):
     for param, label in config_label.items():
         config_setting[param] = N.conf[param] if label == LabelType.N \
             else C.conf[param]
+
+    param_info = {}
+    for param in s.parameter:
+        param_info[param.name] = {'type': param.type, 'bound': param.bound}
+
+    for param, value in config_setting.items():
+        if param_info[param]['type'] == ParamType.categorical:
+            if random.uniform(0, 1) < 0.1:
+                config_setting[param] = \
+                    random.choice(param_info[param]['bound'])
+        else:
+            if random.uniform(0, 1) < 0.1:
+                mu = config_setting[param]
+                sigma = (param_info[param]['bound'][1] -
+                         param_info[param]['bound'][0]) * 0.1
+                config_setting[param] = \
+                    np.random.normal(mu, sigma, 1)
 
     '''
     # Check conditionals and reset parameters if violated
