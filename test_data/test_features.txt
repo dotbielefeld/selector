@@ -1,9 +1,0 @@
-INSTANCE_ID,feature_1, feature_2, feature_3, feature_4, feature_5, feature_6, feature_7, feature_8
-./test/test_data/instances/test_instance_1.cnf, 90.0, 7650.0, 1, 2, 3, 4, 5, 6
-./test/test_data/instances/test_instance_2.cnf, 30.0, 8045.1, 2, 0, 4, 5, 6, 8
-./test/test_data/instances/test_instance_3.cnf, 90.0, 7650.0, 1, 2, 3, 4, 0, 6
-./test/test_data/instances/test_instance_4.cnf, 320.0, 8045.1, 2, 0, 0, 5, 6, 8
-./test/test_data/instances/test_instance_5.cnf, 90.0, 7650.0, 1, 2, 3, 0, 5, 6
-./test/test_data/instances/test_instance_6.cnf, 130.0, 8045.1, 2, 20, 40, 5, 6, 8
-./test/test_data/instances/test_instance_7.cnf, 90.0, 7650.0, 1, 2, 3, 4, 5, 6
-./test/test_data/instances/test_instance_8.cnf, 30.0, 18045.1, 2, 10, 4, 5, 6, 8
