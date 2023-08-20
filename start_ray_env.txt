@@ -1,1 +1,0 @@
-source ray_env/bin/activate
