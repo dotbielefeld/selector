@@ -17,6 +17,7 @@ cadical/
 tuned_weights_full_ensemble
 cplex.log
 test_data/
+pddl_sequential_optimal_from_IPC_2014/
 test/test_data/
 ray_env/
 

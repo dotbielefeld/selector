@@ -45,14 +45,12 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     hp_seletor = HyperparameterizedSelector()
     tournament_dispatcher = MiniTournamentDispatcher()
     global_cache = TargetAlgorithmObserver.remote(scenario)
-    '''
     if scenario.run_obj == "runtime":
         if scenario.monitor == "tournament_level":
             monitor = Monitor.remote(1, global_cache, scenario)
         elif scenario.monitor == "instance_level":
             monitor = InstanceMonitor.remote(1, global_cache, scenario)
         monitor.monitor.remote()
-    '''
 
     random_generator = PointGen(scenario, random_point)
     default_point_generator = PointGen(scenario, default_point)
@@ -150,21 +148,22 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             ob_t = get_get_tournament_membership_with_ray_id(first_task, tournaments)
 
             # Figure out if the tournament of the first task is stale. If so cancel the task and start dummy task.
-            if len(ob_t.configurations) == 1:
-                i_no_result = get_instances_no_results(results, ob_t.configurations[0].id, ob_t.instance_set)
-                if len(i_no_result) == 1:
-                    termination = ray.get(global_cache.get_termination_single.remote(ob_t.configurations[0].id, i_no_result[0]))
-                    result = ray.get(global_cache.get_results_single.remote(ob_t.configurations[0].id, i_no_result[0]))
-                    if termination and result == False and [ob_t.configurations[0],i_no_result[0]] not in bug_handel:
-                        logger.info(f"Stale tournament: {time.strftime('%X %x %Z')}, {ob_t.configurations[0]}, {i_no_result[0]} , {first_task}, {bug_handel}")
-                        print(f"Stale tournament: {time.strftime('%X %x %Z')}, {ob_t.configurations[0]}, {i_no_result[0]} , {first_task}, {bug_handel}")
-                        ready_ids, _remaining_ids = ray.wait([first_task], timeout=0)
-                        if len(_remaining_ids) == 1:
-                            ray.cancel(first_task)
-                            tasks.remove(first_task)
-                            task = dummy_task.remote(ob_t.configurations[0],i_no_result[0], global_cache)
-                            tasks.append(task)
-                            bug_handel.append([ob_t.configurations[0],i_no_result[0]])
+            if ob_t is not None:
+                if len(ob_t.configurations) == 1:
+                    i_no_result = get_instances_no_results(results, ob_t.configurations[0].id, ob_t.instance_set)
+                    if len(i_no_result) == 1:
+                        termination = ray.get(global_cache.get_termination_single.remote(ob_t.configurations[0].id, i_no_result[0]))
+                        result = ray.get(global_cache.get_results_single.remote(ob_t.configurations[0].id, i_no_result[0]))
+                        if termination and result == False and [ob_t.configurations[0],i_no_result[0]] not in bug_handel:
+                            logger.info(f"Stale tournament: {time.strftime('%X %x %Z')}, {ob_t.configurations[0]}, {i_no_result[0]} , {first_task}, {bug_handel}")
+                            print(f"Stale tournament: {time.strftime('%X %x %Z')}, {ob_t.configurations[0]}, {i_no_result[0]} , {first_task}, {bug_handel}")
+                            ready_ids, _remaining_ids = ray.wait([first_task], timeout=0)
+                            if len(_remaining_ids) == 1:
+                                ray.cancel(first_task)
+                                tasks.remove(first_task)
+                                task = dummy_task.remote(ob_t.configurations[0],i_no_result[0], global_cache)
+                                tasks.append(task)
+                                bug_handel.append([ob_t.configurations[0],i_no_result[0]])
 
 
         #results = ray.get(global_cache.get_results.remote())
@@ -212,8 +211,8 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             tournament_history[result_tournament.id] = result_tournament
             global_cache.put_tournament_history.remote(result_tournament)
 
-           # for conf in all_configs:
-           #     for surrogate in sm.surrogates.keys():
+            # for conf in all_configs:
+            #     for surrogate in sm.surrogates.keys():
             #        sm.update_surr(surrogate, result_tournament, all_configs, results, terminations)
             for surrogate in sm.surrogates.keys():
                 if surrogate == Surrogates.GGApp:
@@ -268,6 +267,10 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             generated_points = random_points + default_ps + \
                 vg_points + lhc_ps + smac_conf + ggapp_conf + cppl_conf
 
+            '''            
+            generated_points = [smac_conf[0]] + [ggapp_conf[0]] + [cppl_conf[0]]
+            '''
+
             features = \
                 fg.static_feature_gen(generated_points, epoch, max_epochs)
             features = np.concatenate(
@@ -304,6 +307,8 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
             logger.info(f"Instance set \n\n{instances}\n\n")
             logger.info(f"Terminations \n\n{terminations}\n\n")
 
+            evaluated.extend(points_to_run)
+
             for surrogate in sm.surrogates.keys():
                 if surrogate is Surrogates.SMAC:
                     if sm.surrogates[surrogate].surr.model.rf is not None:
@@ -312,7 +317,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
                                                               points_to_run,
                                                               cutoff_time,
                                                               None))
-                        else:
+                        elif len(evaluated) != 0:
                             predicted_quals.extend(sm.predict(surrogate,
                                                               evaluated,
                                                               cutoff_time,
@@ -325,14 +330,14 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
                                                           points_to_run,
                                                           cutoff_time,
                                                           instances))
-                    else:
+                    elif len(evaluated) != 0:
                         predicted_quals.extend(sm.predict(surrogate,
                                                           evaluated,
                                                           cutoff_time,
                                                           instances))
                         qap = True
 
-            evaluated.extend(points_to_run)
+            
 
             if tournament_counter % scenario.number_tournaments == 0:
                 points_to_run[-1] = default_point_generator.point_generator()

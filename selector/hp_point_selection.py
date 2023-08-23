@@ -187,16 +187,16 @@ def pairwise_distances(sugg_i, sugg_j):
                         is not None) or \
                         (s_i.conf[key] is not None and s_j.conf[key]
                             is None):
-                    s += 1
+                    s = s + 1
                 elif (s_i.conf[key] is None and s_j.conf[key]
                         is None):
-                    s += 0
+                    s = s + 0
                 else:
                     if isinstance(s_i.conf[key], str) or \
                             isinstance(s_j.conf[key], str):
-                        s += (float(s_i.conf[key]) - float(s_j.conf[key]))**2
+                        s = s + (float(s_i.conf[key]) - float(s_j.conf[key]))**2
                     else:
-                        s += (s_i.conf[key] - s_j.conf[key])**2
+                        s = s + (s_i.conf[key] - s_j.conf[key])**2
 
             m[i, j] = s**0.5
 

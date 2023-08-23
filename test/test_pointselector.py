@@ -290,13 +290,14 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
                 ggapp_conf + cppl_conf
 
         test_1 = Configuration(1,
-                               {'luby': True, 'rinc': 3.1300000000000003,
-                                'cla-decay': 0.909999,
-                                'phase-saving': 1, 'bce-limit': 60070000,
-                                'param_1': -2, 'strSseconds': '100'},
+                               {'luby': False, 'rinc': 3.409974661894675,
+                                'cla-decay': 0.913653961639365,
+                                'phase-saving': 0, 'bce-limit': 6048450,
+                                'param_1': -2, 'strSseconds': '150'},
                                Generator.var_graph)
 
         self.assertEqual(selected_ids[1].conf, test_1.conf)
+
 
 if __name__ == '__main__':
     unittest.main()

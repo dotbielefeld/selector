@@ -201,7 +201,6 @@ def graph_crossover(graph_structure, C, N, s):
         config_label[curr_node] = random.choice([LabelType.C, LabelType.N])
 
     paths[curr_node] = [curr_node]
-    params_labeled = []
 
     while S:
         curr_node = S[0]
@@ -211,11 +210,11 @@ def graph_crossover(graph_structure, C, N, s):
             if curr_node != cn:
                 if cn in paths:
                     if cn not in paths[cn]:
-                            paths[cn].append(cn)
-                            config_label = set_config_label(paths,
-                                                            config_label,
-                                                            cn, C, N)
-                            S.append(cn)
+                        paths[cn].append(cn)
+                        config_label = set_config_label(paths,
+                                                        config_label,
+                                                        cn, C, N)
+                        S.append(cn)
                 else:
                     paths[cn] = [*paths[curr_node], cn]
                     config_label = set_config_label(paths, config_label,
@@ -225,9 +224,9 @@ def graph_crossover(graph_structure, C, N, s):
                 if random.uniform(0, 1) < 0.1:
                     if cn in config_label:
                         if config_label[cn] == LabelType.N and cn in C.conf:
-                                config_label[cn] = LabelType.C
+                            config_label[cn] = LabelType.C
                         elif config_label[cn] == LabelType.C and cn in N.conf:
-                                config_label[cn] = LabelType.N
+                            config_label[cn] = LabelType.N
                     S.append(cn)
 
     for param, label in config_label.items():
@@ -245,11 +244,15 @@ def graph_crossover(graph_structure, C, N, s):
                     random.choice(param_info[param]['bound'])
         else:
             if random.uniform(0, 1) < 0.1:
-                mu = config_setting[param]
-                sigma = (param_info[param]['bound'][1] -
-                         param_info[param]['bound'][0]) * 0.1
-                config_setting[param] = \
-                    np.random.normal(mu, sigma, 1)
+                mutation = param_info[param]['bound'][0] - 1
+                while mutation < param_info[param]['bound'][0] or \
+                        mutation > param_info[param]['bound'][1]:
+                    mu = config_setting[param]
+                    sigma = (param_info[param]['bound'][1] -
+                             param_info[param]['bound'][0]) * 0.1
+                    mutation = \
+                        np.random.normal(mu, sigma, 1)
+                config_setting[param] = mutation
 
     '''
     # Check conditionals and reset parameters if violated

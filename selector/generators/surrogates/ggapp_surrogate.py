@@ -870,8 +870,8 @@ class GGAppSurr():
                 config.append(np.array(single_conf))
         else:
             for param in self.scenario.parameter:
-                    if param.name not in conf.conf:
-                        conf.conf[param.name] = param.bound[0]
+                if param.name not in conf.conf:
+                    conf.conf[param.name] = param.bound[0]
             for t in self.types.keys():
                 if self.types[t] == ParamType.categorical and t in conf.conf:
                     if conf.conf[t] is None:
@@ -881,9 +881,9 @@ class GGAppSurr():
                     else:
                         if isinstance(conf.conf[t], (str, np.str_)):
                             for sp in self.scenario.parameter:
-                                    if t == sp.name:
-                                        config.append(
-                                            sp.bound.index(conf.conf[t]))
+                                if t == sp.name:
+                                    config.append(
+                                        sp.bound.index(conf.conf[t]))
                         else:
                             config.append(self.set_cat(float(conf.conf[t])))
                 elif t in conf.conf:
@@ -933,28 +933,46 @@ class GGAppSurr():
         for cid in config_dict.keys():
             # config in results
             for ins in instances:
-                conf.append(self.transform_values(config_dict[cid]))
-                result.append(results[cid][ins])
+                # OMIT every censored date in update
+                if cid in terminations:
+                    if ins in terminations[cid]:
+                        break
+                else:
+                    r = results[cid][ins]
+                    conf.append(self.transform_values(config_dict[cid]))
+                    if r is not None and not np.isnan(r):
+                        result.append(results[cid][ins])
+                    else:
+                        # This cid/ins pair was a time limit reach
+                        result.append(self.scenario.cutoff_time)
 
+        '''
         for i, r in enumerate(result):
             if r is None or np.isnan(r):
                 result[i] = self.scenario.cutoff_time
+        '''
 
         self.y_stash = np.append(self.y_stash, np.array(result))
 
         if self.best_q is None:
-            self.best_q = np.min(self.y_stash)
+            if len(self.y_stash) == 0:
+                import sys
+                self.best_q = sys.maxsize
+            else:
+                self.best_q = np.min(self.y_stash)
         elif np.min(self.y_stash) < self.best_q:
             self.best_q = np.min(self.y_stash)
 
-        if len(self.x_stash) > 1:
-            self.x_stash = np.vstack([self.x_stash, np.array(conf)])
-        else:
-            self.x_stash = np.array(conf)
+        if len(conf) != 0:
 
-        self.x_stash = self.sc.fit_transform(self.x_stash)
-        self.regressor.fit(self.x_stash, self.y_stash,
-                           self.get_costs(self.y_stash))
+            if len(self.x_stash) > 0:
+                self.x_stash = np.vstack([self.x_stash, np.array(conf)])
+            else:
+                self.x_stash = np.array(conf)
+
+            self.x_stash = self.sc.fit_transform(self.x_stash)
+            self.regressor.fit(self.x_stash, self.y_stash,
+                               self.get_costs(self.y_stash))
 
     def get_suggestions(self, scenario, n_samples, data, results, _,
                         oversampling=10):

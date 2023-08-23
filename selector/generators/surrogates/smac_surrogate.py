@@ -293,6 +293,8 @@ class SmacSurr():
 
         types, bounds = get_types(config_space)
 
+        self.cutoff_time = scenario.cutoff_time
+
         # SMAC scenario object
         s = Scenario({'run_obj': 'runtime',
                       'cutoff-time': scenario.cutoff_time,
@@ -366,8 +368,8 @@ class SmacSurr():
                         elif type(config[param]) == int:
                             config[param] = config[param] + self.neg_cat[param]
                         elif '.' in config[param]:
-                                config[param] = str(float(config[param]) +
-                                                    self.neg_cat[param])
+                            config[param] = str(float(config[param]) +
+                                                self.neg_cat[param])
                         else:
                             config[param] = str(int(config[param]) +
                                                 self.neg_cat[param])
@@ -387,20 +389,27 @@ class SmacSurr():
             config_dict[c.id] = c
         # instances in tournament
         instances = history.instance_set
+
         for cid in config_dict.keys():
             # config in results
             for ins in instances:
+                # OMIT every censored date in update
+                if cid in terminations:
+                    if ins in terminations[cid]:
+                        continue
                 conf = config_dict[cid]
 
                 if ins in results[cid]:
                     if not numpy.isnan(results[cid][ins]):
                         state = StatusType.SUCCESS
 
-                    elif cid in terminations:
-                        state = StatusType.CAPPED
+                    # elif cid in terminations:
+                    #    state = StatusType.CAPPED
 
                     else:
+                        # This conf/inst pair was a time limit reach
                         state = StatusType.TIMEOUT
+                        results[cid][ins] = self.cutoff_time
 
                     config = self.transform_values(conf)
                     config = dict(sorted(zip(config.keys(),
@@ -408,7 +417,7 @@ class SmacSurr():
                     # adjust neg categorical parameters for smac surr
                     for c, v in config.items():
                         if c in self.neg_cat:
-                            if type(self.neg_cat[c]) == int:
+                            if type(self.neg_cat[c]) is int:
                                 config[c] = str(v)
                             else:
                                 config[c] = str(v)
@@ -564,8 +573,12 @@ class SmacSurr():
         :param suggestions: list of objects, [selector.pool.Configuration,]
         :return pi: numpy.ndarray, probabilities of improvement
         """
-        best_val = min(min(list(d.values()))
-                       for d in list(results.values()))
+        if len(results.values()) == 0:
+            import sys
+            best_val = sys.maxsize
+        else:
+            best_val = min(min(list(d.values()))
+                           for d in list(results.values()))
 
         self.aafpi.update(eta=best_val, model=self.surr.model)
 

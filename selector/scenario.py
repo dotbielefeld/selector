@@ -173,6 +173,7 @@ def parse_args():
     hp.add_argument('--wrapper_mod_name', type=str, default="")
     hp.add_argument('--wrapper_class_name', type=str, default="")
     hp.add_argument('--quality_match', type=str, default="")
+    hp.add_argument('--solve_match', type=str, default="")
     hp.add_argument('--quality_extract', type=str, default="")
 
     hp.add_argument('--winners_per_tournament', type=int, default=1)
@@ -185,7 +186,7 @@ def parse_args():
 
     hp.add_argument('--termination_criterion', type=str, default="runtime")
     hp.add_argument('--total_tournament_number', type=int, default=10)
-    hp.add_argument('--scenario.model_update_iteration', type=int, default=3)
+    hp.add_argument('--model_update_iteration', type=int, default=3)
 
     hp.add_argument('--generator_multiple', type=int, default=5)
     hp.add_argument('--initial_instance_set_size', type=int, default=5)
@@ -202,6 +203,9 @@ def parse_args():
     so.add_argument('--instance_file', type=str)
     so.add_argument('--feature_file', type=str)
     so.add_argument('--paramfile', type=str)
+    so.add_argument('--qual_max', type=bool, default=False)
+    so.add_argument('--output_trigger', action='store_true')
+    so.set_defaults(output_trigger=False)
 
     so.add_argument('--w_1', type=float, default=1.0)
     so.add_argument('--w_2', type=float, default=1.0)

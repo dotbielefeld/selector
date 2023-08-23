@@ -531,7 +531,7 @@ class CPPL:
         self.pool = self.pool + new_promising_conf
 
 
-    def update(self, previous_tournament, c, results, t, instance_features=None):
+    def update(self, previous_tournament, c, results, terminations, instance_features=None):
         """
         Updated the model with given feedback
         :param results: nested dic containing rt feedback for the conf instance pairs in previous_tournament
@@ -564,12 +564,23 @@ class CPPL:
                 if not np.isnan(results[c][instance]):
                     results_on_instance[c] = results[c][instance]
                 else:
-                    results_on_instance[c] = self.scenario.cutoff_time
+                    # OMIT the capped data in model update
+                    if c in terminations:
+                        if instance in terminations[c]:
+                            continue
+                    else:
+                        # This conf/inst pair was a time limit reach
+                        results_on_instance[c] = self.scenario.cutoff_time
 
             if self.best_q is None:
-                self.best_q = min(results_on_instance.values())
-            elif min(results_on_instance.values()) < self.best_q:
-                self.best_q = min(results_on_instance.values())
+                if len(results_on_instance.values()) == 0:
+                    import sys
+                    self.best_q = sys.maxsize
+                else:
+                    self.best_q = min(results_on_instance.values())
+            elif len(results_on_instance.values()) == 0: 
+                if min(results_on_instance.values()) < self.best_q:
+                    self.best_q = min(results_on_instance.values())
 
             best_conf_on_instance = min(results_on_instance, key=results_on_instance.get)
 
