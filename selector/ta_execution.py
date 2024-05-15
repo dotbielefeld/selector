@@ -103,12 +103,10 @@ def tae_from_cmd_wrapper_rt(conf, instance_path, cache, ta_command_creator, scen
         cpu_time_p = 0
         reading = True
         solved = False
-        lines = []
 
         while reading:
             try:
                 line = q.get(timeout=.5)
-                lines.append(line)
                 empty_line = False
                 # Get the cpu time and memory of the process
             except Empty:
@@ -142,6 +140,10 @@ def tae_from_cmd_wrapper_rt(conf, instance_path, cache, ta_command_creator, scen
                 if "placeholder" in line:
                     cache.put_intermediate_output.remote(conf.id, instance_path, line)
                     logging.info(f"Wrapper TAE intermediate feedback {conf}, {instance_path} {line}")
+                    
+                if scenario.output_trigger:
+                    if scenario.solve_match in line:
+                        solved = True
 
             if p.poll() is None:
                 # Get the cpu time and memory of the process
@@ -171,14 +173,6 @@ def tae_from_cmd_wrapper_rt(conf, instance_path, cache, ta_command_creator, scen
             # Break the while loop when the ta was killed or finished
             if empty_line and p.poll() is not None:
                 reading = False
-
-        if scenario.output_trigger:
-            solved = False
-            for line in lines:
-                print('line:', line)
-                if scenario.solve_match in line:
-                    print('\nYES\n', line, '\n')
-                    solved = True
 
         if timeout:
             cache.put_result.remote(conf.id, instance_path, np.nan)
@@ -219,7 +213,6 @@ def tae_from_cmd_wrapper_rt(conf, instance_path, cache, ta_command_creator, scen
     except Exception:
         print({traceback.format_exc()})
         logging.info(f"Exception in TA execution: {traceback.format_exc()}")
-
 
 @ray.remote(num_cpus=1)
 def tae_from_cmd_wrapper_quality(conf, instance_path, cache, ta_command_creator, scenario):

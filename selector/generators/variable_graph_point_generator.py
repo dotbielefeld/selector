@@ -6,23 +6,14 @@ In: Principles and Practice of Constraint Programming - CP 2009.
 pp. 142–157 (09 2009).]
 """
 
-import pickle
-import os
 import random
 import copy
 import numpy as np
-import itertools
 import math
 from enum import Enum, IntEnum
 from selector.pool import Configuration, ParamType, Generator
-from selector.generators.random_point_generator import (
-    random_set_conf,
-    reset_conditionals
-)
-from selector.generators.default_point_generator import (
-    check_conditionals,
-    check_no_goods
-)
+from selector.generators.random_point_generator import random_set_conf
+from selector.generators.default_point_generator import check_no_goods
 
 
 class LabelType(IntEnum):
@@ -251,15 +242,11 @@ def graph_crossover(graph_structure, C, N, s):
                     sigma = (param_info[param]['bound'][1] -
                              param_info[param]['bound'][0]) * 0.1
                     mutation = \
-                        np.random.normal(mu, sigma, 1)
-                config_setting[param] = mutation
-
-    '''
-    # Check conditionals and reset parameters if violated
-    cond_vio = check_conditionals(s, config_setting)
-    if cond_vio:
-        config_setting = reset_conditionals(s, config_setting, cond_vio)
-    '''
+                        np.random.normal(mu, sigma, 1)[0]
+                if param_info[param]['type'] == ParamType.continuous:
+                    config_setting[param] = mutation
+                else:
+                    config_setting[param] = round(mutation)
 
     # Check no goods and reset values if violated
     ng_vio = check_no_goods(s, config_setting)

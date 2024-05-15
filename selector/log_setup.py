@@ -50,6 +50,7 @@ def log_termination_setting(logger, scenario):
                     f"The termination criterion will be set to runtime.")
         logger.info(f"The total runtime is: {scenario.wallclock_limit}")
 
+
 class TournamentEncoder(json.JSONEncoder):
     def default(self, o):
         if dataclasses.is_dataclass(o):
@@ -78,6 +79,7 @@ class TournamentEncoder(json.JSONEncoder):
             return o
 
         return super().default(o)
+
 
 class ConfEncoder(json.JSONEncoder):
     def default(self, obj):

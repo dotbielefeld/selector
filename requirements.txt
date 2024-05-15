@@ -45,7 +45,7 @@ pyasn1-modules==0.2.8
 pyparsing==3.0.6
 pyrsistent==0.18.0
 PyYAML==6.0
-ray==1.9.2
+ray==2.3.1
 redis==4.1.0
 requests==2.27.1
 rsa==4.8

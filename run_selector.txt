@@ -1,3 +1,3 @@
-python3 selector/main.py --file "cadical/selector_args_fuzz.txt" --scenario_file "cadical/scenario_fuzz.txt" --log_folder bmc_cad_log --wallclock_limit 172900 --output_trigger --solve_match "total process time"
+python3 selector/main.py --file "cadical/selector_args_fuzz.txt" --scenario_file "cadical/scenario_fuzz.txt" --log_folder bmc_cad_log --wallclock_limit 172900 --output_trigger --solve_match "total process time" --cutoff_time 30
 
-python3 selector/main.py --file "pddl_sequential_optimal_from_IPC_2014/selector_args_lpg.txt" --scenario_file "pddl_sequential_optimal_from_IPC_2014/scenario_lpg.txt" --log_folder bmc_cad_log --wallclock_limit 172900 --output_trigger --solve_match "Total time"
+python3 selector/main.py --file "pddl_sequential_optimal_from_IPC_2014/selector_args_lpg.txt" --scenario_file "pddl_sequential_optimal_from_IPC_2014/scenario_lpg.txt" --log_folder bmc_cad_log --wallclock_limit 172900 --output_trigger --solve_match "Total time" --cutoff_time 30

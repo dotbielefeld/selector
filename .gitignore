@@ -11,11 +11,14 @@ selector/input/
 selector/output/
 selector/wrapper/
 selector/logs/
+selector/__pycache__
 selector/generators/surrogates/cppl_surrogate_BACKUP.py
 wrapper/
 cadical/
 tuned_weights_full_ensemble
 cplex.log
+run_selector.txt
+tuned_weights_full_ensemble
 test_data/
 pddl_sequential_optimal_from_IPC_2014/
 test/test_data/
@@ -148,3 +151,5 @@ dmypy.json
 # Misc
 start_ray_env.txt
 run_selector.txt
+selector/test_point_selection.py
+selector/test_instance_sets.py

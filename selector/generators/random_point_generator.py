@@ -4,10 +4,7 @@ import numpy as np
 import math
 import sys
 from selector.pool import Configuration, ParamType, Generator
-from selector.generators.default_point_generator import (
-    check_conditionals,
-    check_no_goods
-)
+from selector.generators.default_point_generator import check_no_goods
 
 
 def reset_no_goods(s, config_setting):
@@ -62,7 +59,6 @@ def reset_conditionals(s, config_setting, cond_vio):
     for cv in cond_vio:
         for ps in s.parameter:
             if cv == ps.name:
-                # if ps.type == ParamType.categorical:
                 config_setting[cv] = ps.bound[0]
 
     return config_setting
@@ -167,13 +163,6 @@ def random_point(s, identity, seed=False):
 
     # Generate configuration randomly based on given parameter space
     config_setting = random_set_conf(s.parameter)
-
-    '''
-    # Check conditionals and turn off parameters if violated
-    cond_vio = check_conditionals(s, config_setting)
-    if cond_vio:
-        config_setting = reset_conditionals(s, config_setting, cond_vio)
-    '''
 
     # Check no goods and reset values if violated
     ng_vio = check_no_goods(s, config_setting)
