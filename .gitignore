@@ -148,3 +148,4 @@ dmypy.json
 # Misc
 start_ray_env.txt
 run_selector.txt
+test/scenario

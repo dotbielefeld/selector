@@ -60,6 +60,9 @@ from selector.point_gen import PointGen  # noqa: E402
 import uuid  # noqa: E402
 import random  # noqa: E402
 
+from threadpoolctl import ThreadpoolController
+controller = ThreadpoolController()
+
 
 class GGApp(CostSensitiveDecisionTreeClassifier):
     """GGA++ Decision Tree Regressor."""
@@ -460,7 +463,6 @@ class BaggingRegressor(GGAppRegressorMixin, BaseBagging):
 
     def __init__(
         self,
-        # estimator=None,
         n_estimators=10,
         *,
         max_samples=1.0,
@@ -476,7 +478,6 @@ class BaggingRegressor(GGAppRegressorMixin, BaseBagging):
     ):
         """Initialize BaggingRegressor."""
         super().__init__(
-            # estimator=estimator,
             n_estimators=n_estimators,
             max_samples=max_samples,
             max_features=max_features,
@@ -652,7 +653,6 @@ class GGAppBaggingRegressor(BaggingRegressor):
 
     def __init__(
         self,
-        # estimator=None,
         n_estimators=10,
         *,
         max_samples=1.0,
@@ -668,7 +668,6 @@ class GGAppBaggingRegressor(BaggingRegressor):
     ):
         """Initialize GGA++ Bagging Regressor."""
         super().__init__(
-            # estimator=estimator,
             n_estimators=n_estimators,
             max_samples=max_samples,
             max_features=max_features,
@@ -683,34 +682,34 @@ class GGAppBaggingRegressor(BaggingRegressor):
         )
 
     def _set_oob_score(self, X, y):
-            n_samples = y.shape[0]
+        n_samples = y.shape[0]
 
-            predictions = np.zeros((n_samples,))
-            n_predictions = np.zeros((n_samples,))
+        predictions = np.zeros((n_samples,))
+        n_predictions = np.zeros((n_samples,))
 
-            for estimator, samples, features in zip(
-                self.estimators_, self.estimators_samples_,
-                self.estimators_features_
-            ):
-                # Create mask for OOB samples
-                mask = ~indices_to_mask(samples, n_samples)
+        for estimator, samples, features in zip(
+            self.estimators_, self.estimators_samples_,
+            self.estimators_features_
+        ):
+            # Create mask for OOB samples
+            mask = ~indices_to_mask(samples, n_samples)
 
-                predictions[mask] += \
-                    estimator.predict((X[mask, :])[:, features])
-                n_predictions[mask] += 1
+            predictions[mask] += \
+                estimator.predict((X[mask, :])[:, features])
+            n_predictions[mask] += 1
 
-            if (n_predictions == 0).any():
-                warn(
-                    "Some inputs do not have OOB scores. "
-                    "This probably means too few estimators were used "
-                    "to compute any reliable oob estimates."
-                )
-                n_predictions[n_predictions == 0] = 1
+        if (n_predictions == 0).any():
+            warn(
+                "Some inputs do not have OOB scores. "
+                "This probably means too few estimators were used "
+                "to compute any reliable oob estimates."
+            )
+            n_predictions[n_predictions == 0] = 1
 
-            predictions /= n_predictions
+        predictions /= n_predictions
 
-            self.oob_prediction_ = predictions
-            self.oob_score_ = r2_score(y, predictions)
+        self.oob_prediction_ = predictions
+        self.oob_score_ = r2_score(y, predictions)
 
     def predict(self, X):
         """Predict regression target for X.
@@ -763,7 +762,7 @@ class GGAppRandomForestRegressor(GGAppBaggingRegressor):
                  n_estimators=10,
                  combination='majority_voting',
                  max_features='auto',
-                 n_jobs=1,
+                 n_jobs=1, # will be scenario.tournament_size
                  verbose=False,
                  pruned=False,
                  q=0.1):
@@ -785,7 +784,7 @@ class GGAppRandomForestRegressor(GGAppBaggingRegressor):
 class GGAppSurr():
     """Surrogate GGA++."""
 
-    def __init__(self, scenario, seed=False, cost=[1, 1, 0, 0]):
+    def __init__(self, scenario, seed=False, cost=[1, 1, 0, 0], logger=None):
         """Initialize GGA++ surrogate.
 
         :param scenario: dict, scenario translated for GGA++
@@ -795,20 +794,31 @@ class GGAppSurr():
             self.seed = False
         else:
             self.seed = seed
-        self.scenario = scenario
-        self.regressor = GGAppRandomForestRegressor()
-        self.sc = StandardScaler()
-        self.x_stash = np.array([])
-        self.y_stash = np.array([])
-        self.cost = cost
-        self.best_q = None
 
-        self.transfom_selector_scenario_for_ggapp(scenario)
-        self.random_generator = PointGen(self.scenario, random_point,
-                                         seed=self.seed)
-        self.variable_graph_generator = PointGen(self.scenario,
-                                                 variable_graph_point,
-                                                 seed=42)
+        # Control How many threads/cores numpy and scipy use
+        @controller.wrap(limits=scenario.tournament_size,
+                         user_api='openmp')
+        @controller.wrap(limits=scenario.tournament_size,
+                         user_api='blas')
+        def threaded_init(scenario, seed, cost):
+            self.scenario = scenario
+            self.logger = logger
+            self.regressor = \
+                GGAppRandomForestRegressor(n_jobs=scenario.tournament_size)
+            self.sc = StandardScaler()
+            self.x_stash = np.array([])
+            self.y_stash = np.array([])
+            self.cost = cost
+            self.best_q = None
+
+            self.transfom_selector_scenario_for_ggapp(scenario)
+            self.random_generator = PointGen(self.scenario, random_point,
+                                             seed=self.seed)
+            self.variable_graph_generator = PointGen(self.scenario,
+                                                     variable_graph_point,
+                                                     seed=42)
+
+        threaded_init(scenario, seed, cost)
 
     def transfom_selector_scenario_for_ggapp(self, scenario):
         """Save parameter types.
@@ -904,7 +914,7 @@ class GGAppSurr():
 
         return costs
 
-    def update(self, history, configs, results, terminations):
+    def update(self, history, configs, results, terminations, ac_runtime=None):
         """Update GGA++ epm.
 
         :param results: results of the Tournament
@@ -916,21 +926,12 @@ class GGAppSurr():
         for c in configs:
             config_dict[c.id] = c
 
-        '''
-        for param in config_dict.keys():
-            # Check conditionals and reset parameters if violated
-            cond_vio = check_conditionals(self.scenario,
-                                          config_dict[param].conf)
-            if cond_vio:
-                config_dict[param].conf = \
-                    reset_conditionals(self.scenario,
-                                       config_dict[param].conf,
-                                       cond_vio)
-        '''
-
         # instances in tournament
         instances = history.instance_set
         for cid in config_dict.keys():
+            use_results = False
+            perf_sum = 0
+            perf_count = 0
             # config in results
             for ins in instances:
                 # OMIT every censored date in update
@@ -939,20 +940,25 @@ class GGAppSurr():
                         break
                 else:
                     r = results[cid][ins]
-                    conf.append(self.transform_values(config_dict[cid]))
+                    perf_count += 1
+                    use_results = True
                     if r is not None and not np.isnan(r):
-                        result.append(results[cid][ins])
+                        perf_sum += results[cid][ins]
+                        # result.append(results[cid][ins])
                     else:
                         # This cid/ins pair was a time limit reach
-                        result.append(self.scenario.cutoff_time)
+                        perf_sum += self.scenario.cutoff_time
+                        # result.append(self.scenario.cutoff_time)
+            if use_results:
+                result.append(perf_sum / perf_count)
+                conf.append(self.transform_values(config_dict[cid]))
 
-        '''
-        for i, r in enumerate(result):
-            if r is None or np.isnan(r):
-                result[i] = self.scenario.cutoff_time
-        '''
-
-        self.y_stash = np.append(self.y_stash, np.array(result))
+        if ac_runtime >= self.scenario.wallclock_limit * 0.15 and \
+                len(self.y_stash) > len(result) * 2:
+            self.y_stash = self.y_stash[len(result):]
+            self.y_stash = np.append(self.y_stash, np.array(result))
+        else:
+            self.y_stash = np.append(self.y_stash, np.array(result))
 
         if self.best_q is None:
             if len(self.y_stash) == 0:
@@ -966,13 +972,21 @@ class GGAppSurr():
         if len(conf) != 0:
 
             if len(self.x_stash) > 0:
-                self.x_stash = np.vstack([self.x_stash, np.array(conf)])
+                if ac_runtime >= self.scenario.wallclock_limit * 0.15 and \
+                        len(self.x_stash) > len(conf) * 2:
+                    self.x_stash = self.x_stash[len(conf):]
+                    self.x_stash = np.vstack([self.x_stash, np.array(conf)])
+                else:
+                    self.x_stash = np.vstack([self.x_stash, np.array(conf)])
             else:
                 self.x_stash = np.array(conf)
 
             self.x_stash = self.sc.fit_transform(self.x_stash)
             self.regressor.fit(self.x_stash, self.y_stash,
                                self.get_costs(self.y_stash))
+
+        if self.logger is not None:
+            self.logger.info(f"Length x_stash: {len(self.x_stash)}")
 
     def get_suggestions(self, scenario, n_samples, data, results, _,
                         oversampling=10):
@@ -997,7 +1011,6 @@ class GGAppSurr():
 
         best_idx = sugg_sorted[:n_samples]
 
-        # best_suggs = suggestions[best_idx]
         best_suggs = list(np.array(suggestions)[best_idx])[:n_samples]
 
         suggestions = []
@@ -1091,6 +1104,9 @@ class GGAppSurr():
         pi = norm.cdf((self.best_q - mean) / std)
         pi_output = []
         for p in pi:
-            pi_output.append([p])
+            if np.isnan(p):
+                pi_output.append([0])
+            else:
+                pi_output.append([p])
 
         return pi_output

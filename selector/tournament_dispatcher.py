@@ -18,7 +18,6 @@ class MiniTournamentDispatcher:
         :param instance_partition_id: Id of the instance set.
         :return: Tournament, first conf/instance assignment to run
         """
-
         # Get the configuration that has seen the most instances before
         conf_instances_ran = []
         most_run_conf = None
@@ -178,7 +177,3 @@ class MiniTournamentDispatcher:
             next_instance = np.random.choice(next_possible_instance)
 
         return [[configuration, next_instance]]
-
-
-
-

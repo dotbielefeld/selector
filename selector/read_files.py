@@ -8,6 +8,7 @@ boolean_yes = ["on", "yes", "true"]
 boolean_no = ["no", "off", "false"]
 boolean_options = boolean_no + boolean_yes
 
+
 def get_ta_arguments_from_pcs(para_file):
     """
      Read in a file that contains the target algorithm parameters. The file is .pcs and adheres to the structure of
@@ -31,14 +32,14 @@ def get_ta_arguments_from_pcs(para_file):
 
             line_split = line.split(None, 1)
             param_name = line_split[0].replace(" ", "")
-            param_info = line_split[1] # TODO This will error if forbidden params do not have any spaces
+            param_info = line_split[1]  # TODO This will error if forbidden params do not have any spaces
 
             if "|" not in param_info:
 
                 # cat
                 if '{' in param_info:
                     param_type, bounds, defaults, original_bound = get_categorical(param_name, param_info)
-                    if param_type != None:
+                    if param_type is not None:
                         parameters.append(Parameter(param_name, param_type, bounds, defaults, {}, '', original_bound))
                 # forbidden
                 elif '{' in param_name:
@@ -165,8 +166,8 @@ def get_continuous(param_name, param_info):
     if not bounds[0] <= defaults <= bounds[1]:
         raise ValueError(f"For parameter {param_name} the default value is not within the range of the bounds")
 
-
     return param_type, bounds, defaults, scale
+
 
 def get_conditional(param_name, param_info, parameters):
     """
@@ -196,6 +197,7 @@ def get_conditional(param_name, param_info, parameters):
         raise ValueError(f"For parameter {param_name} the parsed conditions could not be read")
 
     return condition_param, condition
+
 
 def get_no_goods(no_good, parameters):
     """
@@ -257,6 +259,7 @@ def read_instance_paths(instance_set_path):
             warnings.warn(f"Instance {i} is not unique in the train set")
 
     return instance_set
+
 
 def read_instance_features(feature_set_path):
     """

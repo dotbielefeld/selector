@@ -14,13 +14,11 @@ import importlib
 import logging
 import numpy as np
 import ray
-import pickle
-import gzip
-
 
 from scenario import Scenario, parse_args
 from log_setup import clear_logs, check_log_folder, save_latest_logs
 from mini_tournaments import offline_mini_tournament_configuration
+from best_conf import safe_best
 
 sys.path.append(os.getcwd())
 
@@ -40,8 +38,6 @@ if __name__ == "__main__":
 
     check_log_folder(scenario.log_folder)
     clear_logs(scenario.log_folder)
-
-    # print(scenario.features)
 
     logging.\
         basicConfig(level=logging.INFO,
@@ -65,4 +61,6 @@ if __name__ == "__main__":
     offline_mini_tournament_configuration(scenario, ta_wrapper, logger)
 
     save_latest_logs(scenario.log_folder)
+    safe_best(sys.path[-1] + f'/selector/logs/{scenario.log_folder}/',
+              scenario.cutoff_time)
     ray.shutdown()

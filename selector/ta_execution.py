@@ -103,12 +103,10 @@ def tae_from_cmd_wrapper_rt(conf, instance_path, cache, ta_command_creator, scen
         cpu_time_p = 0
         reading = True
         solved = False
-        lines = []
 
         while reading:
             try:
                 line = q.get(timeout=.5)
-                lines.append(line)
                 empty_line = False
                 # Get the cpu time and memory of the process
             except Empty:
@@ -143,6 +141,11 @@ def tae_from_cmd_wrapper_rt(conf, instance_path, cache, ta_command_creator, scen
                     cache.put_intermediate_output.remote(conf.id, instance_path, line)
                     logging.info(f"Wrapper TAE intermediate feedback {conf}, {instance_path} {line}")
 
+                if scenario.output_trigger:
+                    if scenario.solve_match in line:
+                        print('\nSolved!\n', line, '\n')
+                        solved = True
+
             if p.poll() is None:
                 # Get the cpu time and memory of the process
                 cpu_time_p = p.cpu_times().user
@@ -165,20 +168,10 @@ def tae_from_cmd_wrapper_rt(conf, instance_path, cache, ta_command_creator, scen
                         os.killpg(p.pid, signal.SIGKILL)
                     except Exception:
                         pass
-                    # if scenario.ta_pid_name is not None:
-                    #    termination_check(p.pid, p.poll(), scenario.ta_pid_name, os.getpid(),conf.id, instance_path)
 
             # Break the while loop when the ta was killed or finished
             if empty_line and p.poll() is not None:
                 reading = False
-
-        if scenario.output_trigger:
-            solved = False
-            for line in lines:
-                print('line:', line)
-                if scenario.solve_match in line:
-                    print('\nYES\n', line, '\n')
-                    solved = True
 
         if timeout:
             cache.put_result.remote(conf.id, instance_path, np.nan)
@@ -254,10 +247,6 @@ def tae_from_cmd_wrapper_quality(conf, instance_path, cache, ta_command_creator,
         p = psutil.Popen(cmd, shell=True, stdout=subprocess.PIPE,
                          stderr=subprocess.STDOUT, close_fds=True)
 
-        # Blocks
-        # for line in iter(p.stdout.readline, ''):
-        #     line = line.decode("utf-8")
-        #    print(line)
         q = Queue()
         t = Thread(target=enqueue_output, args=(p.stdout, q))
         t.daemon = True
@@ -284,8 +273,8 @@ def tae_from_cmd_wrapper_quality(conf, instance_path, cache, ta_command_creator,
                     logging.info(f"Wrapper TAE intermediate feedback {conf}, {instance_path} {line}")
 
                 if scenario.run_obj == "quality":
-                    output = re.search(scenario.quality_match, line)
-                    if output:
+                    output_tigger = re.search(scenario.quality_match, line)
+                    if output_tigger:
                         quality = re.findall(f"{scenario.quality_extract}", line)
 
             # Break the while loop when the ta was killed or finished

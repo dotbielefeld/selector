@@ -16,7 +16,7 @@ from ConfigSpace.forbidden import (
 )
 from smac.stats.stats import Stats
 from smac.runhistory.runhistory import RunHistory
-from smac.runhistory.runhistory2epm import RunHistory2EPM4Cost
+from smac.runhistory.runhistory2epm import RunHistory2EPM4LogCost
 from smac.epm.rf_with_instances import RandomForestWithInstances
 from smac.epm.util_funcs import get_types
 from smac.optimizer.acquisition import EI, PI
@@ -27,6 +27,8 @@ import numpy
 import uuid
 import random
 import copy
+import math
+import sys
 
 from selector.pool import ParamType, Generator
 from selector.pool import Configuration as SelConfig
@@ -38,57 +40,192 @@ from selector.generators.random_point_generator import (
     reset_no_goods,
     random_set_conf
 )
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import MinMaxScaler
+
+from smac.configspace import convert_configurations_to_array
+from typing import List, Optional, Tuple
+import itertools
+
+from threadpoolctl import ThreadpoolController
+controller = ThreadpoolController()
+
+
+#  Adjust SMAC's LocalSearch to only suggest as many points as we actually ask
+class LocalSearch(LocalSearch):
+    """Implementation of SMAC's local search."""
+
+    def _get_initial_points(
+        self,
+        num_points: int,
+        runhistory: RunHistory,
+        additional_start_points: Optional[List[Tuple[float, Configuration]]],
+    ) -> List[Configuration]:
+
+        if runhistory.empty():
+            init_points = \
+                self.config_space.sample_configuration(size=num_points)
+        else:
+            # initiate local search
+            configs_previous_runs = runhistory.get_all_configs()
+
+            # configurations with the highest previous EI
+            configs_previous_runs_sorted = \
+                self._sort_configs_by_acq_value(configs_previous_runs)
+            configs_previous_runs_sorted = \
+                [conf[1] for conf in configs_previous_runs_sorted[:num_points]]
+
+            # configurations with the lowest predictive cost,
+            # check for None to make unit tests work
+            if self.acquisition_function.model is not None:
+                conf_array = \
+                    convert_configurations_to_array(configs_previous_runs)
+                costs = self.acquisition_function.model.\
+                    predict_marginalized_over_instances(conf_array)[0]
+                assert len(conf_array) == len(costs), (conf_array.shape,
+                                                       costs.shape)
+
+                # In case of the predictive model returning the prediction
+                # for more than one objective per configuration
+                # (for example multi-objective or EIPS) it is not immediately
+                # clear how to sort according to the cost
+                # of a configuration. Therefore, we simply follow the ParEGO#
+                # approach and use a random scalarization.
+                if len(costs.shape) == 2 and costs.shape[1] > 1:
+                    weights = numpy.array([self.rng.rand()
+                                          for _ in range(costs.shape[1])])
+                    weights = weights / numpy.sum(weights)
+                    costs = costs @ weights
+
+                # From here
+                # http://stackoverflow.com/questions/20197990/how-to-make-argsort-result-to-be-random-between-equal-values
+                random = self.rng.rand(len(costs))
+                # Last column is primary sort key!
+                indices = numpy.lexsort((random.flatten(), costs.flatten()))
+
+                # Cannot use zip here because the indices array cannot index
+                # the rand_configs list, because the second is a
+                # pure python list
+                configs_previous_runs_sorted_by_cost = \
+                    [configs_previous_runs[ind] 
+                     for ind in indices][:num_points]
+            else:
+                configs_previous_runs_sorted_by_cost = []
+
+            if additional_start_points is not None:
+                additional_start_points = \
+                    [asp[1] for asp in additional_start_points[:num_points]]
+            else:
+                additional_start_points = []
+
+            init_points = []
+            init_points_as_set = set()  # type: Set[Configuration]
+            for cand in itertools.chain(
+                configs_previous_runs_sorted,
+                configs_previous_runs_sorted_by_cost,
+                additional_start_points,
+            ):
+                if cand not in init_points_as_set:
+                    init_points.append(cand)
+                    init_points_as_set.add(cand)
+
+            # Here actual adjustment to give only num_points initial points.
+            # We remove math.floor(remove num_pomits / 2)
+            # configs_previous_runs_sorted, getting 50/50 from
+            # configs_previous_runs_sorted and 
+            # configs_previous_runs_sorted_by_cost but favor the former,
+            # if odd number.
+            if len(init_points) > num_points:
+                remove_nr = math.floor((len(init_points) - num_points))
+                if remove_nr > math.floor(num_points / 2):
+                    remove_nr = math.floor(num_points / 2)
+                for rr in range(remove_nr):
+                    del init_points[num_points - 1 - rr]
+                if len(init_points) > num_points:
+                    init_points = init_points[:num_points]
+
+        return init_points
 
 
 class SmacSurr():
     """Surrogate from SMAC."""
 
-    def __init__(self, scenario, seed=False):
+    def __init__(self, scenario, seed=False, pca_dim=8):
         """Initialize smac surrogate.
 
         :param scenario: dict, scenario translated for smac
         :param seed: int, random seed
+        :param pca_dim: int, PCA on instance features (default same as GGApp)
         """
         if not seed:
             self.seed = False
         else:
             self.seed = seed
-        self.param_bounds = {}
-        for param in scenario.parameter:
-            self.param_bounds[param.name] = param.bound
-        self.stats = Stats
-        self.rs = RandomState
-        self.s = copy.deepcopy(scenario)
-        self.scenario, self.config_space, self.types, self.bounds \
-            = self.transfom_selector_scenario_for_smac(scenario)
-        self.rh = RunHistory()
-        self.rh2epm = RunHistory2EPM4Cost(scenario=self.scenario,
-                                          num_params=len(self.config_space),
-                                          success_states=StatusType)
-        self.rafo \
-            = RandomForestWithInstances(configspace=self.config_space,
-                                        types=self.types,
-                                        bounds=self.bounds,
-                                        seed=self.seed,
-                                        num_trees=10)
 
-        self.aaf = EI(model=self.rafo)
-        self.aafpi = PI(model=self.rafo)
-        self.afm = LocalSearch(acquisition_function=self.aaf,
-                               config_space=self.config_space
-                               )
+        # Control How many threads/cores numpy and scipy use
+        @controller.wrap(limits=scenario.tournament_size,
+                         user_api='openmp')
+        @controller.wrap(limits=scenario.tournament_size,
+                         user_api='blas')
+        def threaded_init(scenario, pca_dim):
+            self.pca_dim = pca_dim
+            self.best_val = sys.maxsize
+            self.param_bounds = {}
+            for param in scenario.parameter:
+                self.param_bounds[param.name] = param.bound
+            self.stats = Stats
+            self.rs = RandomState
+            self.s = copy.deepcopy(scenario)
+            inst_feats = numpy.array(list(scenario.features.values()))
+            self.inst_ids = list(scenario.features.keys())
+            self.selector_scenario = scenario
+            scaler = MinMaxScaler()
+            inst_feats = scaler.fit_transform(inst_feats)
+            inst_feats = numpy.nan_to_num(inst_feats)
+            pca = PCA(n_components=self.pca_dim)
+            pca_inst_feats = pca.fit_transform(inst_feats)
+            self.pca_inst_feats, self.inst_ids = \
+                self.pca_inst_feat_file(self.selector_scenario.instance_file,
+                                        self.selector_scenario.feature_file,
+                                        self.inst_ids, pca_inst_feats)
+            self.scenario, self.config_space, self.types, self.bounds \
+                = self.transfom_selector_scenario_for_smac(self.selector_scenario)
+            self.rh = RunHistory(overwrite_existing_runs=True)
+            self.rh2epm = RunHistory2EPM4LogCost(scenario=self.scenario,
+                                                 num_params=len(self.config_space),
+                                                 success_states=StatusType)
+            self.rafo \
+                = RandomForestWithInstances(configspace=self.config_space,
+                                            types=self.types,
+                                            bounds=self.bounds,
+                                            seed=self.seed,
+                                            instance_features=self.pca_inst_feats,
+                                            num_trees=10,  # Same as in GGApp
+                                            pca_components=self.pca_dim)
+            self.aaf = EI(model=self.rafo)
+            self.aafpi = PI(model=self.rafo)
+            self.afm = LocalSearch(acquisition_function=self.aaf,
+                                   config_space=self.config_space,
+                                   max_steps=10,
+                                   n_steps_plateau_walk=1,
+                                   vectorization_min_obtain=2,
+                                   vectorization_max_obtain=64
+                                   )
+            self.surr = EPMChooser(scenario=self.scenario,
+                                   stats=self.stats,
+                                   runhistory=self.rh,
+                                   runhistory2epm=self.rh2epm,
+                                   model=self.rafo,
+                                   acq_optimizer=self.afm,
+                                   acquisition_func=self.aaf,
+                                   rng=self.rs,
+                                   random_configuration_chooser=None,
+                                   predict_x_best=False)
 
-        self.surr = EPMChooser(scenario=self.scenario,
-                               stats=self.stats,
-                               runhistory=self.rh,
-                               runhistory2epm=self.rh2epm,
-                               model=self.rafo,
-                               acq_optimizer=self.afm,
-                               acquisition_func=self.aaf,
-                               rng=self.rs)
+        threaded_init(scenario, pca_dim)
 
     def transfom_selector_scenario_for_smac(self, scenario):
-        """Transform scenario to SMAC frmulation.
+        """Transform scenario to SMAC formulation.
 
         :param scenario: scenario object from selector
         :return scenario: scenario object from SMAC
@@ -296,12 +433,14 @@ class SmacSurr():
         self.cutoff_time = scenario.cutoff_time
 
         # SMAC scenario object
-        s = Scenario({'run_obj': 'runtime',
-                      'cutoff-time': scenario.cutoff_time,
-                      'runcount-limit': 50,
+        s = Scenario({'run_obj': scenario.run_obj,
+                      'cutoff': scenario.cutoff_time,
+                      'runcount-limit': 10,
                       'cs': config_space,
                       'deterministic': True,
-                      'acq_opt_challengers': 5})
+                      'acq_opt_challengers': scenario.tournament_size,
+                      'instance_file': scenario.instance_file,
+                      'feature-file': scenario.feature_file})
 
         return s, config_space, types, bounds
 
@@ -376,7 +515,7 @@ class SmacSurr():
 
         return config
 
-    def update(self, history, configs, results, terminations):
+    def update(self, history, configs, results, terminations, ac_runtime=None):
         """Update SMAC epm.
 
         :param history: Tournament history
@@ -390,6 +529,31 @@ class SmacSurr():
         # instances in tournament
         instances = history.instance_set
 
+        if ac_runtime >= self.selector_scenario.wallclock_limit * 0.15 and \
+                (len(instances) * len(config_dict)) * 2 \
+                < len(self.surr.runhistory.data):
+            ds = (len(instances) * len(config_dict))
+            to_delete = []
+            delete_by_ids = []
+            for rd in self.surr.runhistory.data.keys():
+                if (rd not in
+                        to_delete and len(delete_by_ids) < ds) or \
+                        (rd not in to_delete and rd.config_id in 
+                            delete_by_ids):
+                    to_delete.append(rd)
+                    if rd.config_id not in \
+                            delete_by_ids and \
+                            len(delete_by_ids) < ds:
+                        delete_by_ids.append(rd.config_id)
+
+            for td in to_delete:
+                del self.surr.runhistory.data[td]
+
+            for td in delete_by_ids:
+                dbc = self.surr.runhistory.ids_config[td]
+                del self.surr.runhistory.ids_config[td]
+                del self.surr.runhistory.config_ids[dbc]
+
         for cid in config_dict.keys():
             # config in results
             for ins in instances:
@@ -402,9 +566,6 @@ class SmacSurr():
                 if ins in results[cid]:
                     if not numpy.isnan(results[cid][ins]):
                         state = StatusType.SUCCESS
-
-                    # elif cid in terminations:
-                    #    state = StatusType.CAPPED
 
                     else:
                         # This conf/inst pair was a time limit reach
@@ -426,7 +587,7 @@ class SmacSurr():
 
                     self.surr.runhistory.add(config, results[cid][ins],
                                              results[cid][ins], state,
-                                             self.seed, ins)
+                                             ins, self.seed)
 
     def get_suggestions(self, scenario, n_samples, *args):
         """Get point suggestions from SMAC.
@@ -442,11 +603,23 @@ class SmacSurr():
         for p in params:
             param_order.append(p.name)
 
+        import time
+
+        start = time.time()
+
         # Tell SMAC how many suggetions to make
         self.surr.scenario.acq_opt_challengers = n_samples
 
+        # Tell SMAC features of the next instances
+        next_inst_feats = []
+        for inst in args[2]:
+            next_inst_feats.append(self.pca_inst_feats[self.inst_ids.index(inst)])
+        self.surr.model.instance_features = numpy.array(next_inst_feats)
+        
         while len(suggestions) < n_samples:
             sugg = self.surr.choose_next()
+            sugg = list(sugg)
+
             for s in sugg:
                 if added < n_samples:
                     if not self.seed:
@@ -512,7 +685,6 @@ class SmacSurr():
             for i, c in config.items():
                 if c is None:
                     config[i] = numpy.nan
-                # config[i] = float(config[i])
 
             configs.append(list(config.values()))
 
@@ -520,7 +692,7 @@ class SmacSurr():
 
         return configs
 
-    def predict(self, confs, i):
+    def predict(self, confs, inst):
         """Predict performance/quality of configurations with SMAC epm.
 
         :param confs: list of objects, [selector.pool.Configuration,]
@@ -536,11 +708,32 @@ class SmacSurr():
 
             m = []
             v = []
-            for c in all_configs:
-                mean, var = self.surr.model._predict(X=c)
-                for i, val in enumerate(mean):
-                    m.append(mean[i][0])
-                    v.append(var[i][0])
+
+            m_av = 0
+            v_av = 0
+
+            n_samples, _, _ = self.surr._collect_data_to_train_model()
+            
+            for c in all_configs[0]:
+                if n_samples.shape[0] > self.pca_dim:
+                    for infe in inst:
+                        instfeat = numpy.asarray(
+                            self.pca_inst_feats[self.inst_ids.index(infe)])
+                        mean, var = \
+                            self.surr.model._predict(
+                                X=numpy.array([numpy.append(c, instfeat)]))
+                        for i, val in enumerate(mean):
+                            m_av += mean[i][0]
+                            v_av += var[i][0]
+
+                        m.append(m_av / len(inst))
+                        v.append(v_av / len(inst))
+                else:
+                    mean, var = \
+                        self.surr.model._predict(X=numpy.array([c]))
+                    for i, val in enumerate(mean):
+                        m += mean[i][0]
+                        v += var[i][0]
 
             return numpy.array(m), numpy.array(v)
 
@@ -557,6 +750,8 @@ class SmacSurr():
         configs = self.transform_for_epm(suggestions)
 
         if self.surr.model.rf is not None:
+            self.surr.acquisition_func.update(eta=self.best_val,
+                                              model=self.surr.model)
             ei = self.surr.acquisition_func._compute(X=configs)
             expimp = []
 
@@ -575,12 +770,12 @@ class SmacSurr():
         """
         if len(results.values()) == 0:
             import sys
-            best_val = sys.maxsize
+            self.best_val = sys.maxsize
         else:
-            best_val = min(min(list(d.values()))
-                           for d in list(results.values()))
+            self.best_val = min(min(list(d.values()))
+                                for d in list(results.values()))
 
-        self.aafpi.update(eta=best_val, model=self.surr.model)
+        self.aafpi.update(eta=self.best_val, model=self.surr.model)
 
         if self.aafpi.eta is not None and \
                 self.surr.model.rf is not None:
@@ -596,3 +791,39 @@ class SmacSurr():
             return probimp
         else:
             return [[0] for _ in suggestions]
+
+    def pca_inst_feat_file(self, train_insts, feature_file, insts, pca_feats):
+        """Generate instance feature file with PCA features.
+
+        :param train_insts: str, path to training instance file
+        :param feature_file: str, path to original feature file
+        :param insts: list, instance names as strings
+        :param pca_feats: instance features after PCA
+        """
+        training_instances = []
+        with open(f'{train_insts}', 'r') as f:
+            for line in f:
+                training_instances.append(line.strip())
+
+        with open(f'{feature_file}', 'r') as f:
+            feature_names = f.readline()
+
+        self.selector_scenario.feature_file = \
+            './selector/logs/' + self.selector_scenario.log_folder + \
+            '/features_PCA.txt'
+
+        with open(self.selector_scenario.feature_file, 'w') as f:
+            f.write(feature_names)
+
+        pca_inst_feats = []
+        inst_ids = []
+
+        with open(self.selector_scenario.feature_file, 'a') as f:
+            for name, feats in zip(insts, pca_feats):
+                if name in training_instances:
+                    pca_inst_feats.append(feats)
+                    inst_ids.append(name)
+                    feat_string = ",".join(feats.astype('str'))
+                    f.write(f"{name}, {feat_string}\n")
+
+        return numpy.array(pca_inst_feats), inst_ids

@@ -10,7 +10,7 @@ from selector.generators.surrogates.cppl_surrogate import CPPL
 class SurrogateManager():
     """Managing surrogates and related functions."""
 
-    def __init__(self, scenario, seed=False):
+    def __init__(self, scenario, seed=False, logger=None):
         """Initialize surrogate managing class.
 
         :param scenario: object, selector.scenario
@@ -19,7 +19,7 @@ class SurrogateManager():
         self.seed = seed
         self.surrogates = {
             Surrogates.SMAC: SmacSurr(scenario, seed=self.seed),
-            Surrogates.GGApp: GGAppSurr(scenario, seed=self.seed),
+            Surrogates.GGApp: GGAppSurr(scenario, seed=self.seed, logger=logger),
             Surrogates.CPPL: CPPL(scenario, seed=self.seed,
                                   features=scenario.features)
         }
@@ -41,7 +41,8 @@ class SurrogateManager():
 
         return sugg
 
-    def update_surr(self, surrogate, history, configs, results, terminations):
+    def update_surr(self, surrogate, history, configs, results, terminations,
+                    ac_runtime=None):
         """Update surrogate model with runhistory.
 
         :param surrogate: object Surrogates, which surrogate to use
@@ -52,7 +53,8 @@ class SurrogateManager():
         """
         confs = copy.deepcopy(configs)
         self.surrogates[surrogate].update(history, confs, results,
-                                          terminations)
+                                          terminations,
+                                          ac_runtime=ac_runtime)
 
     def predict(self, surrogate, configs, cot, next_instance_set):
         """Get prediction for mean and variance concerning the points quality.
