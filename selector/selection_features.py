@@ -499,12 +499,6 @@ class FeatureGenerator:
         for sf in range(len(static_feats)):
             static_feats[sf].append(epoch / max_epoch)
 
-        '''
-        max_val = float(max(max(sf) for sf in static_feats))
-        for sf in static_feats:
-            if max_val != 0.0:
-                sf[0] = sf[0] / max_val
-        '''
         if self.logger is not None:
             self.logger.info(f"Static features took {time.time() - static_time}\n\n")
 

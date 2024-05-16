@@ -969,12 +969,6 @@ class GGAppSurr():
                 result.append(perf_sum / perf_count)
                 conf.append(self.transform_values(config_dict[cid]))
 
-        '''
-        for i, r in enumerate(result):
-            if r is None or np.isnan(r):
-                result[i] = self.scenario.cutoff_time
-        '''
-
         if ac_runtime >= self.scenario.wallclock_limit * 0.15 and \
                 len(self.y_stash) > len(result) * 2:
             self.y_stash = self.y_stash[len(result):]
@@ -1033,7 +1027,6 @@ class GGAppSurr():
 
         best_idx = sugg_sorted[:n_samples]
 
-        # best_suggs = suggestions[best_idx]
         best_suggs = list(np.array(suggestions)[best_idx])[:n_samples]
 
         suggestions = []

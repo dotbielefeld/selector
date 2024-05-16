@@ -141,7 +141,7 @@ class LocalSearch(LocalSearch):
                     remove_nr = math.floor(num_points / 2)
                 for rr in range(remove_nr):
                     del init_points[num_points - 1 - rr]
-                    print(num_points - 1 - rr)
+
                 if len(init_points) > num_points:
                     init_points = init_points[:num_points]
 
@@ -201,7 +201,7 @@ class SmacSurr():
                                             bounds=self.bounds,
                                             seed=self.seed,
                                             instance_features=self.pca_inst_feats,
-                                            num_trees=10,  # Same as in GGApp
+                                            num_trees=10,  # Same as in GGApp 
                                             pca_components=self.pca_dim)
             self.aaf = EI(model=self.rafo)
             self.aafpi = PI(model=self.rafo)
@@ -534,9 +534,6 @@ class SmacSurr():
                 (len(instances) * len(config_dict)) * 2 \
                 < len(self.surr.runhistory.data):
             ds = (len(instances) * len(config_dict))
-            print('\nDeleting', ds, 'configs from smac runhistory...\n')
-            print('There are', len(self.surr.runhistory.data),
-                  'configs left\n')
             to_delete = []
             delete_by_ids = []
             for rd in self.surr.runhistory.data.keys():
