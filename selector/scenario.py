@@ -4,12 +4,7 @@ import argparse
 import sys
 sys.path.append(os.getcwd())
 
-from selector.read_files import (
-    get_ta_arguments_from_pcs,
-    read_instance_paths,
-    read_instance_features
-)
-
+from selector.read_files import get_ta_arguments_from_pcs, read_instance_paths, read_instance_features
 
 class Scenario:
 
@@ -48,6 +43,9 @@ class Scenario:
         self.wallclock_limit = float(self.wallclock_limit)
 
         self.verify_scenario()
+
+        # with open(f'./selector/logs/{self.log_folder}/scenario.pkl', 'wb') as out:
+        #    pickle.dump(scenario, out)
 
     def read_scenario_files(self, scenario):
 
@@ -130,7 +128,7 @@ class Scenario:
 
                 if "=" in line:
 
-                    # remove comments
+                    #remove comments
                     pairs = line.split("#", 1)[0].split("=")
                     pairs = [l.strip(" ") for l in pairs]
 
@@ -145,7 +143,7 @@ class Scenario:
 
 
 class LoadOptionsFromFile (argparse.Action):
-    def __call__(self, parser, namespace, values, option_string=None):
+    def __call__ (self, parser, namespace, values, option_string=None):
         with values as f:
             parser.parse_args(f.read().split(), namespace)
 
@@ -162,7 +160,7 @@ def parse_args():
 
     hp.add_argument('--file', type=open, action=LoadOptionsFromFile)
 
-    # parser.add_argument('--check_path', dest='check_path', action='store_true')
+    #parser.add_argument('--check_path', dest='check_path', action='store_true')
     parser.add_argument('--check_path', default=False, type=lambda x: (str(x).lower() == 'true'))
 
     hp.add_argument('--seed', default=42, type=int)
@@ -208,55 +206,54 @@ def parse_args():
     so.add_argument('--output_trigger', action='store_true')
     so.set_defaults(output_trigger=False)
 
-    # Hyperparameters set as in selector paper 2024
-    so.add_argument('--w_1', type=float, default=-0.8356679356095191)
-    so.add_argument('--w_2', type=float, default=0.8572501015854599)
-    so.add_argument('--w_3', type=float, default=0.6037123781208655)
-    so.add_argument('--w_4', type=float, default=0.7357117939046054)
-    so.add_argument('--w_5', type=float, default=-0.9936592470722203)
-    so.add_argument('--w_6', type=float, default=-0.6555611254096128)
-    so.add_argument('--w_7', type=float, default=0.6846488604171828)
-    so.add_argument('--w_8', type=float, default=-0.29616131125825584)
-    so.add_argument('--w_9', type=float, default=-0.42641293642609523)
-    so.add_argument('--w_10', type=float, default=-0.636625827266299)
-    so.add_argument('--w_11', type=float, default=-0.07705211904734346)
-    so.add_argument('--w_12', type=float, default=0.7655061394605909)
-    so.add_argument('--w_13', type=float, default=0.07958609777734993)
-    so.add_argument('--w_14', type=float, default=-0.6433479035364913)
-    so.add_argument('--w_15', type=float, default=0.9330160438280031)
-    so.add_argument('--w_16', type=float, default=0.19269241833198825)
-    so.add_argument('--w_17', type=float, default=0.924764738193058)
-    so.add_argument('--w_18', type=float, default=0.6163122179339903)
-    so.add_argument('--w_19', type=float, default=-0.3164211654229764)
-    so.add_argument('--w_20', type=float, default=-0.9134468738753907)
-    so.add_argument('--w_21', type=float, default=0.09507515338942374)
-    so.add_argument('--w_22', type=float, default=-0.12320139765942552)
-    so.add_argument('--w_23', type=float, default=0.5334762956128223)
-    so.add_argument('--w_24', type=float, default=0.9040962774172033)
-    so.add_argument('--w_25', type=float, default=0.7152291148005006)
-    so.add_argument('--w_26', type=float, default=0.6264909195211199)
-    so.add_argument('--w_27', type=float, default=-0.3078428587569706)
-    so.add_argument('--w_28', type=float, default=0.13991257638679933)
-    so.add_argument('--w_29', type=float, default=0.6072035854383455)
-    so.add_argument('--w_30', type=float, default=0.07142940503717064)
-    so.add_argument('--w_31', type=float, default=0.9481229658781036)
-    so.add_argument('--w_32', type=float, default=0.260083514586567)
-    so.add_argument('--w_33', type=float, default=-0.18358836077393523)
-    so.add_argument('--w_34', type=float, default=0.5345236666392377)
-    so.add_argument('--w_35', type=float, default=0.7620279025679817)
-    so.add_argument('--w_36', type=float, default=-0.19720345812081364)
-    so.add_argument('--w_37', type=float, default=0.34488933380271597)
-    so.add_argument('--w_38', type=float, default=-0.31776509157739097)
-    so.add_argument('--w_39', type=float, default=-0.060524835116740255)
-    so.add_argument('--w_40', type=float, default=-0.04932352546335972)
-    so.add_argument('--w_41', type=float, default=0.8845189709705542)
-    so.add_argument('--w_42', type=float, default=0.07230604126060913)
-    so.add_argument('--w_43', type=float, default=-0.6314381312161101)
-    so.add_argument('--w_44', type=float, default=-0.2997826811933294)
-    so.add_argument('--w_45', type=float, default=0.3920074130279137)
-    so.add_argument('--w_46', type=float, default=0.7955255094472115)
-    so.add_argument('--w_47', type=float, default=-0.9803992172559881)
-    so.add_argument('--w_48', type=float, default=0.8009359266585256)
+    so.add_argument('--w_1', type=float, default=1.0)
+    so.add_argument('--w_2', type=float, default=1.0)
+    so.add_argument('--w_3', type=float, default=1.0)
+    so.add_argument('--w_4', type=float, default=1.0)
+    so.add_argument('--w_5', type=float, default=1.0)
+    so.add_argument('--w_6', type=float, default=1.0)
+    so.add_argument('--w_7', type=float, default=1.0)
+    so.add_argument('--w_8', type=float, default=1.0)
+    so.add_argument('--w_9', type=float, default=1.0)
+    so.add_argument('--w_10', type=float, default=1.0)
+    so.add_argument('--w_11', type=float, default=1.0)
+    so.add_argument('--w_12', type=float, default=1.0)
+    so.add_argument('--w_13', type=float, default=1.0)
+    so.add_argument('--w_14', type=float, default=1.0)
+    so.add_argument('--w_15', type=float, default=1.0)
+    so.add_argument('--w_16', type=float, default=1.0)
+    so.add_argument('--w_17', type=float, default=1.0)
+    so.add_argument('--w_18', type=float, default=1.0)
+    so.add_argument('--w_19', type=float, default=1.0)
+    so.add_argument('--w_20', type=float, default=1.0)
+    so.add_argument('--w_21', type=float, default=1.0)
+    so.add_argument('--w_22', type=float, default=1.0)
+    so.add_argument('--w_23', type=float, default=1.0)
+    so.add_argument('--w_24', type=float, default=1.0)
+    so.add_argument('--w_25', type=float, default=1.0)
+    so.add_argument('--w_26', type=float, default=1.0)
+    so.add_argument('--w_27', type=float, default=1.0)
+    so.add_argument('--w_28', type=float, default=1.0)
+    so.add_argument('--w_29', type=float, default=1.0)
+    so.add_argument('--w_30', type=float, default=1.0)
+    so.add_argument('--w_31', type=float, default=1.0)
+    so.add_argument('--w_32', type=float, default=1.0)
+    so.add_argument('--w_33', type=float, default=1.0)
+    so.add_argument('--w_34', type=float, default=1.0)
+    so.add_argument('--w_35', type=float, default=1.0)
+    so.add_argument('--w_36', type=float, default=1.0)
+    so.add_argument('--w_37', type=float, default=1.0)
+    so.add_argument('--w_38', type=float, default=1.0)
+    so.add_argument('--w_39', type=float, default=1.0)
+    so.add_argument('--w_40', type=float, default=1.0)
+    so.add_argument('--w_41', type=float, default=1.0)
+    so.add_argument('--w_42', type=float, default=1.0)
+    so.add_argument('--w_43', type=float, default=1.0)
+    so.add_argument('--w_44', type=float, default=1.0)
+    so.add_argument('--w_45', type=float, default=1.0)
+    so.add_argument('--w_46', type=float, default=1.0)
+    so.add_argument('--w_47', type=float, default=1.0)
+    so.add_argument('--w_48', type=float, default=1.0)
 
     return vars(parser.parse_args())
 
@@ -264,3 +261,4 @@ def parse_args():
 if __name__ == "__main__":
 
     parser = parse_args()
+

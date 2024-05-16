@@ -102,7 +102,6 @@ def tae_from_cmd_wrapper_rt(conf, instance_path, cache, ta_command_creator, scen
         memory_p = 0
         cpu_time_p = 0
         reading = True
-        solved = False
 
         while reading:
             try:
@@ -140,10 +139,6 @@ def tae_from_cmd_wrapper_rt(conf, instance_path, cache, ta_command_creator, scen
                 if "placeholder" in line:
                     cache.put_intermediate_output.remote(conf.id, instance_path, line)
                     logging.info(f"Wrapper TAE intermediate feedback {conf}, {instance_path} {line}")
-                    
-                if scenario.output_trigger:
-                    if scenario.solve_match in line:
-                        solved = True
 
             if p.poll() is None:
                 # Get the cpu time and memory of the process
@@ -176,10 +171,8 @@ def tae_from_cmd_wrapper_rt(conf, instance_path, cache, ta_command_creator, scen
 
         if timeout:
             cache.put_result.remote(conf.id, instance_path, np.nan)
-        elif solved:
-            cache.put_result.remote(conf.id, instance_path, cpu_time_p)
         else:
-            cache.put_result.remote(conf.id, instance_path, np.nan)
+            cache.put_result.remote(conf.id, instance_path, cpu_time_p)
 
         time.sleep(0.2)
         logging.info(f"Wrapper TAE end {conf}, {instance_path}")
@@ -277,8 +270,8 @@ def tae_from_cmd_wrapper_quality(conf, instance_path, cache, ta_command_creator,
                     logging.info(f"Wrapper TAE intermediate feedback {conf}, {instance_path} {line}")
 
                 if scenario.run_obj == "quality":
-                    output = re.search(scenario.quality_match, line)
-                    if output:
+                    output_tigger = re.search(scenario.quality_match, line)
+                    if output_tigger:
                         quality = re.findall(f"{scenario.quality_extract}", line)
 
             # Break the while loop when the ta was killed or finished

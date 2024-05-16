@@ -109,6 +109,14 @@ def lhc_points(s, identity, n_samples=1, seed=False, lhs_type=LHSType.classic,
             point[param_names[i]] = sample[i]
         n_points.append(point)
 
+    '''
+    # Check conditionals and reset parameters if violated
+    for point in n_points:
+        cond_vio = check_conditionals(s, point)
+        if cond_vio:
+            point = reset_conditionals(s, point, cond_vio)
+    '''
+
     # Check no goods and reset values if violated
     for point in n_points:
         ng_vio = check_no_goods(s, point)

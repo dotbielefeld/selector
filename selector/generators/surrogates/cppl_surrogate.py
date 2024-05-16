@@ -34,7 +34,7 @@ class CPPL:
                  gamma=0.1, w=0.1, random_prob=0.2, mutation_prob=0.8,
                  pca_dimension_configurations=8, pca_dimension_instances=8,
                  model_update="Batch", v_hat_norm=None, theta_norm="zero_one",
-                 feature_normaliser="max", ensemble=True):
+                 feature_normaliser="max", ensemble=True):  # 10, 9
         """
         CPPL Initializition.
 
@@ -434,6 +434,15 @@ class CPPL:
         """
         v_hat = np.zeros((self.pool_size, len(instance_set)))
         confidence = np.zeros((self.pool_size, len(instance_set)))
+        '''sqrtm
+        for c in range(self.pool_size):
+            conf = self.pool[c]
+            for next_instance in range(len(instance_set)):
+                v_hat[c][next_instance] = np.exp(np.inner(self.feature_store[conf.id][instance_set[next_instance]], self.theta_bar))
+
+                if self.t > 0:
+                    confidence[c][next_instance] = self.compute_confidence(self.theta_bar, instance_set[next_instance], conf.id)
+        '''
 
         for i, conf in enumerate(self.pool):  # range(self.pool_size):
             # conf = self.pool[c]
@@ -465,7 +474,7 @@ class CPPL:
                 if c != oc and v_hat_s[oc] - confidence_s[oc] > v_hat_s[c] + confidence_s[c]:
                     discard_index.append(c)
                     break
-
+        # print(f"dicsarding {discard_index}")
         dis = []
         for i in sorted(discard_index, reverse=True):
             dis.append(self.pool[i])
@@ -528,13 +537,22 @@ class CPPL:
                 conf_two.generator = Generator.cppl
             possible_new_confs = []
             for nc in range(self.number_new_confs * number_to_create):
+                print('nc', nc)
                 possible_new_confs = possible_new_confs + [self.create_new_conf(conf_one, conf_two)]
             for instance in past_instances:
                 for c in possible_new_confs:
                     self.update_feature_store(c, instance)
             # TODO I have to ensure that all the confs here are diffrent...
             new_promising_conf, _ = self.select_from_set(possible_new_confs, past_instances, number_to_create)
-
+                # first = possible_new_confs[0]
+                # for other in possible_new_confs[1:]:
+                #     first_v = first.conf
+                #     other_v = other.conf
+                #     diffrent = {k: other_v[k] for k in other_v if k in first_v and other_v[k] != first_v[k]}
+                #     print("aaaa", diffrent)
+                #     if first.conf == other.conf:
+                #         print("EQAUL")
+                #print(possible_new_confs)
         self.pool = self.pool + new_promising_conf
 
     def update(self, previous_tournament, c, results, terminations, instance_features=None, ac_runtime=None):
@@ -608,6 +626,7 @@ class CPPL:
                         if tried[c] in self.identity_store:
                             tried[c] = self.identity_store[tried[c]]
 
+
             instance_store.append(instance)
             best_conf_store.append(best_conf_on_instance)
             rest_conf_store.append(tried)
@@ -633,7 +652,9 @@ class CPPL:
         """
 
         if instance_features:
+            # print('\ninstance_features\n', instance_features)
             instance_feature_matrix = np.array(list(instance_features.values()))
+            # print('\ninstance_feature_matrix\n', instance_feature_matrix)
             transformed_features = self.instance_feature_standard_scaler.transform(instance_feature_matrix)
             for instance, counter in zip(instance_features.keys(), range(len(instance_features.keys()))):
                 self.features[instance] = transformed_features[counter]
@@ -706,6 +727,16 @@ class CPPL:
         :param next_instance_set: list, next instances to be run
         :return pi: numpy.ndarray, probabilities of improvement
         """
+        #ranking = \
+        #    self.suggest_from_outside_pool(suggestions, len(suggestions),
+        #                                   next_instance_set)[1]
+        #v = []
+        #c = []
+
+        #for i, _ in enumerate(ranking):
+        #    v.append(ranking[i][0])
+        #    c.append(ranking[i][1])
+
         v = self.v
         c = self.c
 
@@ -725,6 +756,19 @@ class CPPL:
         :param next_instance_set: list, next instances to be run
         :return ei: numpy.ndarray, expected improvements
         """
+        #ranking = \
+        #    self.suggest_from_outside_pool(suggestions, len(suggestions),
+        #                                   next_instance_set)[1]
+        #mean = []
+        #var = []
+
+        #for i, _ in enumerate(ranking):
+        #    mean.append(ranking[i][0])
+        #    var.append(ranking[i][1])
+
+        #mean = np.array(mean)
+        #var = np.array(var)
+
         mean = self.v
         var = self.c
 

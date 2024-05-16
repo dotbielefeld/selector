@@ -158,6 +158,7 @@ class FlexInstanceSet(InstanceSet):
             # We can only select instances not chosen before
             possible_instances = [i for i in self.instance_set if i not in seen_instances]
             if self.target_start:
+                print('SUBSET COUNTER', self.subset_counter, 'target increment', self.target_increment, 'target start', self.target_start)
                 if self.subset_counter >= self.target_start:
                     new_subset = np.random.choice(possible_instances, number_to_sample, replace=False).tolist()
                 else:
@@ -191,6 +192,7 @@ class TimedInstanceSet(InstanceSet):
         self.end_time = end_time
         self.instance_increment_size = 0
         self.target_increment = 1
+        #self.logger = logger
 
         if set_size and set_size <= len(instance_set):
             self.set_size = set_size
@@ -265,6 +267,8 @@ class TimedInstanceSet(InstanceSet):
                     else:
                         self.target_increment += 1
 
+            #self.logger.info(f"next_tournament_set_id: {next_tournament_set_id}, time_per_iteration: {time_per_iteration}, self.instance_increment_size: {self.instance_increment_size}, self.target_increment: {self.target_increment}")
+
         # If we have already created the required subset we return it
         if next_tournament_set_id in range(len(self.instance_sets)):
             next_set = self.instance_sets[next_tournament_set_id]
@@ -278,5 +282,18 @@ class TimedInstanceSet(InstanceSet):
         else:
             self.next_set()
             next_set = self.instance_sets[next_tournament_set_id]
+
+        #self.logger.info(f"next_tournament_set_id: {next_tournament_set_id}, next_set len: {len(next_set)}")
+ 
+
+        # Making sure we only ever increase the instance size
+        #if len(self.instance_sets[next_tournament_set_id - 1]) > len(next_set):
+        #    self.instance_sets[next_tournament_set_id] = self.instance_sets[next_tournament_set_id - 1]
+        #    next_set = self.instance_sets[next_tournament_set_id - 1]
+
+        #if next_set != self.instance_sets[next_tournament_set_id] and len(next_set) < len(self.instance_sets[next_tournament_set_id]):
+        #    next_set = self.instance_sets[next_tournament_set_id]
+
+        #self.logger.info(f"next_tournament_set_id: {next_tournament_set_id}, self.instance_sets[next_tournament_set_id] len: {len(self.instance_sets[next_tournament_set_id])}, self.instance_sets[next_tournament_set_id - 1] len: {len(self.instance_sets[next_tournament_set_id - 1])}, next_set len: {len(next_set)}")
 
         return next_tournament_set_id, next_set
