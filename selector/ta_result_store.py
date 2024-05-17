@@ -1,7 +1,6 @@
 import ray
 import logging
 import json
-import os
 from selector.log_setup import TournamentEncoder
 
 
@@ -32,7 +31,6 @@ class TargetAlgorithmObserver:
             self.intermediate_output[conf_id][instance_id] = [value]
         else:
             self.intermediate_output[conf_id][instance_id] = self.intermediate_output[conf_id][instance_id] + [value]
-
 
     def get_intermediate_output(self):
         # TODO store from where we have read last and contiue form there
@@ -91,7 +89,7 @@ class TargetAlgorithmObserver:
         if instance_id not in self.termination_history[conf_id]:
             self.termination_history[conf_id].append(instance_id)
         else:
-            logging.info(f"This should not happen: we kill something we already killed")
+            logging.info("This should not happen: we kill something we already killed")
 
     def get_termination_history(self):
         return self.termination_history

@@ -1,6 +1,8 @@
 """This module contains feature generation functions."""
 import numpy as np
 import copy
+import time
+from collections import defaultdict
 from selector.pool import Generator, Surrogates
 import selector.hp_point_selection as hps
 
@@ -8,9 +10,10 @@ import selector.hp_point_selection as hps
 class FeatureGenerator:
     """Generate features necessary to evaluate configurations."""
 
-    def __init__(self):
+    def __init__(self, logger=None):
         """Initialize feature generation class."""
         self.Generator = Generator
+        self.logger = logger
 
     def percent_rel_evals(self, suggestions, data, nce):
         """Percentage of relatives so far evaluated.
@@ -20,22 +23,18 @@ class FeatureGenerator:
         :param nce: int, number of configuration evaluations
         :return div_feats: list, computed features of suggested points
         """
-        div_feats = []
-        for sugg in suggestions:
-            gen = sugg.generator
-            rels = 0
-            for content in data.values():
-                for best in content.best_finisher:
-                    if best.generator == gen:
-                        rels += 1
-                for worst in content.worst_finisher:
-                    if worst.generator == gen:
-                        rels += 1
-            div_feats.append([rels / nce])
+        self.gen_counts = defaultdict(int)
 
-        max_val = float(max(max(d) for d in div_feats))
-        for d in div_feats:
-            if max_val != 0.0:
+        for content in data.values():
+            for finisher in content.best_finisher + content.worst_finisher:
+                self.gen_counts[finisher.generator] += 1
+
+        div_feats = [[self.gen_counts[sugg.generator]]
+                     for sugg in suggestions]
+
+        max_val = max(max(d) for d in div_feats)
+        if max_val != 0.0:
+            for d in div_feats:
                 d[0] = d[0] / max_val
 
         return div_feats
@@ -54,43 +53,24 @@ class FeatureGenerator:
         """
         div_feats = []
         quals = {}
-        counts = {}
-        for gen in generators:
-            for content in data.values():
-                for best in content.best_finisher:
-                    if best.generator == gen:
-                        if gen in quals:
-                            quals[gen] += sum(results[best.id].values()) / \
-                                len(results[best.id])
-                            counts[gen] += 1
-                        else:
-                            quals[gen] = sum(results[best.id].values()) / \
-                                len(results[best.id])
-                            counts[gen] = 1
-                for worst in content.worst_finisher:
-                    if worst.generator == gen:
-                        if gen in quals:
-                            quals[gen] += sum(results[worst.id].values()) / \
-                                len(results[worst.id])
-                            counts[gen] += 1
-                        else:
-                            quals[gen] = sum(results[worst.id].values()) / \
-                                len(results[worst.id])
-                            counts[gen] = 1
+        gen_counts = self.gen_counts
+        quals = defaultdict(int)
+        for content in data.values():
+            for finisher in content.best_finisher + content.worst_finisher:
+                quals[finisher.generator] += \
+                    sum(results[finisher.id].values()) / \
+                    len(results[finisher.id])
 
         for gen in quals.keys():
-            quals[gen] = quals[gen] / counts[gen]
+            quals[gen] /= gen_counts.get(gen, 1)  # Avoid division by zero
 
-        for sugg in suggestions:
-            if sugg.generator not in quals:
-                div_feats.append([0])
-            else:
-                div_feats.append([quals[sugg.generator] / cot])
+        div_feats = [[quals.get(sugg.generator, 0) / cot]
+                     for sugg in suggestions]
 
-        max_val = float(max(max(d) for d in div_feats))
-        for d in div_feats:
-            if max_val != 0.0:
-                d[0] = d[0] / max_val
+        max_val = max(max(d) for d in div_feats)
+        if max_val != 0.0:
+            for d in div_feats:
+                d[0] /= max_val
 
         return div_feats
 
@@ -106,31 +86,21 @@ class FeatureGenerator:
         """
         div_feats = []
         best_val = {}
-        for gen in generators:
-            for content in data.values():
-                for best in content.best_finisher:
-                    if best.generator == gen:
-                        for val in results[best.id].values():
-                            if gen not in best_val:
-                                best_val[gen] = val
-                            elif val < best_val[gen]:
-                                best_val[gen] = val
-                for worst in content.worst_finisher:
-                    if worst.generator == gen:
-                        for val in results[worst.id].values():
-                            if gen not in best_val:
-                                best_val[gen] = val
-                            elif val < best_val[gen]:
-                                best_val[gen] = val
-        for sugg in suggestions:
-            if sugg.generator not in best_val:
-                div_feats.append([0])
-            else:
-                div_feats.append([best_val[sugg.generator] / cot])
+        best_val = defaultdict(int)
+        for content in data.values():
+            for finisher in content.best_finisher + content.worst_finisher:
+                for val in results[finisher.id].values():
+                    if finisher.generator not in best_val:
+                        best_val[finisher.generator] = val
+                    elif val < best_val[finisher.generator]:
+                        best_val[finisher.generator] = val
 
-        max_val = float(max(max(d) for d in div_feats))
-        for d in div_feats:
-            if max_val != 0.0:
+        div_feats = [[best_val.get(sugg.generator, 0) / cot]
+                     for sugg in suggestions]
+
+        max_val = max(max(d) for d in div_feats)
+        if max_val != 0.0:
+            for d in div_feats:
                 d[0] = d[0] / max_val
 
         return div_feats
@@ -147,42 +117,33 @@ class FeatureGenerator:
         """
         div_feats = []
         qual_vals = {}
-        for gen in generators:
-            for content in data.values():
-                for best in content.best_finisher:
-                    if best.generator == gen:
-                        if gen in qual_vals:
-                            for res_val in list(results[best.id].values()):
-                                qual_vals[gen].append(res_val)
-                        else:
-                            qual_vals[gen] = list(results[best.id].values())
-                for worst in content.worst_finisher:
-                        if gen in qual_vals:
-                            for res_val in list(results[worst.id].values()):
-                                qual_vals[gen].append(res_val)
-                        else:
-                            qual_vals[gen] = list(results[worst.id].values())
+        qual_vals = defaultdict(int)
+        for content in data.values():
+            for finisher in content.best_finisher + content.worst_finisher:
+                if finisher.generator in qual_vals:
+                    for res_val in list(results[finisher.id].values()):
+                        qual_vals[finisher.generator].append(res_val)
+                else:
+                    qual_vals[finisher.generator] = \
+                        list(results[finisher.id].values())
 
         qual_std = {}
 
         for key, qv in qual_vals.items():
             qual_std[key] = np.std(qv)
 
-        for sugg in suggestions:
-            if sugg.generator not in qual_std:
-                div_feats.append([0])
-            else:
-                div_feats.append([qual_std[sugg.generator] / cot])
+        div_feats = [[qual_std.get(sugg.generator, 0) / cot]
+                     for sugg in suggestions]
 
-        max_val = float(max(max(d) for d in div_feats))
-        for d in div_feats:
-            if max_val != 0.0:
+        max_val = max(max(d) for d in div_feats)
+        if max_val != 0.0:
+            for d in div_feats:
                 d[0] = d[0] / max_val
 
         return div_feats
 
     def diff_pred_real_qual(self, suggestions, data, predicted_quals, results):
-        """Difference of predicted and real quality of relatives evaluated so far.
+        """Difference of predicted & real qual. of relatives evaluated so far.
 
         :param suggestions: list, suggested points
         :param data: data object, contains historic performance data
@@ -198,40 +159,18 @@ class FeatureGenerator:
             rel_predicts = {}
             div_feats = []
             diffs = {}
-            for sugg in suggestions:
-                gen = sugg.generator
-                for pred in predicted_quals:
-                    pred = list(pred.values())[0]
-                    if gen == pred['gen']:
-                        if gen in rel_predicts:
-                            rel_predicts[gen].append(pred['qual'])
-                        else:
-                            rel_predicts[gen] = [pred['qual']]
-                for content in data.values():
-                    for best in content.best_finisher:
-                        if best.generator == gen:
-                            if gen in rel_results:
-                                for key, res in results[best.id].items():
-                                    rel_results[gen].append(res)
-                            else:
-                                rel_results[gen] = \
-                                    [list(results[best.id].values())[0]]
-                                first = [list(results[best.id].keys())[0]]
-                                for key, res in results[best.id].items():
-                                    if key != first:
-                                        rel_results[gen].append(res)
-                    for worst in content.worst_finisher:
-                        if worst.generator == gen:
-                            if gen in rel_results:
-                                for key, res in results[worst.id].items():
-                                    rel_results[gen].append(res)
-                            else:
-                                rel_results[gen] = \
-                                    [list(results[worst.id].values())[0]]
-                                first = [list(results[worst.id].keys())[0]]
-                                for key, res in results[worst.id].items():
-                                    if key != first:
-                                        rel_results[gen].append(res)
+
+            # Collect relevant predictions into a dictionary
+            for pred in predicted_quals:
+                pred = list(pred.values())[0]
+                gen = pred['gen']
+                rel_predicts.setdefault(gen, []).append(pred['qual'])
+
+            # Collect relevant results into a dictionary
+            for content in data.values():
+                for finisher in content.best_finisher + content.worst_finisher:
+                    gen = finisher.generator
+                    rel_results.setdefault(gen, []).extend(results[finisher.id].values())
 
             for gen in Generator:
                 if gen in rel_results and gen in rel_predicts:
@@ -246,9 +185,9 @@ class FeatureGenerator:
             for sugg in suggestions:
                 div_feats.append([diffs[sugg.generator]])
 
-            max_val = float(max(max(d) for d in div_feats))
-            for d in div_feats:
-                if max_val != 0.0:
+            max_val = max(max(d) for d in div_feats)
+            if max_val != 0.0:
+                for d in div_feats:
                     d[0] = d[0] / max_val
 
         return div_feats
@@ -275,9 +214,9 @@ class FeatureGenerator:
             for dist in distances:
                 div_feats.append([np.mean(dist)])
 
-            max_val = float(max(max(d) for d in div_feats))
-            for d in div_feats:
-                if max_val != 0.0:
+            max_val = max(max(d) for d in div_feats)
+            if max_val != 0.0:
+                for d in div_feats:
                     d[0] = d[0] / max_val
 
         else:
@@ -302,9 +241,9 @@ class FeatureGenerator:
         for dist in distances:
             div_feats.append([np.mean(dist)])
 
-        max_val = float(max(max(d) for d in div_feats))
-        for d in div_feats:
-            if max_val != 0.0:
+        max_val = max(max(d) for d in div_feats)
+        if max_val != 0.0:
+            for d in div_feats:
                 d[0] = d[0] / max_val
 
         return div_feats
@@ -370,6 +309,7 @@ class FeatureGenerator:
         dyn_feats = []
         try:
             expimp = sm.predict(surr, suggests, cot, next_instance_set)
+            self.expimp = expimp
 
             for exim in expimp:
                 for ei in exim.values():
@@ -426,7 +366,7 @@ class FeatureGenerator:
         suggests = copy.deepcopy(suggs)
         dyn_feats = []
         try:
-            expimp = sm.predict(surr, suggests, cot, next_instance_set)
+            expimp = self.expimp
 
             for exim in expimp:
                 for ei in exim.values():
@@ -468,6 +408,28 @@ class FeatureGenerator:
 
         return dyn_feats
 
+    def surr_votes(self, dyn_feats):
+        """Multiply surr features to get agreement features.
+
+        :param dyn_feats: list of np.ndarray, dynamic features.
+        :return dyn_feats: list of np.ndarray, extended dynamic features.
+        """
+        nr_surrs = len(Surrogates)
+        new_feature_sets = []
+
+        for k in range(0, len(dyn_feats[0]), nr_surrs):
+            votes = [[] for _ in range(nr_surrs)]
+            for i, _ in enumerate(dyn_feats):
+                for j in range(nr_surrs):
+                    votes[j].append([dyn_feats[i, k] * dyn_feats[i, k - 1]])
+            new_feature_sets.append(votes)
+
+        for nfs in new_feature_sets:
+            for v in nfs:
+                dyn_feats = np.concatenate((dyn_feats, v), axis=1)
+
+        return dyn_feats
+
     def static_feature_gen(self, suggestions, epoch, max_epoch):
         """Generate static features.
 
@@ -476,24 +438,25 @@ class FeatureGenerator:
         :param max_epoch: int, total number of epochs
         :return static_features: list, static features
         """
+        if self.logger is not None:
+            static_time = time.time()
+
         static_feats = [[] for ii in range(len(suggestions))]
 
         # One-Hot encoded information of generator used for conf
         for s in range(len(suggestions)):
             for gt in range(len(self.Generator)):
                 if suggestions[s].generator == self.Generator(gt + 1):
-                    static_feats[s].append(1)
+                    static_feats[s].append(1.0)
                 else:
-                    static_feats[s].append(0)
+                    static_feats[s].append(0.0)
 
         # Ratio of current epoch and max. epochs
         for sf in range(len(static_feats)):
             static_feats[sf].append(epoch / max_epoch)
 
-        max_val = float(max(max(sf) for sf in static_feats))
-        for sf in static_feats:
-            if max_val != 0.0:
-                sf[0] = sf[0] / max_val
+        if self.logger is not None:
+            self.logger.info(f"Static features took {time.time() - static_time}\n\n")
 
         return np.array(static_feats)
 
@@ -510,11 +473,18 @@ class FeatureGenerator:
         :param results: list, results of points evaluated so far
         :return dyn_feats: list, dynamic features
         """
-        dyn_feats = []
+        if self.logger is not None:
+            all_dyn_time = time.time()
+            dyn_one = time.time()
 
         # Features based on surrogates
         dyn_feats = self.expected_qual(suggestions, sm,
-                                       cot, Surrogates.SMAC, None)
+                                       cot, Surrogates.SMAC, next_instance_set)
+
+        if self.logger is not None:
+            self.logger.info(f"Dyn 1 features took {time.time() - dyn_one}\n\n")
+            dyn_two = time.time()
+
         dyn_feats = \
             np.concatenate((dyn_feats,
                             self.expected_qual(suggestions, sm,
@@ -522,12 +492,20 @@ class FeatureGenerator:
                                                None)),
                            axis=1)
 
+        if self.logger is not None:
+            self.logger.info(f"Dyn 2 features took {time.time() - dyn_two}\n\n")
+            dyn_three = time.time()
+
         dyn_feats = \
             np.concatenate((dyn_feats,
                             self.expected_qual(suggestions, sm,
                                                cot, Surrogates.CPPL,
                                                next_instance_set)),
                            axis=1)
+
+        if self.logger is not None:
+            self.logger.info(f"Dyn 3 features took {time.time() - dyn_three}\n\n")
+            dyn_four = time.time()
 
         dyn_feats = \
             np.concatenate((dyn_feats,
@@ -537,6 +515,10 @@ class FeatureGenerator:
                                                    None)),
                            axis=1)
 
+        if self.logger is not None:
+            self.logger.info(f"Dyn 4 features took {time.time() - dyn_four}\n\n")
+            dyn_five = time.time()
+
         dyn_feats = \
             np.concatenate((dyn_feats,
                             self.prob_qual_improve(suggestions, sm, cot,
@@ -544,6 +526,10 @@ class FeatureGenerator:
                                                    Surrogates.GGApp,
                                                    None)),
                            axis=1)
+
+        if self.logger is not None:
+            self.logger.info(f"Dyn 5 features took {time.time() - dyn_five}\n\n")
+            dyn_six = time.time()
 
         dyn_feats = \
             np.concatenate((dyn_feats,
@@ -553,12 +539,20 @@ class FeatureGenerator:
                                                    next_instance_set)),
                            axis=1)
 
+        if self.logger is not None:
+            self.logger.info(f"Dyn 6 features took {time.time() - dyn_six}\n\n")
+            dyn_seven = time.time()
+
         dyn_feats = \
             np.concatenate((dyn_feats,
                             self.uncertainty_improve(suggestions, sm, cot,
                                                      Surrogates.SMAC,
                                                      None)),
                            axis=1)
+
+        if self.logger is not None:
+            self.logger.info(f"Dyn 7 features took {time.time() - dyn_seven}\n\n")
+            dyn_eight = time.time()
 
         dyn_feats = \
             np.concatenate((dyn_feats,
@@ -567,6 +561,10 @@ class FeatureGenerator:
                                                      None)),
                            axis=1)
 
+        if self.logger is not None:
+            self.logger.info(f"Dyn 8 features took {time.time() - dyn_eight}\n\n")
+            dyn_nine = time.time()
+
         dyn_feats = \
             np.concatenate((dyn_feats,
                             self.uncertainty_improve(suggestions, sm, cot,
@@ -574,12 +572,20 @@ class FeatureGenerator:
                                                      next_instance_set)),
                            axis=1)
 
+        if self.logger is not None:
+            self.logger.info(f"Dyn 9 features took {time.time() - dyn_nine}\n\n")
+            dyn_ten = time.time()
+
         dyn_feats = \
             np.concatenate((dyn_feats,
                            self.expected_improve(suggestions, sm, cot,
                                                  Surrogates.SMAC,
-                                                 None)),
+                                                 next_instance_set)),
                            axis=1)
+
+        if self.logger is not None:
+            self.logger.info(f"Dyn 10 features took {time.time() - dyn_ten}\n\n")
+            dyn_eleven = time.time()
 
         dyn_feats = \
             np.concatenate((dyn_feats,
@@ -588,12 +594,22 @@ class FeatureGenerator:
                                                  None)),
                            axis=1)
 
+        if self.logger is not None:
+            self.logger.info(f"Dyn 11 features took {time.time() - dyn_eleven}\n\n")
+            dyn_twelve = time.time()
+
         dyn_feats = \
             np.concatenate((dyn_feats,
                            self.expected_improve(suggestions, sm, cot,
                                                  Surrogates.CPPL,
                                                  next_instance_set)),
                            axis=1)
+
+        dyn_feats = self.surr_votes(dyn_feats)
+
+        if self.logger is not None:
+            self.logger.info(f"Dyn 12 features took {time.time() - dyn_twelve}\n\n")
+            self.logger.info(f"All dyn features took {time.time() - all_dyn_time}\n\n")
 
         return np.array(dyn_feats)
 
@@ -612,6 +628,9 @@ class FeatureGenerator:
         :param sm: initialized surrogates.SurrogateManager()
         :return div_feats: list, diversity features
         """
+        if self.logger is not None:
+            div_time = time.time()
+
         nce = 0
         for content in data.values():
             nce += len(content.configuration_ids)
@@ -661,5 +680,8 @@ class FeatureGenerator:
                            self.avg_dist_rel(suggestions, evaluated,
                                              psetting, generators)),
                            axis=1)
+
+        if self.logger is not None:
+            self.logger.info(f"Div features took {time.time() - div_time}\n\n")
 
         return np.array(div_feats)

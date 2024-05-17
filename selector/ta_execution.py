@@ -102,6 +102,7 @@ def tae_from_cmd_wrapper_rt(conf, instance_path, cache, ta_command_creator, scen
         memory_p = 0
         cpu_time_p = 0
         reading = True
+        solved = False
 
         while reading:
             try:
@@ -111,6 +112,7 @@ def tae_from_cmd_wrapper_rt(conf, instance_path, cache, ta_command_creator, scen
             except Empty:
                 empty_line = True
                 if p.poll() is None:
+                    # cpu_time_p = time.time() - start
                     cpu_time_p = p.cpu_times().user
                     memory_p = p.memory_info().rss / 1024 ** 2
                 if float(cpu_time_p) > float(scenario.cutoff_time) or float(memory_p) > float(scenario.memory_limit) and timeout ==False:
@@ -139,6 +141,11 @@ def tae_from_cmd_wrapper_rt(conf, instance_path, cache, ta_command_creator, scen
                     cache.put_intermediate_output.remote(conf.id, instance_path, line)
                     logging.info(f"Wrapper TAE intermediate feedback {conf}, {instance_path} {line}")
 
+                if scenario.output_trigger:
+                    if scenario.solve_match in line:
+                        print('\nSolved!\n', line, '\n')
+                        solved = True
+
             if p.poll() is None:
                 # Get the cpu time and memory of the process
                 cpu_time_p = p.cpu_times().user
@@ -161,8 +168,6 @@ def tae_from_cmd_wrapper_rt(conf, instance_path, cache, ta_command_creator, scen
                         os.killpg(p.pid, signal.SIGKILL)
                     except Exception:
                         pass
-                    # if scenario.ta_pid_name is not None:
-                    #    termination_check(p.pid, p.poll(), scenario.ta_pid_name, os.getpid(),conf.id, instance_path)
 
             # Break the while loop when the ta was killed or finished
             if empty_line and p.poll() is not None:
@@ -170,8 +175,10 @@ def tae_from_cmd_wrapper_rt(conf, instance_path, cache, ta_command_creator, scen
 
         if timeout:
             cache.put_result.remote(conf.id, instance_path, np.nan)
-        else:
+        elif solved:
             cache.put_result.remote(conf.id, instance_path, cpu_time_p)
+        else:
+            cache.put_result.remote(conf.id, instance_path, np.nan)
 
         time.sleep(0.2)
         logging.info(f"Wrapper TAE end {conf}, {instance_path}")
@@ -206,6 +213,7 @@ def tae_from_cmd_wrapper_rt(conf, instance_path, cache, ta_command_creator, scen
         print({traceback.format_exc()})
         logging.info(f"Exception in TA execution: {traceback.format_exc()}")
 
+
 @ray.remote(num_cpus=1)
 def tae_from_cmd_wrapper_quality(conf, instance_path, cache, ta_command_creator, scenario):
     """
@@ -239,10 +247,6 @@ def tae_from_cmd_wrapper_quality(conf, instance_path, cache, ta_command_creator,
         p = psutil.Popen(cmd, shell=True, stdout=subprocess.PIPE,
                          stderr=subprocess.STDOUT, close_fds=True)
 
-        # Blocks
-        # for line in iter(p.stdout.readline, ''):
-        #     line = line.decode("utf-8")
-        #    print(line)
         q = Queue()
         t = Thread(target=enqueue_output, args=(p.stdout, q))
         t.daemon = True

@@ -11,10 +11,16 @@ selector/input/
 selector/output/
 selector/wrapper/
 selector/logs/
+selector/generators/surrogates/cppl_surrogate_BACKUP.py
 wrapper/
 cadical/
 tuned_weights_full_ensemble
 cplex.log
+test_data/
+pddl_sequential_optimal_from_IPC_2014/
+test/test_data/
+ray_env/
+
 
 # Distribution / packaging
 .Python
@@ -114,6 +120,7 @@ celerybeat.pid
 # Environments
 .env
 .venv
+.idea
 env/
 venv/
 ENV/
@@ -137,3 +144,8 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Misc
+start_ray_env.txt
+run_selector.txt
+test/scenario

@@ -1,13 +1,13 @@
 """This module contains functions for the CPPL surrogate."""
-
+import os
 import copy
 import sys
-import os
 from scipy.stats import norm
 from sklearn.preprocessing import OneHotEncoder
 import uuid
 import numpy as np
 from scipy.linalg import sqrtm
+import scipy
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from selector.pool import Configuration, Generator, ParamType
@@ -23,6 +23,9 @@ from selector.generators.random_point_generator import reset_conditionals
 np.set_printoptions(threshold=sys.maxsize)
 sys.path.append(os.getcwd())
 
+from threadpoolctl import ThreadpoolController
+controller = ThreadpoolController()
+
 
 class CPPL:
     """Surrogate from CPPL."""
@@ -31,7 +34,7 @@ class CPPL:
                  gamma=0.1, w=0.1, random_prob=0.2, mutation_prob=0.8,
                  pca_dimension_configurations=8, pca_dimension_instances=8,
                  model_update="Batch", v_hat_norm=None, theta_norm="zero_one",
-                 feature_normaliser="max", ensemble=True):  # 10, 9
+                 feature_normaliser="max", ensemble=True):
         """
         CPPL Initializition.
 
@@ -99,6 +102,7 @@ class CPPL:
         self.calibrate_pca()
         self.best_q = None
         self.identity_store = {}
+        self.confidences = {}
 
     def process_parameter(self):
         """
@@ -213,7 +217,6 @@ class CPPL:
         self.feature_map_scaler = StandardScaler()
         self.feature_map_scaler.fit(feature_map_matrix)
 
-
     def compute_feature_map(self, conf, instance_features):
         """
         For a conf/instance pair compute the quadratic feature map and scale
@@ -268,7 +271,7 @@ class CPPL:
                 np.exp(np.dot(self.feature_store[conf][instance_id], theta))
         return sum
 
-    def compute_b(self,theta, tried_conf_ids, instance_id):
+    def compute_b(self, theta, tried_conf_ids, instance_id):
         """
         Compute b of the paper
         """
@@ -323,25 +326,30 @@ class CPPL:
         """
         Compute the confidence for an instance/conf combination
         """
+        # Control How many threads/cores numpy and scipy use
+        @controller.wrap(limits=self.scenario.tournament_size, user_api='openmp')
+        @controller.wrap(limits=self.scenario.tournament_size, user_api='blas')
+        def compute_confidence_threaded(theta, instance_id, conf):
+            v = (1 / self.t) * self.gradient_sum[self.t]
 
-        v = (1 / self.t) * self.gradient_sum[self.t]
+            s = (1 / self.t) * self.hessian_sum[self.t]
 
-        s = (1 / self.t) * self.hessian_sum[self.t]
+            try:
+                s_inv = np.linalg.inv(s)
+            except:
+                s_inv = np.linalg.pinv(s)
 
-        try:
-            s_inv = np.linalg.inv(s)
-        except:
-            s_inv = np.linalg.pinv(s)
+            sigma = (1 / self.t) * np.dot(np.dot(s_inv, v), s_inv)
 
-        sigma = (1 / self.t) * np.dot(np.dot(s_inv, v), s_inv)
+            M = np.exp(2 * np.dot(self.feature_store[conf][instance_id], theta)) * \
+                np.outer(self.feature_store[conf][instance_id], self.feature_store[conf][instance_id])
 
-        M = np.exp(2 * np.dot(self.feature_store[conf][instance_id], theta)) * \
-            np.outer(self.feature_store[conf][instance_id], self.feature_store[conf][instance_id])
+            sigma_root = sqrtm(sigma)
+            I_hat = np.linalg.norm(np.dot(np.dot(sigma_root, M), sigma_root))
 
-        sigma_root = sqrtm(sigma)
-        I_hat = np.linalg.norm(np.dot(np.dot(sigma_root, M), sigma_root))
+            return self.w * np.sqrt((2 * np.log(self.t) + self.context_dim + 2 * np.sqrt((self.context_dim * np.log(self.t)))) * I_hat)
 
-        return self.w * np.sqrt((2 * np.log(self.t) + self.context_dim + 2 * np.sqrt((self.context_dim * np.log(self.t)))) * I_hat)
+        return compute_confidence_threaded(theta, instance_id, conf)
 
     def update_model_single_observation(self, winner_id, tried_confs, instance_id):
         """
@@ -374,7 +382,6 @@ class CPPL:
 
         self.theta_bar = ((self.t - 1) * (self.theta_bar)) / self.t + (self.theta_hat / self.t)
 
-
     def select_from_set(self, conf_set, instance_set, n_to_select):
         """
         For a set of configurations and instances select the most promising configurations
@@ -382,14 +389,12 @@ class CPPL:
 
         v_hat = np.zeros((len(conf_set), len(instance_set)))
         confidence = np.zeros((len(conf_set), len(instance_set)))
-
-        for c in range(len(conf_set)):
-            conf = conf_set[c]
-            for next_instance in range(len(instance_set)):
-                v_hat[c][next_instance] = np.exp(np.inner(self.feature_store[conf.id][instance_set[next_instance]], self.theta_bar))
+        for i, conf in enumerate(conf_set):
+            for next_instance, _ in enumerate(instance_set):
+                v_hat[i][next_instance] = np.exp(np.inner(self.feature_store[conf.id][instance_set[next_instance]], self.theta_bar))
 
                 if self.t > 0:
-                    confidence[c][next_instance] = self.compute_confidence(self.theta_bar, instance_set[next_instance], conf.id)
+                    confidence[i][next_instance] = self.compute_confidence(self.theta_bar, instance_set[next_instance], conf.id)
 
         v_hat_s = v_hat.sum(axis=1)
 
@@ -409,8 +414,10 @@ class CPPL:
 
         quality = v_hat_s + confidence_s
 
-        selection = (-quality).argsort()[:n_to_select]
-        return [conf_set[i] for i in selection], [[v_hat_s[i], confidence_s[i]] for i in (-quality).argsort() ]
+        qual_sort = (-quality).argsort()
+
+        selection = qual_sort[:n_to_select]
+        return [conf_set[i] for i in selection], [[v_hat_s[i], confidence_s[i]] for i in qual_sort]
 
     def delete_from_pool(self, instance_set):
         """
@@ -419,13 +426,12 @@ class CPPL:
         v_hat = np.zeros((self.pool_size, len(instance_set)))
         confidence = np.zeros((self.pool_size, len(instance_set)))
 
-        for c in range(self.pool_size):
-            conf = self.pool[c]
-            for next_instance in range(len(instance_set)):
-                v_hat[c][next_instance] = np.exp(np.inner(self.feature_store[conf.id][instance_set[next_instance]], self.theta_bar))
+        for i, conf in enumerate(self.pool):
+            for next_instance, _ in enumerate(instance_set):
+                v_hat[i][next_instance] = np.exp(np.inner(self.feature_store[conf.id][instance_set[next_instance]], self.theta_bar))
 
                 if self.t > 0:
-                    confidence[c][next_instance] = self.compute_confidence(self.theta_bar, instance_set[next_instance], conf.id)
+                    confidence[i][next_instance] = self.compute_confidence(self.theta_bar, instance_set[next_instance], conf.id)
 
         v_hat_s = v_hat.sum(axis=1)
 
@@ -449,12 +455,10 @@ class CPPL:
                 if c != oc and v_hat_s[oc] - confidence_s[oc] > v_hat_s[c] + confidence_s[c]:
                     discard_index.append(c)
                     break
-        # print(f"dicsarding {discard_index}")
         dis = []
         for i in sorted(discard_index, reverse=True):
             dis.append(self.pool[i])
             del self.pool[i]
-
 
     def create_new_conf(self, parent_one, parent_two):
         """
@@ -519,19 +523,10 @@ class CPPL:
                     self.update_feature_store(c, instance)
             # TODO I have to ensure that all the confs here are diffrent...
             new_promising_conf, _ = self.select_from_set(possible_new_confs, past_instances, number_to_create)
-                # first = possible_new_confs[0]
-                # for other in possible_new_confs[1:]:
-                #     first_v = first.conf
-                #     other_v = other.conf
-                #     diffrent = {k: other_v[k] for k in other_v if k in first_v and other_v[k] != first_v[k]}
-                #     print("aaaa", diffrent)
-                #     if first.conf == other.conf:
-                #         print("EQAUL")
-                #print(possible_new_confs)
+
         self.pool = self.pool + new_promising_conf
 
-
-    def update(self, previous_tournament, c, results, t, instance_features=None):
+    def update(self, previous_tournament, c, results, terminations, instance_features=None, ac_runtime=None):
         """
         Updated the model with given feedback
         :param results: nested dic containing rt feedback for the conf instance pairs in previous_tournament
@@ -564,12 +559,23 @@ class CPPL:
                 if not np.isnan(results[c][instance]):
                     results_on_instance[c] = results[c][instance]
                 else:
-                    results_on_instance[c] = self.scenario.cutoff_time
+                    # OMIT the capped data in model update
+                    if c in terminations:
+                        if instance in terminations[c]:
+                            continue
+                    else:
+                        # This conf/inst pair was a time limit reach
+                        results_on_instance[c] = self.scenario.cutoff_time
 
             if self.best_q is None:
-                self.best_q = min(results_on_instance.values())
-            elif min(results_on_instance.values()) < self.best_q:
-                self.best_q = min(results_on_instance.values())
+                if len(results_on_instance.values()) == 0:
+                    import sys
+                    self.best_q = sys.maxsize
+                else:
+                    self.best_q = min(results_on_instance.values())
+            elif len(results_on_instance.values()) == 0: 
+                if min(results_on_instance.values()) < self.best_q:
+                    self.best_q = min(results_on_instance.values())
 
             best_conf_on_instance = min(results_on_instance, key=results_on_instance.get)
 
@@ -591,7 +597,6 @@ class CPPL:
                         if tried[c] in self.identity_store:
                             tried[c] = self.identity_store[tried[c]]
 
-
             instance_store.append(instance)
             best_conf_store.append(best_conf_on_instance)
             rest_conf_store.append(tried)
@@ -605,12 +610,11 @@ class CPPL:
             self.update_running_sums(self.theta_bar, best_conf_on_instance, tried, instance)
 
         if self.model_update == "Batch" and len(best_conf_store) > 0:
-            self.update_model_mini_batch(best_conf_store, rest_conf_store, instance_store )
+            self.update_model_mini_batch(best_conf_store, rest_conf_store, instance_store)
 
         self.delete_from_pool(previous_tournament.instance_set)
 
         self.add_to_pool(previous_tournament.instance_set)
-
 
     def get_suggestions(self, scenario, n_to_select, d, r, next_instance_set, instance_features=None):
         """
@@ -618,9 +622,7 @@ class CPPL:
         """
 
         if instance_features:
-            # print('\ninstance_features\n', instance_features)
             instance_feature_matrix = np.array(list(instance_features.values()))
-            # print('\ninstance_feature_matrix\n', instance_feature_matrix)
             transformed_features = self.instance_feature_standard_scaler.transform(instance_feature_matrix)
             for instance, counter in zip(instance_features.keys(), range(len(instance_features.keys()))):
                 self.features[instance] = transformed_features[counter]
@@ -635,7 +637,7 @@ class CPPL:
         for sugg in suggest:
             sugg.generator = Generator.cppl
             # We have to make sure that the ids of the configurations returend are unique.
-            # I.e for two diffrent tournaments we may suggest the same conf twice.
+            # I.e for two different tournaments we may suggest the same conf twice.
             # In that case the conf needs a unique id.
             # Later update() we need to map that back
             if self.ensemble:
@@ -644,7 +646,6 @@ class CPPL:
                 sugg.id = identity
 
         return suggest, ranking
-
 
     def suggest_from_outside_pool(self, conf_set, n_to_select, next_instance_set, instance_features=None):
 
@@ -679,7 +680,13 @@ class CPPL:
             v.append(ranking[i][0])
             c.append(ranking[i][1])
 
-        return np.array(v), np.array(c)
+        v = np.array(v)
+        c = np.array(c)
+
+        self.v = v
+        self.c = c
+
+        return v, c
 
     def probability_improvement(self, suggestions, results, next_instance_set):
         """Compute probability of improvement.
@@ -688,18 +695,8 @@ class CPPL:
         :param next_instance_set: list, next instances to be run
         :return pi: numpy.ndarray, probabilities of improvement
         """
-        ranking = \
-            self.suggest_from_outside_pool(suggestions, len(suggestions),
-                                           next_instance_set)[1]
-        v = []
-        c = []
-
-        for i, _ in enumerate(ranking):
-            v.append(ranking[i][0])
-            c.append(ranking[i][1])
-
-        v = np.array(v)
-        c = np.array(c)
+        v = self.v
+        c = self.c
 
         std = np.sqrt(c)
 
@@ -717,18 +714,8 @@ class CPPL:
         :param next_instance_set: list, next instances to be run
         :return ei: numpy.ndarray, expected improvements
         """
-        ranking = \
-            self.suggest_from_outside_pool(suggestions, len(suggestions),
-                                           next_instance_set)[1]
-        mean = []
-        var = []
-
-        for i, _ in enumerate(ranking):
-            mean.append(ranking[i][0])
-            var.append(ranking[i][1])
-
-        mean = np.array(mean)
-        var = np.array(var)
+        mean = self.v
+        var = self.c
 
         std = np.sqrt(var)
 

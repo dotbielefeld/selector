@@ -167,9 +167,10 @@ def reset_no_goods(s, config_setting, label, C, N):
                         and C.conf[p] != ng[p]:
                     config_setting[p] = C.conf[p]
                 else:
-                    if random.uniform(0, 1) >= 0.5:
-                        config_setting[p] = \
-                            random_set_conf(s.parameter[p])
+                    for param in s.parameter:
+                        if p == param.name:
+                            config_setting[p] = \
+                                random_set_conf([param])[p]
 
     return config_setting
 
@@ -200,7 +201,6 @@ def graph_crossover(graph_structure, C, N, s):
         config_label[curr_node] = random.choice([LabelType.C, LabelType.N])
 
     paths[curr_node] = [curr_node]
-    params_labeled = []
 
     while S:
         curr_node = S[0]
@@ -210,11 +210,11 @@ def graph_crossover(graph_structure, C, N, s):
             if curr_node != cn:
                 if cn in paths:
                     if cn not in paths[cn]:
-                            paths[cn].append(cn)
-                            config_label = set_config_label(paths,
-                                                            config_label,
-                                                            cn, C, N)
-                            S.append(cn)
+                        paths[cn].append(cn)
+                        config_label = set_config_label(paths,
+                                                        config_label,
+                                                        cn, C, N)
+                        S.append(cn)
                 else:
                     paths[cn] = [*paths[curr_node], cn]
                     config_label = set_config_label(paths, config_label,
@@ -224,21 +224,38 @@ def graph_crossover(graph_structure, C, N, s):
                 if random.uniform(0, 1) < 0.1:
                     if cn in config_label:
                         if config_label[cn] == LabelType.N and cn in C.conf:
-                                config_label[cn] = LabelType.C
+                            config_label[cn] = LabelType.C
                         elif config_label[cn] == LabelType.C and cn in N.conf:
-                                config_label[cn] = LabelType.N
+                            config_label[cn] = LabelType.N
                     S.append(cn)
 
     for param, label in config_label.items():
         config_setting[param] = N.conf[param] if label == LabelType.N \
             else C.conf[param]
 
-    '''
-    # Check conditionals and reset parameters if violated
-    cond_vio = check_conditionals(s, config_setting)
-    if cond_vio:
-        config_setting = reset_conditionals(s, config_setting, cond_vio)
-    '''
+    param_info = {}
+    for param in s.parameter:
+        param_info[param.name] = {'type': param.type, 'bound': param.bound}
+
+    for param, value in config_setting.items():
+        if param_info[param]['type'] == ParamType.categorical:
+            if random.uniform(0, 1) < 0.1:
+                config_setting[param] = \
+                    random.choice(param_info[param]['bound'])
+        else:
+            if random.uniform(0, 1) < 0.1:
+                mutation = param_info[param]['bound'][0] - 1
+                while mutation < param_info[param]['bound'][0] or \
+                        mutation > param_info[param]['bound'][1]:
+                    mu = config_setting[param]
+                    sigma = (param_info[param]['bound'][1] -
+                             param_info[param]['bound'][0]) * 0.1
+                    mutation = \
+                        np.random.normal(mu, sigma, 1)[0]
+                if param_info[param]['type'] == ParamType.continuous:
+                    config_setting[param] = mutation
+                else:
+                    config_setting[param] = round(mutation)
 
     # Check no goods and reset values if violated
     ng_vio = check_no_goods(s, config_setting)
