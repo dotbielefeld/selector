@@ -109,11 +109,21 @@ def tae_from_cmd_wrapper_rt(conf, instance_path, cache, ta_command_creator, scen
                 line = q.get(timeout=.5)
                 empty_line = False
                 # Get the cpu time and memory of the process
+                while cpu_time_p == 0.0:
+                    cpu_times = p.cpu_times()
+                    if "children_user" in cpu_times._fields:
+                        cpu_time_p = cpu_times.children_user
+                    else:
+                        cpu_time_p = cpu_times.user
             except Empty:
                 empty_line = True
                 if p.poll() is None:
                     # cpu_time_p = time.time() - start
-                    cpu_time_p = p.cpu_times().user
+                    cpu_times = p.cpu_times()
+                    if "children_user" in cpu_times._fields:
+                        cpu_time_p = cpu_times.children_user
+                    else:
+                        cpu_time_p = cpu_times.user
                     memory_p = p.memory_info().rss / 1024 ** 2
                 if float(cpu_time_p) > float(scenario.cutoff_time) or float(memory_p) > float(scenario.memory_limit) and timeout ==False:
                     timeout = True
@@ -143,12 +153,16 @@ def tae_from_cmd_wrapper_rt(conf, instance_path, cache, ta_command_creator, scen
 
                 if scenario.output_trigger:
                     if scenario.solve_match in line:
-                        print('\nSolved!\n', line, '\n')
+                        # print('\nSolved!\n', line, '\n')
                         solved = True
 
             if p.poll() is None:
                 # Get the cpu time and memory of the process
-                cpu_time_p = p.cpu_times().user
+                cpu_times = p.cpu_times()
+                if "children_user" in cpu_times._fields:
+                    cpu_time_p = cpu_times.children_user
+                else:
+                    cpu_time_p = cpu_times.user
                 memory_p = p.memory_info().rss / 1024 ** 2
 
                 if float(cpu_time_p) > float(scenario.cutoff_time) or float(memory_p) > float(
@@ -175,10 +189,13 @@ def tae_from_cmd_wrapper_rt(conf, instance_path, cache, ta_command_creator, scen
 
         if timeout:
             cache.put_result.remote(conf.id, instance_path, np.nan)
-        elif solved:
-            cache.put_result.remote(conf.id, instance_path, cpu_time_p)
+        elif scenario.output_trigger:
+            if solved:
+                cache.put_result.remote(conf.id, instance_path, cpu_time_p)
+            else:
+                cache.put_result.remote(conf.id, instance_path, np.nan)
         else:
-            cache.put_result.remote(conf.id, instance_path, np.nan)
+            cache.put_result.remote(conf.id, instance_path, cpu_time_p)
 
         time.sleep(0.2)
         logging.info(f"Wrapper TAE end {conf}, {instance_path}")

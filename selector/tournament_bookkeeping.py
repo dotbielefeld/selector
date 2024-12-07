@@ -1,5 +1,5 @@
 import os
-from ta_execution import tae_from_cmd_wrapper_rt, tae_from_cmd_wrapper_quality
+from selector.ta_execution import tae_from_cmd_wrapper_rt, tae_from_cmd_wrapper_quality
 import time
 import logging
 

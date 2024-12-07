@@ -9,10 +9,10 @@ import time
 from sklearn_extra.cluster import KMedoids
 
 
-from scenario import Scenario
-from pointselector import HyperparameterizedSelector
-from ta_result_store import TargetAlgorithmObserver
-from ta_execution import dummy_task
+from selector.scenario import Scenario
+from selector.pointselector import HyperparameterizedSelector
+from selector.ta_result_store import TargetAlgorithmObserver
+from selector.ta_execution import dummy_task
 
 from selector.point_gen import PointGen
 from selector.pool import Surrogates
@@ -24,17 +24,17 @@ from selector.selection_features import FeatureGenerator
 from selector.generators.surrogates.surrogates import SurrogateManager
 # from selector.surrogates.surrogates import SurrogateManager
 
-from tournament_dispatcher import MiniTournamentDispatcher
-from tournament_bookkeeping import get_tournament_membership, update_tasks, get_tasks, termination_check, get_get_tournament_membership_with_ray_id
-from log_setup import clear_logs, log_termination_setting, check_log_folder, save_latest_logs
+from selector.tournament_dispatcher import MiniTournamentDispatcher
+from selector.tournament_bookkeeping import get_tournament_membership, update_tasks, get_tasks, termination_check, get_get_tournament_membership_with_ray_id
+from selector.log_setup import clear_logs, log_termination_setting, check_log_folder, save_latest_logs
 
-from tournament_monitor import Monitor
-from tournament_performance import overall_best_update, get_instances_no_results
+from selector.tournament_monitor import Monitor
+from selector.tournament_performance import overall_best_update, get_instances_no_results
 
-from wrapper.tap_work_wrapper import TAP_Work_Wrapper
-from instance_sets import TimedInstanceSet
-from instance_monitor import InstanceMonitor
-from best_conf import safe_best
+# from selector.wrapper.tap_work_wrapper import TAP_Work_Wrapper
+from selector.instance_sets import TimedInstanceSet
+from selector.instance_monitor import InstanceMonitor
+from selector.best_conf import safe_best
 
 
 def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
@@ -92,7 +92,7 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     evaluated = []
     qap = False
 
-    fg = FeatureGenerator(logger=logger)
+    fg = FeatureGenerator(logger=None)
     sm = SurrogateManager(scenario, logger=logger)
 
     bug_handel = []

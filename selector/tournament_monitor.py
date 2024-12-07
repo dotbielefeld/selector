@@ -4,7 +4,7 @@ import time
 import numpy as np
 
 
-from tournament_performance import get_censored_runtime_for_instance_set,get_conf_time_out, get_runtime_for_instance_set_with_timeout
+from selector.tournament_performance import get_censored_runtime_for_instance_set,get_conf_time_out, get_runtime_for_instance_set_with_timeout
 
 
 @ray.remote(num_cpus=1)

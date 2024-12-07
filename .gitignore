@@ -151,3 +151,6 @@ run_selector.txt
 test/scenario
 selector/test_instance_sets.py
 selector/test_point_selection.py
+build
+dist
+selector_ac.egg-info

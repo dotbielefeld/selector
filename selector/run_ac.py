@@ -1,4 +1,4 @@
-"""Main module of selector."""
+"""Module of selector to run from Python."""
 
 import sys
 import os
@@ -22,9 +22,19 @@ from selector.best_conf import safe_best
 
 sys.path.append(os.getcwd())
 
+def ac(scen_files, ray_mode, **kwargs):
+    """
+    Run selector as a python function.
+    :param scen_files: dict, paths to 'paramfile', 'instance_file', 'feature_file'
+    :param ray_mode: str, 'desktop' or 'cluster'
+    :param kwargs: Anything else you want to set, see scenario.py
+    :return:
+    """
+    for key, val in kwargs.items():
+        sys.argv.extend(['--'+key, str(val)])
 
-if __name__ == "__main__":
     selector_args = parse_args()
+    selector_args['scenario_file'] = scen_files
 
     wrapper_mod = importlib.import_module(selector_args["wrapper_mod_name"])
 
@@ -48,11 +58,11 @@ if __name__ == "__main__":
     logger = logging.getLogger(__name__)
 
     logger.info(f"Logging to {scenario.log_folder}")
-    # print(scenario.parameter)
 
-    # init: ray.init(address="auto") for cluster, ray.init() for PC
-    # ray.init(address="auto")
-    ray.init()
+    if ray_mode == 'desktop':
+        ray.init()
+    if ray_mode == 'cluster':
+        ray.init(address="auto")
 
     logger.info("Ray info: {}".format(ray.cluster_resources()))
     logger.info("Ray nodes {}".format(ray.nodes()))
@@ -64,3 +74,6 @@ if __name__ == "__main__":
     safe_best(sys.path[-1] + f'/selector/logs/{scenario.log_folder}/',
               scenario.cutoff_time)
     ray.shutdown()
+
+if __name__ == "__main__":
+    pass

@@ -173,7 +173,7 @@ def parse_args():
     hp.add_argument('--wrapper_mod_name', type=str, default="")
     hp.add_argument('--wrapper_class_name', type=str, default="")
     hp.add_argument('--quality_match', type=str, default="")
-    hp.add_argument('--solve_match', type=str, default="")
+    hp.add_argument('--solve_match', nargs='+', type=str, default="")
     hp.add_argument('--quality_extract', type=str, default="")
 
     hp.add_argument('--winners_per_tournament', type=int, default=1)
