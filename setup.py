@@ -23,7 +23,7 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/DOTBielefeld/selector",
     author="DOT",
-    author_email="kevin.tierney@uni-bielefeld.de",
+    author_email="dimitri-weiss@web.de",
     packages=find_packages(exclude=["*wrapper*", "test"]),
     license="MIT License",
     python_requires=">=3.8",
