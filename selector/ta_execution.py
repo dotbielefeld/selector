@@ -115,6 +115,7 @@ def tae_from_cmd_wrapper_rt(conf, instance_path, cache, ta_command_creator, scen
                         cpu_time_p = cpu_times.children_user
                     else:
                         cpu_time_p = cpu_times.user
+                memory_p = p.memory_info().rss / 1024 ** 2
             except Empty:
                 empty_line = True
                 if p.poll() is None:

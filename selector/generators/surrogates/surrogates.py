@@ -18,7 +18,8 @@ class SurrogateManager():
         """
         self.seed = seed
         self.surrogates = {
-            Surrogates.SMAC: SmacSurr(scenario, seed=self.seed),
+            Surrogates.SMAC: SmacSurr(scenario, seed=self.seed,
+                                      pca_dim=scenario.smac_pca_dim),
             Surrogates.GGApp: GGAppSurr(scenario, seed=self.seed, logger=logger),
             Surrogates.CPPL: CPPL(scenario, seed=self.seed,
                                   features=scenario.features)

@@ -192,6 +192,7 @@ def parse_args():
     hp.add_argument('--initial_instance_set_size', type=int, default=5)
     hp.add_argument('--set_size', type=int, default=50)
     hp.add_argument('--instances_dir', type=str, default="")
+    hp.add_argument('--smac_pca_dim', type=int, default=8)
 
     so.add_argument('--scenario_file', type=str)
     so.add_argument('--ta_cmd', type=str)

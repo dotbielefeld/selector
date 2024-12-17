@@ -399,8 +399,9 @@ def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
     global_cache.save_rt_results.remote()
     global_cache.save_tournament_history.remote()
 
-    print("DONE")
-    logger.info("DONE")
+    print('\n')
+    print("AC run completed!")
+    logger.info("AC run completed!")
     time.sleep(30)
     [ray.cancel(t) for t in not_ready]
 

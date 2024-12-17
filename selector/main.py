@@ -61,6 +61,10 @@ if __name__ == "__main__":
     offline_mini_tournament_configuration(scenario, ta_wrapper, logger)
 
     save_latest_logs(scenario.log_folder)
-    safe_best(sys.path[-1] + f'/selector/logs/{scenario.log_folder}/',
-              scenario.cutoff_time)
+    if scenario.termination_criterion == 'runtime':
+        safe_best(f'./selector/logs/{scenario.log_folder}/',
+                  scenario.cutoff_time)
+    elif scenario.termination_criterion == 'quality':
+        safe_best(f'./selector/logs/{scenario.log_folder}/',
+                  sys.maxsize)
     ray.shutdown()

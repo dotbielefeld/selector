@@ -109,4 +109,4 @@ def safe_best(path, timelimit):
 
 
 if __name__ == "__main__":
-    safe_best('./', 300)
+    pass

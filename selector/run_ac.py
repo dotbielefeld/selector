@@ -25,13 +25,14 @@ sys.path.append(os.getcwd())
 def ac(scen_files, ray_mode, **kwargs):
     """
     Run selector as a python function.
+
     :param scen_files: dict, paths to 'paramfile', 'instance_file', 'feature_file'
     :param ray_mode: str, 'desktop' or 'cluster'
     :param kwargs: Anything else you want to set, see scenario.py
     :return:
     """
     for key, val in kwargs.items():
-        sys.argv.extend(['--'+key, str(val)])
+        sys.argv.extend(['--' + key, str(val)])
 
     selector_args = parse_args()
     selector_args['scenario_file'] = scen_files
@@ -70,10 +71,21 @@ def ac(scen_files, ray_mode, **kwargs):
 
     offline_mini_tournament_configuration(scenario, ta_wrapper, logger)
 
+    print('\n')
+    print('Processing results...')
+
     save_latest_logs(scenario.log_folder)
-    safe_best(sys.path[-1] + f'/selector/logs/{scenario.log_folder}/',
-              scenario.cutoff_time)
+    if scenario.termination_criterion == 'runtime':
+        safe_best(f'./selector/logs/{scenario.log_folder}/',
+                  scenario.cutoff_time)
+    elif scenario.termination_criterion == 'quality':
+        safe_best(f'./selector/logs/{scenario.log_folder}/',
+                  sys.maxsize)
     ray.shutdown()
+
+    print('\n')
+    print(f'See ./selector/logs/{scenario.log_folder}/')
+    print('\n')
 
 if __name__ == "__main__":
     pass

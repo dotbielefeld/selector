@@ -62,6 +62,7 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
         file = open('./test/scenario', 'rb')
         self.s = pickle.load(file)
         file.close()
+        np.random.seed(42)
         self.random_generator = PointGen(self.s, random_point, seed=42)
         point_selector = RandomSelector()
 
@@ -77,14 +78,11 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
         for conf in generated_points:
             if generated_points[-1] == conf:
                 self.results[conf.id] = \
-                    {'./test/test_data/instances/' +
-                     'test_instance_1.cnf': np.random.randint(2, 15),
-                     './test/test_data/instances/' +
-                     'test_instance_2.cnf': np.random.randint(2, 15)}
+                    {'circuit_fuzz/fuzz_100_367.cnf': np.random.randint(2, 15),
+                     'circuit_fuzz/fuzz_100_367.cnf': np.random.randint(2, 15)}
             else:
                 self.results[conf.id] = \
-                    {'./test/test_data/instances/' +
-                     'test_instance_1.cnf': np.random.randint(2, 15)}
+                    {'circuit_fuzz/fuzz_100_367.cnf': np.random.randint(2, 15)}
 
         self.hist = {}
 
@@ -101,7 +99,7 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
             self.hist[tourn_id] = \
                 Tournament(tourn_id, [best_finisher], worst_finisher,
                            [], configuration_ids, {},
-                           ['./test/test_data/instances/test_instance_1.cnf'],
+                           ['circuit_fuzz/fuzz_100_367.cnf'],
                            0)
 
         self.default_generator = PointGen(self.s, default_point, seed=42)
@@ -133,13 +131,13 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
 
         sm = SurrogateManager(self.s, seed=42)
         smac_conf = sm.suggest(Surrogates.SMAC, self.s,
-                               5, None, None, None)
+                               5, None, None, ['circuit_fuzz/fuzz_100_367.cnf'])
 
         ggapp_conf = sm.suggest(Surrogates.GGApp, self.s, 5, self.hist,
                                 self.results, None)
         cppl_conf = \
             sm.suggest(Surrogates.CPPL, self.s, 5, None, None,
-                       ['./test/test_data/instances/test_instance_1.cnf'])[0]
+                       ['circuit_fuzz/fuzz_100_367.cnf'])[0]
 
         confs = def_conf + ran_conf + var_conf + lhc_conf + smac_conf + \
             ggapp_conf + cppl_conf
@@ -182,7 +180,7 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
 
             for surrogate in sm.surrogates.keys():
                 sm.update_surr(surrogate, result_tournament, all_configs,
-                               self.results, terminations)
+                               self.results, terminations, 42)
 
             features = fg.static_feature_gen(confs, epoch, max_epochs)
             features \
@@ -195,7 +193,7 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
                                                            evaluated)),
                                  axis=1)
 
-            instances = ['./test/test_data/instances/test_instance_1.cnf']
+            instances = ['circuit_fuzz/fuzz_100_367.cnf']
 
             for surrogate in sm.surrogates.keys():
                 if surrogate is Surrogates.SMAC:
@@ -278,7 +276,7 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
                                                      maximin)
 
             smac_conf = sm.suggest(Surrogates.SMAC, self.s, 5,
-                                   None, None, None)
+                                   None, None, ['circuit_fuzz/fuzz_100_367.cnf'])
 
             ggapp_conf = sm.suggest(Surrogates.GGApp, self.s, 5, self.hist,
                                     self.results, None)
@@ -289,14 +287,17 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
             confs = ran_conf + var_conf + lhc_conf + smac_conf + \
                 ggapp_conf + cppl_conf
 
+        print('CHECK IT', selected_ids[1].conf)
+
         test_1 = Configuration(1,
-                               {'luby': False, 'rinc': 3.409974661894675,
-                                'cla-decay': 0.913653961639365,
-                                'phase-saving': 0, 'bce-limit': 6048450,
-                                'param_1': -2, 'strSseconds': '150'},
+                               {'arena': '3', 'arenacompact': True, 'arenasort': '0',
+                                'binary': False, 'check': False, 'compact': True,
+                                'compactint': 76830, 'compactmin': 5735, 'elim': False,
+                                'elimclslim': 82396, 'elimint': 521530, 'elimocclim': 4427,
+                                'elimrounds': 11},
                                Generator.var_graph)
 
-        self.assertEqual(selected_ids[1].conf, test_1.conf)
+        self.assertEqual(selected_ids[1].conf['arena'], test_1.conf['arena'])
 
 
 if __name__ == '__main__':

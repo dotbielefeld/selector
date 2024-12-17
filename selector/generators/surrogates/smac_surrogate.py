@@ -611,10 +611,11 @@ class SmacSurr():
         self.surr.scenario.acq_opt_challengers = n_samples
 
         # Tell SMAC features of the next instances
-        next_inst_feats = []
-        for inst in args[2]:
-            next_inst_feats.append(self.pca_inst_feats[self.inst_ids.index(inst)])
-        self.surr.model.instance_features = numpy.array(next_inst_feats)
+        if args[2] is not None:
+            next_inst_feats = []
+            for inst in args[2]:
+                next_inst_feats.append(self.pca_inst_feats[self.inst_ids.index(inst)])
+            self.surr.model.instance_features = numpy.array(next_inst_feats)
         
         while len(suggestions) < n_samples:
             sugg = self.surr.choose_next()
