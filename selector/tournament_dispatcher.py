@@ -85,8 +85,7 @@ class MiniTournamentDispatcher:
             # We can than remove the conf from further consideration
             if finished_conf in tournament.configurations:
                 tournament.configurations.remove(finished_conf)
-            else:
-                print(f"conf not {finished_conf}")
+
             finished_conf_runtime_mean = get_runtime_for_instance_set_with_timeout(results, finished_conf.id,
                                                                                    tournament.instance_set, time_out, par_penalty) / len(tournament.instance_set)
 

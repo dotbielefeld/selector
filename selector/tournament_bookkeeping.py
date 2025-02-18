@@ -1,7 +1,6 @@
-import os
 from selector.ta_execution import tae_from_cmd_wrapper_rt, tae_from_cmd_wrapper_quality
 import time
-import logging
+
 
 def get_tournament_membership(tournaments, conf):
     """
@@ -13,6 +12,7 @@ def get_tournament_membership(tournaments, conf):
     for t in tournaments:
         if conf.id in t.configuration_ids or conf.id in t.worst_finisher or conf.id in t.best_finisher:
             return t
+
 
 def get_get_tournament_membership_with_ray_id(task_id, tournaments):
     """
@@ -32,6 +32,7 @@ def get_get_tournament_membership_with_ray_id(task_id, tournaments):
                     pass
     return ob_t
 
+
 def get_tasks(taskdic, tasks):
     """
     Map back a ray object to the conf/instance pair.
@@ -45,6 +46,7 @@ def get_tasks(taskdic, tasks):
             if object in tasks:
                 running_tasks.append([conf, instance_name])
     return running_tasks
+
 
 def update_tasks(tasks, next_task, tournament, global_cache, ta_wrapper, scenario):
     """
@@ -94,6 +96,3 @@ def termination_check(termination_criterion, main_loop_start, total_runtime, tot
 
     else:
         return time.time() - main_loop_start < total_runtime
-
-
-

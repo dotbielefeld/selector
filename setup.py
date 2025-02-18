@@ -17,7 +17,7 @@ install_requires = [
 # This call to setup() does all the work
 setup(
     name="selector-ac",
-    version="0.1.0.2",
+    version="0.1.0.3",
     description="Selector: Ensemble-Based Automated Algorithm Configuration",
     long_description=README,
     long_description_content_type="text/markdown",

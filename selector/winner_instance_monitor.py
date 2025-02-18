@@ -24,7 +24,8 @@ class WinnerInstanceMonitor:
         self.instance_results = {}
         self.delta_cap = delta_cap
 
-        logging.basicConfig(filename=f'./selector/logs/winner_inst_monitor.log', level=logging.INFO,
+        logging.basicConfig(filename='./selector/logs/winner_inst_monitor.log',
+                            level=logging.INFO,
                             format='%(asctime)s %(message)s')
 
     def monitor(self):
@@ -123,4 +124,5 @@ class WinnerInstanceMonitor:
         if instance_id not in self.termination_history[conf_id]:
             self.termination_history[conf_id].append(instance_id)
         else:
-            logging.info(f"This should not happen: we kill something we already killed")
+            logging.info(
+                "This should not happen: we kill something we already killed")

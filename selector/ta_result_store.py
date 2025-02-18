@@ -1,6 +1,7 @@
 import ray
 import logging
 import json
+import random
 from selector.log_setup import TournamentEncoder
 
 
@@ -16,10 +17,26 @@ class TargetAlgorithmObserver:
         self.tournaments = {}
         self.read_from = {"conf id":1 , "instance_id":1 , "index":1 }
         self.scenario = scenario
+        self.core_affinities = {}
+        for c in range(2 + self.scenario.tournament_size * self.scenario.number_tournaments):
+            self.core_affinities[c] = None
 
         # todo logging dic should be provided somewhere else -> DOTAC-37
         logging.basicConfig(filename=f'./selector/logs/{self.scenario.log_folder}/Target_Algorithm_Cache.logger', level=logging.INFO,
                             format='%(asctime)s %(message)s')
+
+    def get_free_core(self):
+        free_cores = [c for c, v in self.core_affinities.items() if v is None]
+        if not free_cores:
+            return random.choice(list(self.core_affinities.keys()))
+        else:
+            return random.choice(free_cores)
+
+    def record_core_affinity(self, core, task):
+        self.core_affinities[core] = task
+
+    def remove_core_affinity(self, core):
+        self.core_affinities[core] = None
 
     def put_intermediate_output(self, conf_id, instance_id, value):
         logging.info(f"Getting intermediate_output: {conf_id}, {instance_id}, {value} ")

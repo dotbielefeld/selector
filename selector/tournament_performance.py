@@ -8,6 +8,7 @@ import copy
 from selector.log_setup import ConfEncoder
 from selector.generators.default_point_generator import check_conditionals
 
+
 def get_conf_time_out(results, configuration_id, instances_set):
     """
     Determine if a configuration timed out on any instance in a set
@@ -45,6 +46,7 @@ def get_censored_runtime_for_instance_set(results, configuration_id, instances_s
 
     return runtime
 
+
 def get_runtime_for_instance_set_with_timeout(results, configuration_id, instances_set, timeout, par_penalty=1):
     """
     For a configuration compute the total runtime needed only for instances in a set. If there are no results for the
@@ -59,9 +61,7 @@ def get_runtime_for_instance_set_with_timeout(results, configuration_id, instanc
         conf_results_instances = [conf_results_all_instances[instance] for instance in
                                   conf_results_all_instances if instance in instances_set]
 
-        runtime = np.nansum(list(conf_results_instances)) + np.count_nonzero(np.isnan(list(conf_results_instances))) * (timeout * par_penalty)
-
-    return runtime
+        return np.nansum(list(conf_results_instances)) + np.count_nonzero(np.isnan(list(conf_results_instances))) * (timeout * par_penalty)
 
 
 def get_censored_runtime_of_configuration(results, configuration_id):
@@ -77,6 +77,7 @@ def get_censored_runtime_of_configuration(results, configuration_id):
         runtime = np.nansum(list(conf_results.values()))
     return runtime
 
+
 def get_instances_no_results(results, configuration_id, instance_set):
     """
     For a configuration get a list of instances we have no results for yet
@@ -85,7 +86,7 @@ def get_instances_no_results(results, configuration_id, instance_set):
     :param instance_set: List of instances
     :return: List of configuration the conf has not been run on
     """
-    not_run_on= copy.deepcopy(instance_set)
+    not_run_on = copy.deepcopy(instance_set)
 
     if configuration_id in results.keys():
         configuration_results = results[configuration_id]
@@ -98,7 +99,8 @@ def get_instances_no_results(results, configuration_id, instance_set):
 
     return not_run_on
 
-def overall_best_update(tournaments, results, scenario):
+
+def overall_best_update(tournaments, results, scenario, ac_runtime):
     """
     Over all tournaments get the best finisher with the most instance runs and shortest runtime and save that conf
     to a file.
@@ -127,7 +129,6 @@ def overall_best_update(tournaments, results, scenario):
         conf_with_min_runtime = min(list(conf_r_w_max_i.values()))
         conf_with_min_runtime = [k for k, v in conf_r_w_max_i.items() if v == conf_with_min_runtime]
 
-
         clean_conf = copy.copy(confs[conf_with_min_runtime[0]].conf)
         # Check conditionals and turn off parameters if violated
         cond_vio = check_conditionals(scenario, clean_conf)
@@ -135,5 +136,5 @@ def overall_best_update(tournaments, results, scenario):
             clean_conf.pop(cv, None)
 
         with open(f"./selector/logs/{scenario.log_folder}/trajectory.json", 'a') as f:
-            json.dump({str(confs[conf_with_min_runtime[0]].id): clean_conf}, f, cls=ConfEncoder)
+            json.dump({str(confs[conf_with_min_runtime[0]].id): clean_conf, 'ac_runtime': ac_runtime}, f, cls=ConfEncoder)
             f.write(os.linesep)

@@ -165,6 +165,7 @@ def parse_args():
     parser.add_argument('--check_path', default=False, type=lambda x: (str(x).lower() == 'true'))
 
     hp.add_argument('--seed', default=42, type=int)
+    hp.add_argument('--verbosity', default=0, type=int)
     hp.add_argument('--ta_pid_name', type=str, default="")
     hp.add_argument('--log_folder', type=str, default="latest")
     hp.add_argument('--memory_limit', type=int, default=1023*3)
@@ -193,6 +194,9 @@ def parse_args():
     hp.add_argument('--set_size', type=int, default=50)
     hp.add_argument('--instances_dir', type=str, default="")
     hp.add_argument('--smac_pca_dim', type=int, default=8)
+    hp.add_argument('--tn', type=int, default=100)
+    hp.add_argument('--cleanup', type=bool, default=False)
+    hp.add_argument('--cpu_binding', type=bool, default=False)
 
     so.add_argument('--scenario_file', type=str)
     so.add_argument('--ta_cmd', type=str)
@@ -200,13 +204,13 @@ def parse_args():
     so.add_argument('--run_obj', type=str)
     so.add_argument('--overall_obj', type=str)
     so.add_argument('--cutoff_time', type=str)
+    so.add_argument('--crash_cost', type=str, default='10000000')
     so.add_argument('--wallclock_limit', type=str)
     so.add_argument('--instance_file', type=str)
     so.add_argument('--feature_file', type=str)
     so.add_argument('--paramfile', type=str)
     so.add_argument('--qual_max', type=bool, default=False)
-    so.add_argument('--output_trigger', action='store_true')
-    so.set_defaults(output_trigger=False)
+    so.add_argument('--runtime_feedback', type=str, default='')
 
     so.add_argument('--w_1', type=float, default=-0.8356679356095191)
     so.add_argument('--w_2', type=float, default=0.8572501015854599)

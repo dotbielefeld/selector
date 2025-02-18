@@ -7,9 +7,13 @@ import json
 import math
 
 
-def read_run_hstory(path, timelimit):
+def read_run_hstory(path, penalty):
     """
     This function reads in the run history.
+
+    : param path: path to log folder
+    : param penalty: penalty for non-solved instance
+    return: runhistory, tournament history
     """
     
     # Opening JSON files
@@ -17,30 +21,31 @@ def read_run_hstory(path, timelimit):
     rh = json.load(f)
     f.close()
 
-    with open(f'{path}trajectory.json', 'r') as handle:
-        json_data = [json.loads(line) for line in handle]
-    last_entry = list(json_data[-1].keys())[0]
-    last_perf = 0
-    for lp in list(rh[last_entry].values()):
-        if math.isnan(lp):
-            last_perf += timelimit
-        else:
-            last_perf += lp
-    last_perf = last_perf / len(rh[last_entry])
-    tr = {}
-    for line in json_data:
-        tr[list(line.keys())[0]] = list(line.values())[0]
-
+    f = open(f'{path}tournament_history.json')
+    json_data = json.load(f)
     f.close()
 
-    return rh, tr, last_entry, last_perf
+    th = {}
+    for tournament_id, tournament in json_data.items():
+        for conf in tournament['best_finisher']:
+            th.update({conf['id']: conf['conf']})
+        for conf in tournament['worst_finisher']:
+            th.update({conf['id']: conf['conf']})
+
+    return rh, th
 
 
-def compute_performances(path, timelimit):
-    """Compute and sort by performances."""
+def compute_performances(path, penalty):
+    """
+    Compute and sort by performances.
+
+    : param path: path to log folder
+    : param penalty: penalty for non-solved instance
+    return: performances of winners, tournament history, runhistory
+    """
 
     performances = {}
-    data, tr, last_entry, last_perf = read_run_hstory(path, timelimit)
+    data, th = read_run_hstory(path, penalty)
 
     for k, v in data.items():
         len_v = len(v)
@@ -49,55 +54,73 @@ def compute_performances(path, timelimit):
         avg_perf = 0
         for perf in v.values():
             if math.isnan(perf):
-                avg_perf += timelimit
+                avg_perf += penalty
             else:
                 avg_perf += float(perf)
         performances[len_v][k] = avg_perf / len_v
 
     for perf in performances.keys():
+        for conf in performances[perf]:
+            pen_perf = {k: (penalty 
+                        if math.isnan(v) else v)
+                        for k, v in data[conf].items()}
+            performances[perf][conf] = sum(pen_perf.values()) / len(pen_perf)
+        
         performances[perf] = \
             dict(sorted(performances[perf].items(), key=lambda x: x[1]))
 
-    return dict(sorted(performances.items())), tr, data, last_entry, last_perf
+    return dict(sorted(performances.items())), th, data
 
 
-def safe_best(path, timelimit):
-    """Safe performances dict nd overall best config."""
+def safe_best(path, penalty):
+    """
+    Safe performances dict nd overall best config.
 
-    perfs, tr, data, best, last_perf = \
-        compute_performances(path, timelimit)
+    : param path: path to log folder
+    : param penalty: penalty for non-solved instance
+    return: overall best configuration
+    """
 
-    potential_best = list(perfs[list(perfs.keys())[-1]].keys())[0]
+    perfs, th, data = \
+        compute_performances(path, penalty)
 
-    while list(perfs.keys()) and potential_best != best:
-        potential_best = list(perfs[list(perfs.keys())[-1]].keys())[0]
-        if last_perf > perfs[list(perfs.keys())[-1]][potential_best]:
-            if all(instance in data[best]
-                    for instance in data[potential_best]) \
-                    and potential_best in tr:
-                potential_perf = []
-                for instance in data[best]:
-                    if math.isnan(data[potential_best][instance]):
-                        potential_perf.append(timelimit)
-                    else:
-                        potential_perf.append(data[potential_best][instance])
-                if sum(potential_perf) / len(potential_perf) < last_perf:
-                    best = potential_best
-                else:
-                    del perfs[list(perfs.keys())[-1]][potential_best]
-                    if len(perfs[list(perfs.keys())[-1]]) == 0:
-                        del perfs[list(perfs.keys())[-1]]
+    inst_sizes = list(perfs.keys())
+    inst_sizes.reverse()
+    for i, isize in enumerate(inst_sizes):
+        if len(perfs[isize]) > 1:
+            nn_1 = sum(1 for v in data[list(perfs[isize].keys())[0]].values()
+                       if not math.isnan(v))
+            nn_sum_1 = sum(v for v in data[list(perfs[isize]
+                           .keys())[0]].values() 
+                           if not math.isnan(v))
+            nn_2 = sum(1 for v in data[list(perfs[inst_sizes[i + 1]]
+                       .keys())[0]].values() if not math.isnan(v))
+            nn_sum_2 = sum(v for v in data[list(perfs[inst_sizes[i + 1]]
+                           .keys())[0]].values()
+                           if not math.isnan(v))
+
+            if (perfs[isize][list(perfs[isize].keys())[0]] 
+                    < perfs[inst_sizes[i + 1]]
+                    [list(perfs[inst_sizes[i + 1]].keys())[0]]):
+                best = list(perfs[isize].keys())[0]
+                best_perf = perfs[isize][best]
+                break
+
+            elif nn_1 < nn_2 and nn_sum_1 < nn_sum_2:
+                best = list(perfs[isize].keys())[0]
+                best_perf = perfs[isize][best]
+
+            elif nn_1 > nn_2 and nn_sum_1 > nn_sum_2:
+                best = list(perfs[inst_sizes[i + 1]].keys())[0]
+                best_perf = perfs[inst_sizes[i + 1]][best]
+
             else:
-                del perfs[list(perfs.keys())[-1]][potential_best]
-                if len(perfs[list(perfs.keys())[-1]]) == 0:
-                    del perfs[list(perfs.keys())[-1]]
-        elif last_perf == perfs[list(perfs.keys())[-1]][potential_best]:
-            break
+                continue
         else:
-            del perfs[list(perfs.keys())[-1]]
+            continue
 
     overall_best = \
-        {best: {'conf': tr[best], 'avg_perf': list(perfs.values())[-1][best]}}
+        {best: {'conf': th[best], 'avg_perf': best_perf}}
 
     with open(f'{path}ranked_performances.json', 'w') as f:
         json.dump(perfs, f)
