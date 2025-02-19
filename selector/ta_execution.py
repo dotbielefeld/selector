@@ -432,7 +432,7 @@ def tae_from_cmd_wrapper_quality(conf, instance_path, cache,
 
         if scenario.cpu_binding:
             cache.put_result.remote(conf.id, instance_path, float(quality[0]))
-            cache.put_result.remote(conf.id, instance_path, float(quality[0]))
+            cache.remove_core_affinity.remote(chosen_core)
 
         time.sleep(0.2)
         logging.info(f"Wrapper TAE end {conf}, {instance_path}")
@@ -460,7 +460,7 @@ def tae_from_cmd_wrapper_quality(conf, instance_path, cache,
             #   termination_check(p.pid, p.poll(), scenario.ta_pid_name, os.getpid(), conf.id, instance_path)
         if scenario.cpu_binding:
             cache.put_result.remote(conf.id, instance_path, np.nan)
-            cache.put_result.remote(conf.id, instance_path, np.nan)
+            cache.remove_core_affinity.remote(chosen_core)
         try:
             logging.info(
                 f"Killing status: {p.poll()} {conf.id} {instance_path}")
