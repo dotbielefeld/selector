@@ -106,11 +106,11 @@ def safe_best(path, penalty):
                 best_perf = perfs[isize][best]
                 break
 
-            elif nn_1 < nn_2 and nn_sum_1 < nn_sum_2:
+            elif nn_1 >= nn_2 and nn_sum_1 <= nn_sum_2:
                 best = list(perfs[isize].keys())[0]
                 best_perf = perfs[isize][best]
 
-            elif nn_1 > nn_2 and nn_sum_1 > nn_sum_2:
+            elif nn_1 <= nn_2 and nn_sum_1 >= nn_sum_2:
                 best = list(perfs[inst_sizes[i + 1]].keys())[0]
                 best_perf = perfs[inst_sizes[i + 1]][best]
 
