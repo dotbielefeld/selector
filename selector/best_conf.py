@@ -86,9 +86,21 @@ def safe_best(path, penalty):
 
     inst_sizes = list(perfs.keys())
     inst_sizes.reverse()
+    best = list(perfs[inst_sizes[0]].keys())[0]
+    best_perf = perfs[inst_sizes[0]][best]
+
+    # Check if last entry had enough evaluation
     for i, isize in enumerate(inst_sizes):
-        if len(perfs[isize]) > 1:
-            nn_1 = sum(1 for v in data[list(perfs[isize].keys())[0]].values()
+        if len(perfs[isize]) > 1 and len(inst_sizes) > i + 1:
+            if (perfs[isize][list(perfs[isize].keys())[0]] 
+                    < perfs[inst_sizes[i + 1]]
+                    [list(perfs[inst_sizes[i + 1]].keys())[0]]):
+                best = list(perfs[isize].keys())[0]
+                best_perf = perfs[isize][best]
+                break
+
+            nn_1 = sum(1 for v in data[list(perfs[isize].keys())[0]]
+                       .values()
                        if not math.isnan(v))
             nn_sum_1 = sum(v for v in data[list(perfs[isize]
                            .keys())[0]].values() 
@@ -99,18 +111,11 @@ def safe_best(path, penalty):
                            .keys())[0]].values()
                            if not math.isnan(v))
 
-            if (perfs[isize][list(perfs[isize].keys())[0]] 
-                    < perfs[inst_sizes[i + 1]]
-                    [list(perfs[inst_sizes[i + 1]].keys())[0]]):
-                best = list(perfs[isize].keys())[0]
-                best_perf = perfs[isize][best]
-                break
-
-            elif nn_1 >= nn_2 and nn_sum_1 <= nn_sum_2:
+            if nn_1 < nn_2 and nn_sum_1 < nn_sum_2:
                 best = list(perfs[isize].keys())[0]
                 best_perf = perfs[isize][best]
 
-            elif nn_1 <= nn_2 and nn_sum_1 >= nn_sum_2:
+            elif nn_1 > nn_2 and nn_sum_1 > nn_sum_2:
                 best = list(perfs[inst_sizes[i + 1]].keys())[0]
                 best_perf = perfs[inst_sizes[i + 1]][best]
 

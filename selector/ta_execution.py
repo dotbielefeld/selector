@@ -231,7 +231,7 @@ def tae_from_cmd_wrapper_rt(conf, instance_path, cache, ta_command_creator,
                         scenario.memory_limit)
                         and timeout is False) or (
                         scenario.solve_match and solved):
-                    timeout = True
+                    timeout = float(cpu_time_p) > float(scenario.cutoff_time)
                     logging.info(f"""Timeout or memory reached, terminating: 
                         {conf}, {instance_path} {cpu_time_p}""")
                     kill_process_tree(p.pid)

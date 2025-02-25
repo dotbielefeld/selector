@@ -204,7 +204,7 @@ def parse_args():
     so.add_argument('--run_obj', type=str)
     so.add_argument('--overall_obj', type=str)
     so.add_argument('--cutoff_time', type=str)
-    so.add_argument('--crash_cost', type=str, default='10000000')
+    so.add_argument('--crash_cost', type=float, default='10000000')
     so.add_argument('--wallclock_limit', type=str)
     so.add_argument('--instance_file', type=str)
     so.add_argument('--feature_file', type=str)

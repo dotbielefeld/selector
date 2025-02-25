@@ -1,4 +1,4 @@
-# Selector: Ensemble-based Offline Algorithm Configuration
+# Selector: Ensemble-based Automated Algorithm Configuration
 
 An algorithm configurator in Python using multiple configuration generators and models derived from state-of-the-art methods.
 
@@ -10,7 +10,7 @@ An algorithm configurator in Python using multiple configuration generators and 
 
 # Installation
 
-You can use selector from the files in this repository or install it via 
+You can use selector from the files the github repository or install it via 
 
 ```
 pip install selector-ac
