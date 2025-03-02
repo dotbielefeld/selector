@@ -23,8 +23,9 @@ class TestInstanceSets(unittest.TestCase):
         self.assertEqual(self.instance_selector.instance_sets, [])
         self.assertEqual(self.instance_selector.subset_counter, 0)
         self.assertEqual(self.instance_selector.instance_increment_size,
-                         len(self.instance_selector.instance_set) /
-                         np.floor(len(self.instance_selector.instance_set)/self.instance_selector.start_instance_size))
+                         round(len(self.instance_selector.instance_set) /
+                               np.floor(len(self.instance_selector.instance_set) /
+                                        self.instance_selector.start_instance_size), 1))
 
     def test_next_set(self):
         with self.assertRaises(ValueError):

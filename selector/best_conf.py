@@ -9,11 +9,22 @@ import math
 
 def read_run_hstory(path, penalty):
     """
-    This function reads in the run history.
+    Reads in the run history.
 
-    : param path: path to log folder
-    : param penalty: penalty for non-solved instance
-    return: runhistory, tournament history
+    Parameters
+    ----------
+    path : str
+        Path to the log folder.
+    penalty : float
+        Penalty for non-solved instances.
+
+    Returns
+    -------
+    tuple of dict
+        - **runhistory** : dict,
+          The run history.
+        - **tournament_history** : dict,
+          The tournament history.
     """
     
     # Opening JSON files
@@ -39,11 +50,23 @@ def compute_performances(path, penalty):
     """
     Compute and sort by performances.
 
-    : param path: path to log folder
-    : param penalty: penalty for non-solved instance
-    return: performances of winners, tournament history, runhistory
-    """
+    Parameters
+    ----------
+    path : str
+        Path to the log folder.
+    penalty : float
+        Penalty for non-solved instances.
 
+    Returns
+    -------
+    tuple
+        - **performances_of_winners** : list,
+          Performances of the winners.
+        - **tournament_history** : dict,
+          The tournament history.
+        - **runhistory** : dict,
+          The run history.
+    """
     performances = {}
     data, th = read_run_hstory(path, penalty)
 
@@ -74,13 +97,20 @@ def compute_performances(path, penalty):
 
 def safe_best(path, penalty):
     """
-    Safe performances dict nd overall best config.
+    Save performances dictionary and overall best configuration.
 
-    : param path: path to log folder
-    : param penalty: penalty for non-solved instance
-    return: overall best configuration
+    Parameters
+    ----------
+    path : str
+        Path to the log folder.
+    penalty : float
+        Penalty for non-solved instances.
+
+    Returns
+    -------
+    dict
+        The overall best configuration.
     """
-
     perfs, th, data = \
         compute_performances(path, penalty)
 

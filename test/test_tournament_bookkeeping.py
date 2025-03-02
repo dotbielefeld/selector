@@ -6,10 +6,10 @@ import numpy as np
 import time
 import copy
 sys.path.append(os.getcwd())
-from selector.wrapper.tap_work_wrapper import TAP_Work_Wrapper
+from selector.test.tap_work_wrapper import TAP_Work_Wrapper
 from selector.scenario import Scenario
 from selector.point_gen import PointGen
-from selector.random_point_generator import random_point
+from selector.generators.random_point_generator import random_point
 from selector.pointselector import RandomSelector
 from selector.instance_sets import InstanceSet
 from selector.tournament_dispatcher import MiniTournamentDispatcher
@@ -20,14 +20,22 @@ import selector.tournament_bookkeeping as tb
 class TestTournamentBookkeeping(unittest.TestCase):
 
     def setUp(self):
+
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        print(dir_path)
+        print(dir_path)
+        print(dir_path)
+        print(dir_path)
+        print(dir_path)
+        print(dir_path)
         self.parser = {"check_path": False, "seed": 42, "ta_run_type": "import_wrapper", "winners_per_tournament": 1,
                   # import_wrapper
-                  "initial_instance_set_size": 2, "tournament_size": 3, "number_tournaments": 3,
-                  "total_tournament_number": 2,
-                  "total_runtime": 1200, "generator_multiple": 3, "set_size": 50,
+                  "initial_instance_set_sideterministicze": 2, "tournament_size": 3, "number_tournaments": 3,
+                  "total_tournament_number": 2, "cpu_binding": False, 'instances_dir': './test/test_data/instances',
+                  "total_runtime": 1200, "generator_multiple": 3, "set_size": 50, "solve_match": [],
                   "termination_criterion": "total_runtime", "par": 1, "ta_pid_name": "glucose-simp",
-                  "memory_limit": 1023 * 3, "log_folder": "run_1"}
-        self.scenario = Scenario("./selector/input/scenarios/test_example.txt", self.parser)
+                  "memory_limit": 1023 * 3, "log_folder": "run_1", "initial_instance_set_size": 5, "runtime_feedback": ""}
+        self.scenario = Scenario("./test_data/test_example.txt", self.parser)
         self.ta_wrapper = TAP_Work_Wrapper()
         self.global_cache = TargetAlgorithmObserver.remote(self.scenario)
         self.random_generator = PointGen(self.scenario, random_point)

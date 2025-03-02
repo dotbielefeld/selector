@@ -1,5 +1,4 @@
 """Main module of selector."""
-
 import sys
 import os
 sys.path.append(os.getcwd())
@@ -61,10 +60,10 @@ if __name__ == "__main__":
     offline_mini_tournament_configuration(scenario, ta_wrapper, logger)
 
     save_latest_logs(scenario.log_folder)
-    if scenario.termination_criterion == 'runtime':
+    if scenario.run_obj == 'total_runtime':
         safe_best(f'./selector/logs/{scenario.log_folder}/',
                   scenario.cutoff_time)
-    elif scenario.termination_criterion == 'quality':
+    elif scenario.run_obj == 'quality':
         safe_best(f'./selector/logs/{scenario.log_folder}/',
                   sys.maxsize)
     ray.shutdown()

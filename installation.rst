@@ -1,27 +1,11 @@
 .. _installation:
 
-Installation Guide
-==================
+Installation
+============
 
-Requirements
-------------
-
-
-The project is developed in Python 3.8.5. It is highly recommended to use a virtual environment in linux.
-
-
-AC Methods
-----------------
-
-You can install it via:
+The project is developed in Python 3.8.5 in Linux. It is highly recommended to use a virtual environment. You can install selector via pip. In some cases a prior installation of swig is needed.
 
 .. code-block:: bash
 
+    pip install swig
     pip install selector-ac
-
-Currently these:
-
- - GGA
- - CPPL
- - SMAC
-

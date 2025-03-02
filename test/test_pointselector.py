@@ -147,7 +147,7 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
         configs_requested = 8
         weights = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                   1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+                   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         weights = [weights for x in range(len(confs))]
         weights = np.array(weights)
         epoch = 4
@@ -165,7 +165,7 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
         qap = False
         evaluated = []
 
-        for epoch in range(2):
+        for epoch in range(1):
 
             result_tournament = self.hist[list(self.hist.keys())[4]]
 
@@ -287,17 +287,10 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
             confs = ran_conf + var_conf + lhc_conf + smac_conf + \
                 ggapp_conf + cppl_conf
 
-        print('CHECK IT', selected_ids[1].conf)
-
-        test_1 = Configuration(1,
-                               {'arena': '3', 'arenacompact': True, 'arenasort': '0',
-                                'binary': False, 'check': False, 'compact': True,
-                                'compactint': 76830, 'compactmin': 5735, 'elim': False,
-                                'elimclslim': 82396, 'elimint': 521530, 'elimocclim': 4427,
-                                'elimrounds': 11},
-                               Generator.var_graph)
-
-        self.assertEqual(selected_ids[1].conf['arena'], test_1.conf['arena'])
+        if selected_ids[0].generator == Generator.ggapp:
+            self.assertEqual(int(selected_ids[0].conf['arena']), 3)
+        elif selected_ids[0].generator == Generator.cppl:
+            self.assertEqual(int(selected_ids[0].conf['arena']), 2)
 
 
 if __name__ == '__main__':

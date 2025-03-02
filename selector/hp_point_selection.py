@@ -6,10 +6,18 @@ from selector.pool import ParamType
 
 
 def get_relatives(suggested):
-    """Get information of relations of suggested points by generator tag.
+    """
+    Get information of relations of suggested points by generator tag.
 
-    :param suggested: list of suggested points
-    :return relatives: nested array, indices of related points
+    Parameters
+    ----------
+    suggested : list of selector.pool.Configuration
+        List of suggested points.
+
+    Returns
+    -------
+    ndarray
+        Nested array, indices of related points (by selector.pool.Generator).
     """
     relatives = []
     for s in suggested:
@@ -23,11 +31,20 @@ def get_relatives(suggested):
 
 
 def distance_stats(smfeatures, distances):
-    """Compute distances statistics.
+    """
+    Compute distance statistics.
 
-    :param suggested: list, list of suggested points
-    :param distances: list, distance values
-    :return smfeatures: array, new features for simulation
+    Parameters
+    ----------
+    suggested : list of selector.pool.Configuration
+        List of suggested configurations.
+    distances : list
+        Distance values.
+
+    Returns
+    -------
+    ndarray
+        New features for simulation.
     """
     smflen = len(smfeatures[0])
     smfeatures = np.hstack((smfeatures, np.mean(distances, axis=1).reshape(
@@ -45,12 +62,32 @@ def distance_stats(smfeatures, distances):
 
 def simulation(suggested, features, max_evals, selected_points, weights,
                npoints, distances, relatives):
-    """Run simulations of config selection.
+    """
+    Run simulations of config selection.
 
-    :param suggested: list, list of configs/points to select from
-    :param features: nested list, features of configs/points
-    :param max_eval: int, number of simulation runs per selected point
-    :return sfreq: list, how often configs/points were selected in sim
+    Parameters
+    ----------
+    suggested : list
+        List of configs/points to select from.
+    features : list
+        Nested list, features of configs/points.
+    max_eval : int
+        Number of simulation runs per selected point.
+    selected_points : list
+        Indices of configurations selected so far in the simulations.
+    weights: ndarray
+        Weights for the scoring function.
+    npoints : int
+        Number of configurations to select
+    distances : ndarray
+        Distance features between the configuraions.
+    relatives : ndarray
+        Indices of relative configurations.
+
+    Returns
+    -------
+    ndarray
+        How often configs/points were selected in the simulation.
     """
     sugg = list(range(len(suggested)))
     sfreq = np.zeros(len(sugg))
@@ -121,11 +158,20 @@ def simulation(suggested, features, max_evals, selected_points, weights,
 
 
 def normalize_plus_cond_acc(sugg, s):
-    """Normalize and account for conditionals.
+    """
+    Normalize and account for conditionals.
 
-    :param sugg: list, configuration values
-    :param s: scenario
-    :return sugg: suggested configuration with normalized and adjusted values
+    Parameters
+    ----------
+    sugg : list of selector.pool.Configuration
+        Suggested configurations.
+    s : selector.scenario.Scenario
+        AC scenario.
+
+    Returns
+    -------
+    list
+        Suggested configuration with normalized and adjusted values.
     """
     maximums = {}
     cat_params = []
@@ -172,11 +218,20 @@ def normalize_plus_cond_acc(sugg, s):
 
 
 def pairwise_distances(sugg_i, sugg_j):
-    """Compute pairwise distances.
+    """
+    Compute pairwise distances.
 
-    :param sugg_i: list, configuration values
-    :param sugg_j: list, configuration values
-    :return m: pairwise distances
+    Parameters
+    ----------
+    sugg_i : list
+        Configuration values for the first set.
+    sugg_j : list
+        Configuration values for the second set.
+
+    Returns
+    -------
+    ndarray
+        Pairwise distances between the configurations.
     """
     m = np.zeros((len(sugg_i), len(sugg_j)))
     for i, s_i in enumerate(sugg_i):
@@ -205,15 +260,36 @@ def pairwise_distances(sugg_i, sugg_j):
 
 def select_point(scenario, suggested, max_evals, npoints, pool, epoch,
                  max_epoch, features, weights, seed):
-    """Generate features and run simultion.
+    """
+    Generate features and run simulation.
 
-    :param suggested: list, list of configs/points to select from
-    :param max_eval: int, number of simulation runs per selected point
-    :param npoints: int, number of configs/points requested
-    :param pool: list, list of configs/pints to select from
-    :param epoch: int, current epoch
-    :param max_epoch: int, number of total epochs
-    :return selected_points: list, ids of selected configs/points
+    Parameters
+    ----------
+    s : selector.scenario.Scenario
+        AC scenario.
+    suggested : list
+        List of configs/points to select from.
+    max_eval : int
+        Number of simulation runs per selected point.
+    npoints : int
+        Number of configs/points requested.
+    pool : list
+        List of configs/points to select from.
+    epoch : int
+        Current epoch.
+    max_epoch : int
+        Total number of epochs.
+    features : ndarray (n_suggestions, n_features)
+        Features computed for each suggested configuration.
+    weights: ndarray (n_suggestions, n_features)
+        Preset weights for the scoring function of the selection mechanism,
+    seed: int
+        Random seed.
+
+    Returns
+    -------
+    list
+        IDs of selected configs/points.
     """
     if seed:
         np.random.seed(seed)

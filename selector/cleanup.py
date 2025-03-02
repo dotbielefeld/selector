@@ -8,16 +8,23 @@ from psutil import Process
 
 
 class TempFileCleaner:
-    """Cleaning up old, unused temp files."""
+    """Cleaning up old, unused temp files.
+
+        Note
+        ----
+        Only in use if scenario.cleanup is True.
+
+        Parameters
+        ----------
+        logger : logging.Logger
+            Initialized logging object.
+        temp_dir : str
+            Path to the temporary directory.
+        age_limit : int
+            Number of seconds a file can exist unused before removal.
+    """
 
     def __init__(self, logger, temp_dir=None, age_limit=600):
-        """
-        Initialize temp cleaner.
-
-        : param logger: initialized logging object
-        : param temp_dir: path to temp directory
-        : param age_limit: number of seconds a file can exist unused
-        """
         self.temp_dir = temp_dir or TemporaryDirectory().name
         self.tracked_files = set()
         self.age_limit = age_limit
@@ -29,17 +36,27 @@ class TempFileCleaner:
         """
         Adds a file to the list.
 
-        : param file_path: path to a file to look after
+        Parameters
+        ----------
+        file_path : str
+            Path to the file to look after.
         """
         if os.path.isfile(file_path):
             self.tracked_files.add(file_path)
 
     def file_in_use(self, file_path):
         """
-        Check if file is locked or in use.
+        Check if the file is locked or in use.
 
-        : param file_path: path to a file to look after
-        return: bool if file is in use
+        Parameters
+        ----------
+        file_path : str
+            Path to the file to look after.
+
+        Returns
+        -------
+        bool
+            Whether the file is in use.
         """
         try:
             with open(file_path, 'rb') as f:
@@ -50,9 +67,12 @@ class TempFileCleaner:
 
     def list_open_files(self):
         """
-        Get list of open files for current process.
+        Get list of open files for the current process.
 
-        return: list of the open temp files
+        Returns
+        -------
+        list
+            List of the open temporary files.
         """
         return [f.path for f in Process().open_files()]
 

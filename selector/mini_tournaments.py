@@ -1,3 +1,7 @@
+"""
+In this module the main while loop for tournaments, configuration generation
+and feedback is defined.
+"""
 import logging
 import sys
 import os
@@ -39,6 +43,18 @@ from selector.cleanup import TempFileCleaner
 
 
 def offline_mini_tournament_configuration(scenario, ta_wrapper, logger):
+    """
+    Manages the tournaments, suggestions, selection and feedback.
+
+    Parameters
+    ----------
+    scenario : selector.scenario.Scenario
+        AS scenario.
+    ta_wrapper : UserWrapperClass
+        Wrapper that generates command lines to call target algorithm.
+    logger : logging.Logger
+        Logging object.
+    """
     log_termination_setting(logger, scenario)
 
     hp_seletor = HyperparameterizedSelector()

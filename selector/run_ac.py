@@ -1,5 +1,4 @@
 """Module of selector to run from Python."""
-
 import sys
 import os
 sys.path.append(os.getcwd())
@@ -25,13 +24,18 @@ sys.path.append(os.getcwd())
 
 def ac(scen_files, ray_mode, **kwargs):
     """
-    Run selector as a python function.
+    Run selector as a Python function.
 
-    :param scen_files: dict, paths to 'paramfile', 'instance_file', 'feature_file'
-    :param ray_mode: str, 'desktop' or 'cluster'
-    :param kwargs: Anything else you want to set, see scenario.py
-    :return:
+    Parameters
+    ----------
+    scen_files : dict
+        Paths to 'paramfile', 'instance_file', 'feature_file'.
+    ray_mode : str
+        'desktop' or 'cluster' (SLURM).
+    kwargs : dict
+        Anything else you want to set, see scenario.py.
     """
+
     # Add args to scenario
     for key, val in kwargs.items():
         if val != '':

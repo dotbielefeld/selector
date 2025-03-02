@@ -1,3 +1,4 @@
+"""In this module the scenario object is constructed."""
 import os
 import warnings
 import argparse
@@ -8,14 +9,17 @@ from selector.read_files import get_ta_arguments_from_pcs, read_instance_paths, 
 
 
 class Scenario:
+    """
+    Scenario class that stores all relevant information for the configuration
 
+    Parameters
+    ----------
+    scenario : dict or str
+        If string, a scenario file will be read in.
+    cmd : dict
+        Command line arguments which augment the scenario file/dict.
+    """
     def __init__(self, scenario, cmd={'check_path': False}):
-        """
-        Scenario class that stores all relevant information for the configuration
-        :param scenario: dic or string. If string, a scenario file will be read in.
-        :param cmd: dic, Command line arguments which augment the scenario file/dic
-        """
-
         if isinstance(scenario, str):
             scenario = self.scenario_from_file(scenario)
 
@@ -45,17 +49,20 @@ class Scenario:
 
         self.verify_scenario()
 
-        # with open(f'./selector/logs/{self.log_folder}/scenario.pkl', 'wb') as out:
-        #    pickle.dump(scenario, out)
-
     def read_scenario_files(self, scenario):
-
         """
         Read in the relevant files needed for a complete scenario
-        :param scenario: dic.
-        :return: scenario: dic.
-        """
 
+        Parameters
+        ----------
+        scenario : dict
+            The scenario dictionary.
+
+        Returns
+        -------
+        scenario : dict
+            The updated scenario dictionary.
+        """
         # read in
         if "paramfile" in scenario:
             scenario["parameter"], scenario["no_goods"], scenario["conditionals"] = get_ta_arguments_from_pcs(scenario["paramfile"])
@@ -113,13 +120,19 @@ class Scenario:
             self.log_folder = "latest"
 
     def scenario_from_file(self, scenario_path):
-
         """
         Read in an ACLib scenario file
-        :param scenario_path: Path to the scenario file
-        :return: dic containing the scenario information
-        """
 
+        Parameters
+        ----------
+        scenario_path : str
+            Path to the scenario file.
+
+        Returns
+        -------
+        dict
+            Dictionary containing the scenario information.
+        """
         name_map = {"algo": "ta_cmd"}
         scenario_dict = {}
 
@@ -144,17 +157,20 @@ class Scenario:
 
 
 class LoadOptionsFromFile (argparse.Action):
-    def __call__ (self, parser, namespace, values, option_string=None):
+    def __call__(self, parser, namespace, values, option_string=None):
         with values as f:
             parser.parse_args(f.read().split(), namespace)
 
 
 def parse_args():
     """
-    Argparser
-    :return: dic. Dic of arguments parsed
-    """
+    Argument parser
 
+    Returns
+    -------
+    dict
+        Dictionary of parsed arguments.
+    """
     parser = argparse.ArgumentParser()
     hp = parser.add_argument_group("Hyperparameters of selector")
     so = parser.add_argument_group("Scenario options")
@@ -174,7 +190,7 @@ def parse_args():
     hp.add_argument('--wrapper_mod_name', type=str, default="")
     hp.add_argument('--wrapper_class_name', type=str, default="")
     hp.add_argument('--quality_match', type=str, default="")
-    hp.add_argument('--solve_match', nargs='+', type=str, default="")
+    hp.add_argument('--solve_match', nargs='+', type=str, default=[])
     hp.add_argument('--quality_extract', type=str, default="")
 
     hp.add_argument('--winners_per_tournament', type=int, default=1)
@@ -185,7 +201,7 @@ def parse_args():
     hp.add_argument('--monitor', type=str, default="tournament_level")
     hp.add_argument('--surrogate_amortized_time', type=int, default=30)
 
-    hp.add_argument('--termination_criterion', type=str, default="runtime")
+    hp.add_argument('--termination_criterion', type=str, default="total_runtime")
     hp.add_argument('--total_tournament_number', type=int, default=10)
     hp.add_argument('--model_update_iteration', type=int, default=3)
 

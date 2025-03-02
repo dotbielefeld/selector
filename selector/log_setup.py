@@ -1,3 +1,4 @@
+"""In this module logging is set up."""
 import os
 import shutil
 from datetime import datetime
@@ -8,21 +9,37 @@ from enum import Enum
 import ray
 import numpy as np
 
-def clear_logs(folder_for_run = None):
+
+def clear_logs(folder_for_run=None):
     """
-    Clear the logs
+    Clear the logs.
+
+    Parameters
+    ----------
+    folder_for_run : str
+        Path to log directory.
     """
-    if folder_for_run == None:
+    if folder_for_run is None:
         folder_for_run = "latest"
 
-    for folder in [f'./selector/logs/{folder_for_run}' ,f'./selector/logs/{folder_for_run}/ta_logs']:
+    for folder in [f'./selector/logs/{folder_for_run}',
+                   f'./selector/logs/{folder_for_run}/ta_logs']:
         for filename in os.listdir(folder):
             file_path = os.path.join(folder, filename)
             if os.path.isfile(file_path) or os.path.islink(file_path):
                 os.unlink(file_path)
 
-def check_log_folder(folder_for_run = None):
-    if folder_for_run == None:
+
+def check_log_folder(folder_for_run=None):
+    """
+    Set up log directory.
+
+    Parameters
+    ----------
+    folder_for_run : str
+        Path to log directory.
+    """
+    if folder_for_run is None:
         folder_for_run = "latest"
     if not os.path.exists("./selector/logs"):
         os.makedirs("./selector/logs")
@@ -33,11 +50,31 @@ def check_log_folder(folder_for_run = None):
     if not os.path.exists(f'./selector/logs/{folder_for_run}/ta_logs'):
         os.makedirs(f'./selector/logs/{folder_for_run}/ta_logs')
 
+
 def save_latest_logs(folder_for_run):
+    """
+    Saves latest logs.
+
+    Parameters
+    ----------
+    folder_for_run : str
+        Path to log directory.
+    """
     if folder_for_run == "latest":
         shutil.copytree('./selector/logs/latest', f"./selector/logs/{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}")
 
+
 def log_termination_setting(logger, scenario):
+    """
+    Log termination criterion for AC process.
+
+    Parameters
+    ----------
+    logger : logging.logger
+        Logging object.
+    scenrario : selector.scenario.Scenario
+        AC scenario.
+    """
     if scenario.termination_criterion == "total_runtime":
         logger.info(f"The termination criterion is: {scenario.termination_criterion}")
         logger.info(f"The total runtime is: {scenario.wallclock_limit}")
@@ -46,12 +83,25 @@ def log_termination_setting(logger, scenario):
         logger.info(f"The termination criterion is: {scenario.termination_criterion}")
         logger.info(f"The total number of tournaments is: {scenario.total_tournament_number}")
     else:
-        logger.info(f"No valid termination criterion has been parsed. "
-                    f"The termination criterion will be set to runtime.")
+        logger.info("No valid termination criterion has been parsed. "
+                    "The termination criterion will be set to runtime.")
         logger.info(f"The total runtime is: {scenario.wallclock_limit}")
 
+
 class TournamentEncoder(json.JSONEncoder):
+    """
+    Encodes selector.pool.Tournament for logging.
+    """
+    def __init__(self):
+        super().__init__()
+
     def default(self, o):
+        """
+        Encodes objects in selector.pool.Tournament.
+
+        o : Any
+            object from selector.pool.Tournament.
+        """
         if dataclasses.is_dataclass(o):
             data_dic = dataclasses.asdict(o)
             if "ray_object_store" in data_dic.keys():
@@ -79,7 +129,14 @@ class TournamentEncoder(json.JSONEncoder):
 
         return super().default(o)
 
+
 class ConfEncoder(json.JSONEncoder):
+    """
+    Encodes selector.pool.Configuration object for logging.
+    """
+    def __init__(self):
+        super().__init__()
+
     def default(self, obj):
         if isinstance(obj, np.integer):
             return int(obj)

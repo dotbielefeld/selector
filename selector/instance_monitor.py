@@ -1,3 +1,4 @@
+"""This module contains the instance monitoring functionalities."""
 import ray
 import logging
 import time
@@ -5,17 +6,25 @@ import time
 
 @ray.remote(num_cpus=1)
 class InstanceMonitor:
+    """
+    Monitor whether the runtime of a configuration on an instance exceeds the
+    best runtime of any configuration on that instance multiplied by a constant
+    (delta_cap).  When a runtime exceeds this bound the configuration/instance
+    pair is terminated. The terminated configuration/instance pairs are stored
+    in the termination_history to avoid double killing
+
+    Parameters
+    ----------
+    sleep_time : int
+        Wake up and check whether runtime is exceeded
+    cache : selector.ta_result_store.TargetAlgorithmObserver
+        Stores all tournament related data.
+    scenario : selector.scenario.Scenario
+        AC scenario.
+    delta_cap : int
+        Constant the current best runtime for each instance is multiplied by.
+    """
     def __init__(self, sleep_time, cache, scenario, delta_cap=1):
-        """
-        Monitor whether the runtime of a configuration on an instance exceeds the best runtime of any configuration
-        on that instance multiplied by a constant (delta_cap).
-        When a runtime exceeds this bound the configuration/instance pair is terminated.
-        The terminated configuration/instance pairs are stored in the termination_history to avoid double killing
-        :param sleep_time: Int. Wake up and check whether runtime is exceeded
-        :param cache: Ray cache
-        :param delta_cap: Int. Constant the current best runtime for each instance is multiplied by
-        :return: conf/instance that are killed.
-        """
         self.sleep_time = sleep_time
         self.cache = cache
         self.tournaments = []
@@ -29,6 +38,10 @@ class InstanceMonitor:
                             format='%(asctime)s %(message)s')
 
     def monitor(self):
+        """        
+        Monitors a tournament and terminates a configuration/instance pair if
+        necessary.
+        """
         logging.info("Starting monitor")
         worst_finisher = []
 
@@ -65,7 +78,7 @@ class InstanceMonitor:
                 last_tournaments = {}
                 set_counter = {}
                 for finished_tournament in tournament_history.values():
-                    if finished_tournament.instance_set_id in  [current_instance_set, current_instance_set+1, current_instance_set-1]:
+                    if finished_tournament.instance_set_id in [current_instance_set, current_instance_set+1, current_instance_set-1]:
                         last_tournaments[finished_tournament.id] = finished_tournament
                         set_counter[finished_tournament.id] = finished_tournament.instance_set_id
 
@@ -84,7 +97,6 @@ class InstanceMonitor:
                         self.best_instance_results[instance] = results[conf.id][instance]
 
             logging.info(f"best_instance_results: {self.best_instance_results}")
-
 
             for t in tournaments:
                 if len(t.ray_object_store.keys()) >= 1:
@@ -122,10 +134,20 @@ class InstanceMonitor:
 
     def termination_check(self, conf_id, instance):
         """
-        Check if we have killed a conf/instance pair already. Return True if we did not.
-        :param conf_id:
-        :param instance:
-        :return:
+        Check if we have killed a conf/instance pair already. Return True if
+        we did not.
+
+        Parameters
+        ----------
+        conf_id : uuid.UUID
+            ID of the configuration to be checked.
+        instance : str
+            Name of instance to be checked.
+
+        Returns
+        -------
+        bool
+            False if configuration/instance pair killed, True else.
         """
         if conf_id not in self.termination_history:
             return True
@@ -135,6 +157,21 @@ class InstanceMonitor:
             return False
 
     def update_termination_history(self, conf_id, instance_id):
+        """
+        Stores termination events in history.
+
+        Parameters
+        ----------
+        conf_id : uuid.UUID
+            ID of the configuration that was killed.
+        instance_id : str
+            Name of instance the configuration was killed on.
+
+        Returns
+        -------
+        bool
+            False if configuration/instance pair killed, True else.
+        """
         if conf_id not in self.termination_history:
             self.termination_history[conf_id] = []
 

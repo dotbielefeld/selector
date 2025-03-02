@@ -28,19 +28,57 @@ controller = ThreadpoolController()
 
 
 class CPPL:
-    """Surrogate from CPPL."""
+    """
+    Surrogate from CPPL.
+
+    Note
+    ----
+
+    Implementation based on the paper: "Pool-based realtime algorithm
+    configuration: A preselection bandit approach"
+
+    Parameters
+    ----------
+    s : selector.scenario.Scenario
+        AC scenario.
+    seed : int
+        Random seed.
+    features : ndarray
+        Problem instance features.
+    pool_size : int
+        Number of Configurations to keep in CPPL pool.
+    alpha : int
+        CPPL hyperparameter alpha, see paper for details.
+    gamma : float
+        CPPL hyperparameter gamma, see paper for details.
+    w : float
+        CPPL hyperparameter w, see paper for details.
+    random_prob : float
+        Probability for a random Configuration being generated.
+    mutation_prob : float
+        Probability for mutation in crossover mechanism.
+    pca_dimension_configurations : int
+        PCA dimension for configuration values.
+    pca_dimension_instances : int
+        PCA dimension for instance feature values.
+    model_update : str
+        Update mode for model ["SGD", "Batch"].
+    v_hat_norm : str
+        Norm to use on v_hat [None, "max", "zero_one"], see paper for details.
+    theta_norm : str
+        Norm to use on theta [None, "max", "zero_one"], see paper for details.
+    feature_normaliser : str
+        Which normalization to use on instance feature values ["max", "zero_one"]. 
+    ensemble: bool
+        True, if accounting for same configuration with different IDs needs to be made.
+    """
 
     def __init__(self, scenario, seed, features, pool_size=192, alpha=1,
                  gamma=0.1, w=0.1, random_prob=0.2, mutation_prob=0.8,
                  pca_dimension_configurations=8, pca_dimension_instances=8,
                  model_update="Batch", v_hat_norm=None, theta_norm="zero_one",
                  feature_normaliser="max", ensemble=True):
-        """
-        CPPL Initializition.
-
-        Implementation based on the paper: "Pool-based realtime algorithm
-        configuration: A preselection bandit approach"
-        """
+        
         self.scenario = scenario
         self.features = features
         self.seed = seed
@@ -156,9 +194,17 @@ class CPPL:
 
     def scale_conf(self, configuration):
         """
-        Scale and encode a conf. Cont/int parameter are scaled between 0 and 1. Cat. parameter are one hot encodede
-        :param configuration: Configuraion
-        :return:
+        Scale and encode a configuration. Continuous/integer parameters are scaled between 0 and 1. Categorical parameters are one-hot encoded.
+
+        Parameters
+        ----------
+        configuration : selector.pool.Configuration
+            Configuration.
+
+        Returns
+        -------
+        ndarray
+            Scaled and encoded configuration values.
         """
         cat_params_on_conf = np.zeros(len(self.cat_params_names), dtype=object)
         cont_int_params_of_conf = np.zeros(len(self.cont_int_params_names), dtype=float)
@@ -219,12 +265,20 @@ class CPPL:
 
     def compute_feature_map(self, conf, instance_features):
         """
-        For a conf/instance pair compute the quadratic feature map and scale
-        :param conf: Configuration object from selector
-        :param instance_features: Np array of instances features
-        :return:
-        """
+        For a configuration/instance pair, compute the quadratic feature map and scale.
 
+        Parameters
+        ----------
+        conf : selector.pool.Configuration
+            Configuration.
+        instance_features : ndarray
+            Numpy array of instance features.
+
+        Returns
+        -------
+        ndarray
+            Scaled quadratic problem instance features.
+        """
         conf_values = self.scale_conf(conf)
 
         conf_values = self.pca_configurations.transform(conf_values.reshape(1, -1))
@@ -242,17 +296,23 @@ class CPPL:
         return features
 
     def to_log_space(self):
+        """Not implemented."""
         pass
 
     def from_log_space(self):
+        """Not implemented."""
         pass
 
     def update_feature_store(self, conf, instance):
         """
-        For a conf/instance pair compute the features and store them in a feature store for latere
-        :param conf: Configuration object from selector
-        :param instance: Instance ID
-        :return:
+        For a configuration/instance pair, compute the features and store them in a feature store for later use.
+
+        Parameters
+        ----------
+        conf : selector.pool.Configuration
+            Configuration.
+        instance : str
+            Instance name.
         """
         if conf.id not in self.feature_store:
             self.feature_store[conf.id] = {}
@@ -262,7 +322,20 @@ class CPPL:
 
     def compute_a(self, theta, tried_conf_ids, instance_id):
         """
-        Compute a of the paper
+        Compute numerator for gradient and hessian computation.
+
+        Parameters
+        ----------
+        theta : ndarray
+            Parameter vector theta_bar, based on winner feedback.
+        tried_conf_ids : list of uuid.UUID
+            IDs of configurations that participated in the tournament.
+        instance_id : str
+            Name of instance the feedback was generated on.
+        Returns
+        -------
+        ndarray
+            Numerator for further compuations.
         """
         sum = 0
 
@@ -273,7 +346,20 @@ class CPPL:
 
     def compute_b(self, theta, tried_conf_ids, instance_id):
         """
-        Compute b of the paper
+        Compute denominator for gradient and hessian computation.
+
+        Parameters
+        ----------
+        theta : ndarray
+            Parameter vector theta_bar, based on winner feedback.
+        tried_conf_ids : list of uuid.UUID
+            IDs of configurations that participated in the tournament.
+        instance_id : str
+            Name of instance the feedback was generated on.
+        Returns
+        -------
+        ndarray
+            Denominator for further compuations.
         """
         sum = 0
         for conf in tried_conf_ids:
@@ -283,7 +369,20 @@ class CPPL:
 
     def compute_c(self, theta, tried_conf_ids, instance_id):
         """
-        Compute c of the paper
+        Compute second numerator for hessian computation.
+
+        Parameters
+        ----------
+        theta : ndarray
+            Parameter vector theta_bar, based on winner feedback.
+        tried_conf_ids : list of uuid.UUID
+            IDs of configurations that participated in the tournament.
+        instance_id : str
+            Name of instance the feedback was generated on.
+        Returns
+        -------
+        ndarray
+            Second numerator for further compuations.
         """
         sum = 0
         for conf in tried_conf_ids:
@@ -293,16 +392,46 @@ class CPPL:
 
     def compute_gradient(self, theta, winner_id, tried_confs, instance_id):
         """
-        Compute the gradient for a given feedback
+        Compute the gradient for a given feedback.
+
+        Parameters
+        ----------
+        theta : ndarray
+            Parameter vector theta_bar, based on winner feedback.
+        winner_id: uuid.UUID
+            ID of the configuration winning the tournament.
+        tried_conf_ids : list of uuid.UUID
+            IDs of configurations that participated in the tournament.
+        instance_id : str
+            Name of instance the feedback was generated on.
+        Returns
+        -------
+        ndarray
+            Gradient for further compuations.
         """
         a = self.compute_a(theta, tried_confs, instance_id)
         b = self.compute_b(theta, tried_confs, instance_id)
 
         return self.feature_store[winner_id][instance_id] - (a / b)
 
-    def compute_hessian(self,theta, winner_id, tried_confs, instance_id):
+    def compute_hessian(self, theta, winner_id, tried_confs, instance_id):
         """
-        Compute the hessian for a given feedback
+        Compute the hessian for a given feedback.
+
+        Parameters
+        ----------
+        theta : ndarray
+            Parameter vector theta_bar, based on winner feedback.
+        winner_id: uuid.UUID
+            ID of the configuration winning the tournament.
+        tried_conf_ids : list of uuid.UUID
+            IDs of configurations that participated in the tournament.
+        instance_id : str
+            Name of instance the feedback was generated on.
+        Returns
+        -------
+        ndarray
+            Hessian for further compuations.
         """
         a = self.compute_a(theta, tried_confs, instance_id)
         b = self.compute_b(theta, tried_confs, instance_id)
@@ -311,7 +440,18 @@ class CPPL:
 
     def update_running_sums(self, theta, winner_id, tried_confs, instance_id):
         """
-        Update the rolling sums of gradients and hessian for a feedback
+        Update the rolling sums of gradients and hessian for a feedback.
+
+        Parameters
+        ----------
+        theta : ndarray
+            Parameter vector theta_bar, based on winner feedback.
+        winner_id: uuid.UUID
+            ID of the configuration winning the tournament.
+        tried_conf_ids : list of uuid.UUID
+            IDs of configurations that participated in the tournament.
+        instance_id : str
+            Name of instance the feedback was generated on.
         """
 
         if self.t not in self.gradient_sum.keys():
@@ -324,7 +464,20 @@ class CPPL:
 
     def compute_confidence(self, theta, instance_id, conf):
         """
-        Compute the confidence for an instance/conf combination
+        Compute the confidence for an instance/conf combination.
+
+        Parameters
+        ----------
+        theta : ndarray
+            Parameter vector theta_bar, based on winner feedback.
+        instance_id : str
+            Name of an instance.
+        conf : uuid.UUID
+            ID of a configuration.
+        Returns
+        -------
+        float
+            Confidence.
         """
         # Control How many threads/cores numpy and scipy use
         @controller.wrap(limits=self.scenario.tournament_size, user_api='openmp')
@@ -353,7 +506,16 @@ class CPPL:
 
     def update_model_single_observation(self, winner_id, tried_confs, instance_id):
         """
-        Update the thetas of the model for a single instance feedback
+        Update the thetas of the model for a single instance feedback.
+
+        Parameters
+        ----------
+        winner_id: uuid.UUID
+            ID of the configuration winning the tournament.
+        tried_conf_ids : list of uuid.UUID
+            IDs of configurations that participated in the tournament.
+        instance_id : str
+            Name of instance the feedback was generated on.
         """
         grad = self.compute_gradient(self.theta_hat, winner_id, tried_confs, instance_id)
         self.theta_hat = self.theta_hat + self.gamma * self.t ** (-self.alpha) * grad
@@ -367,7 +529,16 @@ class CPPL:
 
     def update_model_mini_batch(self, winner_ids, tried_confs, instance_ids):
         """
-        Update the thetas of the model for feedback over multiple instances
+        Update the thetas of the model for feedback over multiple instances.
+
+        Parameters
+        ----------
+        winner_id: uuid.UUID
+            ID of the configuration winning the tournament.
+        tried_conf_ids : list of uuid.UUID
+            IDs of configurations that participated in the tournament.
+        instance_id : str
+            Name of instance the feedback was generated on.
         """
         grad_mean = np.zeros(self.context_dim)
 
@@ -385,6 +556,22 @@ class CPPL:
     def select_from_set(self, conf_set, instance_set, n_to_select):
         """
         For a set of configurations and instances select the most promising configurations
+
+        Parameters
+        ----------
+        conf_set : list of selector.pool.Configuration
+            Set of configurations to select from.
+        instance_set : list of str
+            Instance set the next tournament will be run on.
+        n_to_select : int
+            Number of configurations to select from the set.
+        Returns
+        -------
+        tuple
+            - list of selector.pool.Configuration,
+              Selected configurations.
+            - list of list of float,
+              Utility and confidence pairs according to selected configurations.
         """
 
         v_hat = np.zeros((len(conf_set), len(instance_set)))
@@ -421,7 +608,12 @@ class CPPL:
 
     def delete_from_pool(self, instance_set):
         """
-        Based on the feedback delete poor performing configurations from the pool
+        Based on the feedback delete poorly performing configurations from the pool.
+
+        Parameters
+        ----------
+        instance_set : list of str
+            Instance set the feedback was generated on.
         """
         v_hat = np.zeros((self.pool_size, len(instance_set)))
         confidence = np.zeros((self.pool_size, len(instance_set)))
@@ -462,7 +654,18 @@ class CPPL:
 
     def create_new_conf(self, parent_one, parent_two):
         """
-        Create new configurations based on the genetic procedure described
+        Create new configurations based on a genetic procedure described.
+
+        Parameters
+        ----------
+        parent_one : selector.pool.Configuration
+            First configuration for the crossover.
+        parent_two : selector.pool.Configuration
+            Second configuration for the crossover.
+        Returns
+        -------
+        selector.pool.Configuration
+            Resulting configuration.
         """
         no_good = True
         while no_good:
@@ -498,11 +701,17 @@ class CPPL:
                 new_conf.conf = reset_conditionals(self.scenario, new_conf.conf, cond_vio)
 
             no_good = check_no_goods(self.scenario, new_conf.conf)
+
         return new_conf
 
     def add_to_pool(self, past_instances):
         """
         Add the most promising newly created configurations to the pool
+
+        Parameters
+        ----------
+        past_instances : list of str
+            Instance set of the prior tournament.
         """
         number_to_create = self.pool_size - len(self.pool)
         new_promising_conf = []
@@ -528,11 +737,26 @@ class CPPL:
 
     def update(self, previous_tournament, c, results, terminations, instance_features=None, ac_runtime=None):
         """
-        Updated the model with given feedback
-        :param results: nested dic containing rt feedback for the conf instance pairs in previous_tournament
-        :param previous_tournament: Tournament
-        :return:
+        Update the model with given feedback.
+
+        Parameters
+        ----------
+        results : dict of dict
+            Feedback for the configuration-instance pairs in the previous tournament.
+        previous_tournament : selector.pool.Tournament
+            Tournament.
+        c : list of selector.pool.Configuration
+            Configurations participating in the previous tournament.
+        results : dict
+            Performances of the configuration on the instance set of the tournament.
+        terminations : dict
+            Configurations that were terminated on instances.
+        instance_features : ndarray
+            Problem instance features.
+        ac_runtime : int
+            The total runtime of Selector in seconds so far.
         """
+
         if instance_features:
             instance_feature_matrix = np.array(list(instance_features.values()))
             transformed_features = self.instance_feature_standard_scaler.transform(instance_feature_matrix)
@@ -618,7 +842,29 @@ class CPPL:
 
     def get_suggestions(self, scenario, n_to_select, d, r, next_instance_set, instance_features=None):
         """
-        Suggest configurations to run next based on the instances that are comming
+        Suggest configurations to run next based on the next instance set to run on.
+
+        Parameters
+        ----------
+        scenario : selector.scenario.Scenario
+            AC scenario.
+        n_to_select : int
+            Number of configurations to return.
+        d : list of selector.pool.Tournament
+            Tournament history.
+        r : dict
+            Performances of the configuration on the instance set of the tournament.
+        next_instance_set : list of str
+            Instance set to run on in the next tournament.
+        instance_features : ndarray
+            Problem instance features.
+        Returns
+        -------
+        tuple
+            - list of selector.pool.Configuration,
+              Suggested configurations.
+            - list of list of float,
+              Utility and confidence pairs according to selected configurations.
         """
 
         if instance_features:
@@ -648,6 +894,26 @@ class CPPL:
         return suggest, ranking
 
     def suggest_from_outside_pool(self, conf_set, n_to_select, next_instance_set, instance_features=None):
+        """
+        Suggest configurations to run next that are not in the CPPL pool.
+
+        Parameters
+        ----------
+        conf_set : list of selector.pool.Configuration
+        n_to_select : int
+            Number of configurations to return.
+        next_instance_set : list of str
+            Instance set to run on in the next tournament.
+        instance_features : ndarray
+            Problem instance features.
+        Returns
+        -------
+        tuple
+            - **suggest**: list of selector.pool.Configuration,
+              Suggested configurations.
+            - **ranking**: list of list of float,
+              Utility and confidence pairs according to selected configurations.
+        """
 
         if instance_features:
             instance_feature_matrix = np.array(list(instance_features.values()))
@@ -664,13 +930,24 @@ class CPPL:
         return suggest, ranking
 
     def predict(self, suggestions, next_instance_set):
-        """Predict performance/quality of configurations with GGA++ epm.
-
-        :param suggestions: list of objects, [selector.pool.Configuration,]
-        :param next_instance_set: list, next instances to run tournament on
-        :return [mean, var]: numpy.ndarray, mean and variance of predicted
-            performance/quality
         """
+        Predict performance/quality of configurations with CPPL.
+
+        Parameters
+        ----------
+        suggestions : list of selector.pool.Configuration
+            Suggested configurations.
+        next_instance_set : 
+            List of next instances to run the tournament on.
+        Returns
+        -------
+        tuple
+            - **v**: ndarray,
+              Mean of predicted performance/quality.
+            - **c**: ndarray,
+              Variance of predicted performance/quality.
+        """
+
         ranking = self.suggest_from_outside_pool(suggestions, len(suggestions),
                                                  next_instance_set)[1]
         v = []
@@ -689,12 +966,26 @@ class CPPL:
         return v, c
 
     def probability_improvement(self, suggestions, results, next_instance_set):
-        """Compute probability of improvement.
-
-        :param suggestions: list of objects, [selector.pool.Configuration,]
-        :param next_instance_set: list, next instances to be run
-        :return pi: numpy.ndarray, probabilities of improvement
         """
+        Compute probability of improvement.
+
+        Parameters
+        ----------
+        suggestions : list of selector.pool.Configuration
+            Suggested configurations.
+        next_instance_set : 
+            List of next instances to be run.
+        results : dict
+            Performances of the configuration on the instance set of the tournament.
+        next_instance_set : 
+            List of next instances to run the tournament on.
+
+        Returns
+        -------
+        ndarray
+            **pi_output**: Probabilities of improvement.
+        """
+
         v = self.v
         c = self.c
 
@@ -708,11 +999,19 @@ class CPPL:
         return pi_output
 
     def expected_improvement(self, suggestions, next_instance_set):
-        """Compute expected improvement via CPPL model.
+        """
+        Compute expected improvement via CPPL model.
 
-        :param suggestions: list of objects, [selector.pool.Configuration,]
-        :param next_instance_set: list, next instances to be run
-        :return ei: numpy.ndarray, expected improvements
+        Parameters
+        ----------
+        suggestions : list of selector.pool.Configuration
+            Suggested configurations.
+        next_instance_set : list of str
+            List of next instances to be run.
+        Returns
+        -------
+        ndarray
+            **ei**: Expected improvements.
         """
         mean = self.v
         var = self.c

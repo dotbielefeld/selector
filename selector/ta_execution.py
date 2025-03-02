@@ -1,6 +1,4 @@
 """This modules includes functions to execute the target algorithm."""
-
-
 import logging
 import time
 import subprocess
@@ -17,12 +15,19 @@ from threading import Thread
 from queue import Queue, Empty
 from selector.generators.default_point_generator import check_conditionals
 
+__all__ = ['kill_process_tree', 'cpu_bind_children', 'enqueue_output',
+           'get_running_processes', 'tae_from_cmd_wrapper_quality',
+           'tae_from_cmd_wrapper_rt', 'termination_check', 'time_measurment']
+
 
 def kill_process_tree(pid):
     """
     Propagates through the process tree and terminates/kills children.
 
-    : param pid: Process ID of the target algorithm
+    Parameters
+    ----------
+    pid : int
+        Process ID of the target algorithm.
     """
     try:
         parent = psutil.Process(pid)
@@ -44,10 +49,16 @@ def cpu_bind_children(chosen_core, p, set_affinity, logging):
     """
     Ensures target algorithm and child processes only use the chosen core.
 
-    : param chosen_core: core the process and children ought to stay on
-    : param p: target algorithm process
-    : param set_affinity: list that tracks cpu affinity of child processes
-    : param logging: initialized logging object
+    Parameters
+    ----------
+    chosen_core : int
+        Core the process and children ought to stay on.
+    p : object
+        Target algorithm process.
+    set_affinity : list
+        List that tracks CPU affinity of child processes.
+    logging : object
+        Initialized logging object.
     """
     try:
         if p.poll() is None:
@@ -76,9 +87,14 @@ def time_measurment(p, start, cpu_time_p):
     """
     Measures target algorithm runtime: 1. process tree or 2. process or 3. wall
 
-    : param p: target algorithm process
-    : param start: start time in seconds
-    : param cpu_time_p: last runtime measurement
+    Parameters
+    ----------
+    p : object
+        Target algorithm process.
+    start : float
+        Start time in seconds.
+    cpu_time_p : float
+        Last runtime measurement.
     """
     cpu_times = p.cpu_times()
     if cpu_times.children_user != 0 and cpu_times.children_user > cpu_time_p:
@@ -92,7 +108,16 @@ def time_measurment(p, start, cpu_time_p):
 
 
 def enqueue_output(out, queue):
-    """Enqueue output."""
+    """
+    Enqueue output.
+
+    Parameters
+    ----------
+    out : str
+        Target algorithm output.
+    queue : multiprocessing.Queue
+        Queue to get data.
+    """
     for line in iter(out.readline, b''):
         line = line.decode("utf-8")
         queue.put(line)
@@ -100,7 +125,14 @@ def enqueue_output(out, queue):
 
 
 def get_running_processes(ta_process_name):
-    """Get list of running processes."""
+    """
+    Get list of running processes.
+
+    Parameters
+    ----------
+    ta_process_name : str
+        Name of process to find all processes with.
+    """
     processes = []
     for proc in psutil.process_iter():
         try:
@@ -116,7 +148,24 @@ def get_running_processes(ta_process_name):
 
 def termination_check(process_pid, process_status, ta_process_name, python_pid,
                       conf_id, instance):
-    """Check if process was terminated."""
+    """
+    Check if process was terminated.
+
+    Parameters
+    ----------
+    process_pid : int
+        PID of the process to check.
+    process_status : str
+        Status of the process.
+    ta_process_name : str
+        Name of the ta process as noted in system.
+    python_pid : int
+        PID of the ray actor.
+    conf_id : uuid.UUID
+        ID of the configuration.
+    instance : str
+        Problem instance name.
+    """
     running_processes = get_running_processes(ta_process_name)
 
     sr = False
@@ -138,15 +187,37 @@ def termination_check(process_pid, process_status, ta_process_name, python_pid,
 def tae_from_cmd_wrapper_rt(conf, instance_path, cache, ta_command_creator, 
                             scenario):
     """
-    Execute the target algorithm with a given conf/instance pair by calling a user provided Wrapper that created a cmd
-    line argument that can be executed
-    :param conf: Configuration
-    :param instance: Instances
-    :param cache: Cache
-    :param ta_command_creator: Wrapper that creates a command line
-    :param scenario: AC scenario
-    return: conf, instance_path, bool if terminated
+    Execute the target algorithm with a given conf/instance pair by calling a user-provided Wrapper 
+    that creates a command line argument that can be executed.
+
+    Warning
+    -------
+    If your target algorithms spawn child processes, you might set scenario.cpu_binding = True.
+
+    Parameters
+    ----------
+    conf : selector.pool.Configuration
+        Configuration.
+    instance : str
+        instance name.
+    cache : selector.tournament_dispatcher.MiniTournamentDispatcher
+        Cache for all tournament data.
+    ta_command_creator : wrapper
+        Wrapper that creates a command line.
+    scenario : selector.scenario.Scenario
+        AC scenario.
+
+    Returns
+    -------
+    tuple
+        - **conf** : object,
+          Configuration.
+        - **instance_path** : str,
+          Path to the instance.
+        - **terminated** : bool,
+          Whether the process was terminated.
     """
+
     # todo logging dic should be provided somewhere else -> DOTAC-37
     logging.basicConfig(
         filename=f'./selector/logs/{scenario.log_folder}/wrapper_log_for{conf.id}.log',
@@ -317,13 +388,35 @@ def tae_from_cmd_wrapper_rt(conf, instance_path, cache, ta_command_creator,
 def tae_from_cmd_wrapper_quality(conf, instance_path, cache,
                                  ta_command_creator, scenario):
     """
-    Execute the target algorithm with a given conf/instance pair by calling a user provided Wrapper that created a cmd
-    line argument that can be executed
-    :param conf: Configuration
-    :param instance: Instances
-    :param cache: Cache
-    :param scenario: AC scenario
-    return: conf, instance_path, bool if terminated
+    Execute the target algorithm with a given conf/instance pair by calling a user-provided Wrapper 
+    that creates a command line argument that can be executed.
+
+    Warning
+    -------
+    If your target algorithms spawn child processes, you might set scenario.cpu_binding = True.
+
+    Parameters
+    ----------
+    conf : selector.pool.Configuration
+        Configuration.
+    instance : str
+        instance name.
+    cache : selector.tournament_dispatcher.MiniTournamentDispatcher
+        Cache for all tournament data.
+    ta_command_creator : wrapper
+        Wrapper that creates a command line.
+    scenario : selector.scenario.Scenario
+        AC scenario.
+
+    Returns
+    -------
+    tuple
+        - **conf** : object,
+          Configuration.
+        - **instance_path** : str,
+          Path to the instance.
+        - **terminated** : bool,
+          Whether the process was terminated.
     """
     logging.basicConfig(filename=f'''./selector/logs/{scenario.log_folder}/wrapper_log_for{conf.id}.log''',
                         level=logging.INFO,
@@ -394,8 +487,8 @@ def tae_from_cmd_wrapper_quality(conf, instance_path, cache,
                         {instance_path} {line}""")
 
                 if scenario.run_obj == "quality":
-                    output_tigger = re.search(scenario.quality_match, line)
-                    if output_tigger:
+                    output_trigger = re.search(scenario.quality_match, line)
+                    if output_trigger:
                         quality = re.findall(
                             f"{scenario.quality_extract}", line)
 

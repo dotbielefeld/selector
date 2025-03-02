@@ -1,3 +1,4 @@
+"""This modulke contains functions to aggregate and discern performances."""
 import numpy as np
 import json
 import os
@@ -12,11 +13,23 @@ from selector.generators.default_point_generator import check_conditionals
 def get_conf_time_out(results, configuration_id, instances_set):
     """
     Determine if a configuration timed out on any instance in a set
-    :param results:  dic. Run results of configuration
-    :param configuration_id: int.
-    :param instances_set: Set of instances.
-    :return: None if no results are present, True if conf timed out on any instance, False if it dit not.
+
+    Parameters
+    ----------
+    results : dic
+        Dictionary of results: {conf_id: {instance: runtime}}
+    configuration_id : uuid.UUID
+        ID of Configuration.
+    instances_set : list
+        Set of instances
+
+    Returns
+    -------
+    None or bool
+        None if no results are present, True if conf timed out on any instance,
+        False if it did not.
     """
+
     if configuration_id in list(results.keys()):
         conf_results_all_instances = results[configuration_id]
         conf_results_instances = [conf_results_all_instances[instance] for instance in
@@ -31,12 +44,23 @@ def get_conf_time_out(results, configuration_id, instances_set):
 
 def get_censored_runtime_for_instance_set(results, configuration_id, instances_set):
     """
-    For a configuration compute the total runtime needed only for instances in a set. If there are no results for the
-    conf return 0. Note that runs that were canceled by the monitor are not included since we count them as nan's
-    :param results: Dic of results: {conf_id: {instance: runtime}}
-    :param configuration_id: Id of the configuration
-    :param instances_set: List of instances
-    :return: Runtime of the configuration on instances
+    For a configuration compute the total runtime needed only for instances in a set. 
+    If there are no results for the conf, return 0. 
+    Note that runs that were canceled by the monitor are not included since we count them as NaNs.
+
+    Parameters
+    ----------
+    results : dict
+        Dictionary of results: {conf_id: {instance: runtime}}
+    configuration_id : uuid.UUID
+        ID of the configuration
+    instances_set : list
+        List of instances
+
+    Returns
+    -------
+    float
+        Runtime of the configuration on instances
     """
     if configuration_id in results.keys():
         conf_results_all_instances = results[configuration_id]
@@ -49,12 +73,27 @@ def get_censored_runtime_for_instance_set(results, configuration_id, instances_s
 
 def get_runtime_for_instance_set_with_timeout(results, configuration_id, instances_set, timeout, par_penalty=1):
     """
-    For a configuration compute the total runtime needed only for instances in a set. If there are no results for the
-    conf return 0. Note that runs that were canceled by the monitor are not included since we count them as nan's
-    :param results: Dic of results: {conf_id: {instance: runtime}}
-    :param configuration_id: Id of the configuration
-    :param instances_set: List of instances
-    :return: Runtime of the configuration on instances
+    For a configuration compute the total runtime needed only for instances in a set. 
+    If there are no results for the conf, return 0. 
+    Note that runs that were canceled by the monitor are not included since we count them as NaNs.
+
+    Parameters
+    ----------
+    results : dict
+        Dictionary of results: {conf_id: {instance: runtime}}
+    configuration_id : uuid.UUID
+        ID of the configuration
+    instances_set : list
+        List of instances
+    timeout : int
+        Time limit for target algorithm runs in seconds.
+    par_penalty : int
+        PAR penalty for timeout.
+
+    Returns
+    -------
+    float
+        Runtime of the configuration on instances
     """
     if configuration_id in results.keys():
         conf_results_all_instances = results[configuration_id]
@@ -66,11 +105,20 @@ def get_runtime_for_instance_set_with_timeout(results, configuration_id, instanc
 
 def get_censored_runtime_of_configuration(results, configuration_id):
     """
-    Get total runtime of a conf not conditioned on an instance set. Note that runs that were canceled by the monitor
-    are not included since we count them as nan's
-    :param results: Dic of results: {conf_id: {instance: runtime}}
-    :param configuration_id: Id of the configuration
-    :return:
+    Get total runtime of a conf not conditioned on an instance set. Note that runs that were 
+    canceled by the monitor are not included since we count them as nan's.
+
+    Parameters
+    ----------
+    results : dict
+        Results dictionary in the format {conf_id: {instance: runtime}}.
+    configuration_id : int
+        ID of the configuration.
+
+    Returns
+    -------
+    float
+        Total runtime of the configuration.
     """
     if configuration_id in results.keys():
         conf_results = results[configuration_id]
@@ -80,11 +128,21 @@ def get_censored_runtime_of_configuration(results, configuration_id):
 
 def get_instances_no_results(results, configuration_id, instance_set):
     """
-    For a configuration get a list of instances we have no results for yet
-    :param results: Dic of results: {conf_id: {instance: runtime}}
-    :param configuration_id: Id of the configuration
-    :param instance_set: List of instances
-    :return: List of configuration the conf has not been run on
+    For a configuration get a list of instances we have no results for yet.
+
+    Parameters
+    ----------
+    results : dict
+        Dic of results: {conf_id: {instance: runtime}}.
+    configuration_id : int
+        Id of the configuration.
+    instance_set : list
+        List of instances.
+
+    Returns
+    -------
+    list
+        List of configurations the conf has not been run on.
     """
     not_run_on = copy.deepcopy(instance_set)
 
@@ -104,10 +162,18 @@ def overall_best_update(tournaments, results, scenario, ac_runtime):
     """
     Over all tournaments get the best finisher with the most instance runs and shortest runtime and save that conf
     to a file.
-    :param cache:
-    :return:
-    """
 
+    Parameters
+    ----------
+    cache : selector.ta_result_store.TargetAlgorithmObserver
+            Tournament data cache.
+    results : dict
+        Dic of results: {conf_id: {instance: runtime}}.
+    scenario : selector.scenario.Scenario
+        AC scenario.
+    ac_runtime : int
+        Runtime spent by selector so far.
+    """
     number_of_instances_run = {}
     runtime = {}
     confs = {}

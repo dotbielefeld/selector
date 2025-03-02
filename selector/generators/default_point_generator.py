@@ -11,9 +11,17 @@ def check_conditionals(s, config_setting):
     """
     Check if conditionals are violated.
 
-    : param s: scenario object
-    : param config_setting: configuration setting to be checked
-    return: List of parameter names to turn off
+    Parameters
+    ----------
+    s : selector.scenario.Scenario
+        AC scenario.
+    config_setting : dict
+        Configuration setting to be checked.
+
+    Returns
+    -------
+    list
+        List of parameter names to turn off.
     """
     cond_vio = []
     for condition in s.conditionals:
@@ -52,9 +60,17 @@ def check_no_goods(s, config_setting):
     """
     Check if no goods are violated.
 
-    : param s: scenario object
-    : param config_setting: configuration setting to be checked
-    return: True/False, if no goods are violated
+    Parameters
+    ----------
+    s : selector.scenario.Scenario
+        AC scenario.
+    config_setting : dict
+        Configuration setting to be checked.
+
+    Returns
+    -------
+    bool
+        True if no goods are violated, False otherwise.
     """
     check = False
     for ng in s.no_goods:
@@ -70,11 +86,19 @@ def check_no_goods(s, config_setting):
 
 def default_point(s, identity):
     """
-    Default parameter setting is generated in Configuration format.
+    Generate the default parameter setting in Configuration format.
 
-    : param s: scenario object
-    : param identity: uuid to identify configuration
-    return: default configuration
+    Parameters
+    ----------
+    s : selector.scenario.Scenario
+        AC scenario.
+    identity : uuid.UUID
+        UUID to identify the configuration.
+
+    Returns
+    -------
+    selector.pool.Configuration
+        Default configuration.
     """
     config_setting = {}
 

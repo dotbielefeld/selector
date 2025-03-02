@@ -8,20 +8,35 @@ import selector.hp_point_selection as hps
 
 
 class FeatureGenerator:
-    """Generate features necessary to evaluate configurations."""
+    """
+    Generate features necessary to evaluate configurations.
+
+    Parameters
+    ----------
+    logger : logging.Logger
+        Logging object.
+    """
 
     def __init__(self, logger=None):
-        """Initialize feature generation class."""
         self.Generator = Generator
         self.logger = logger
 
     def percent_rel_evals(self, suggestions, data, nce):
         """Percentage of relatives so far evaluated.
 
-        :param suggestions: list, suggested points
-        :param data: data object, contains historic performance data
-        :param nce: int, number of configuration evaluations
-        :return div_feats: list, computed features of suggested points
+        Parameters
+        ----------
+        suggestions : list
+            Suggested points.
+        data : object
+            Contains historic performance data.
+        nce : int
+            Number of configuration evaluations.
+
+        Returns
+        -------
+        div_feats : list
+            Computed features of suggested points.
         """
         self.gen_counts = defaultdict(int)
 
@@ -43,13 +58,25 @@ class FeatureGenerator:
                            generators):
         """Average quality of relatives so far evaluated.
 
-        :param suggestions: list, suggested points
-        :param data: data object, contains historic performance data
-        :param nce: int, number of all configs evaluated
-        :param results: dict, qualities of configurations
-        :param cot: float, cut off time for tournaments
-        :param generators: list, all possible generators
-        :return div_feats: list, computed features of suggested points
+        Parameters
+        ----------
+        suggestions : list
+            Suggested points.
+        data : object
+            Contains historic performance data.
+        nce : int
+            Number of all configs evaluated.
+        results : dict
+            Qualities of configurations.
+        cot : float
+            Cut off time for tournaments (i.e. time limit).
+        generators : list
+            All possible generators.
+
+        Returns
+        -------
+        div_feats : list
+            Computed features of suggested points.
         """
         div_feats = []
         quals = {}
@@ -77,12 +104,23 @@ class FeatureGenerator:
     def best_rel_evals_qual(self, suggestions, data, generators, results, cot):
         """Best target value relatives so far evaluated.
 
-        :param suggestions: list, suggested points
-        :param data: data object, contains historic performance data
-        :param generators: list, all possible generators
-        :param results: dict, qualities of configurations
-        :param cot: float, cut off time for tournaments
-        :return div_feats: list, computed features of suggested points
+        Parameters
+        ----------
+        suggestions : list
+            Suggested points.
+        data : object
+            Contains historic performance data.
+        generators : list
+            All possible generators.
+        results : dict
+            Qualities of configurations.
+        cot : float
+            Cut off time for tournaments (i.e. time limit).
+
+        Returns
+        -------
+        div_feats : list
+            Computed features of suggested points.
         """
         div_feats = []
         best_val = {}
@@ -108,12 +146,23 @@ class FeatureGenerator:
     def std_rel_evals_qual(self, suggestions, data, generators, results, cot):
         """Std of quality of relatives so far evaluated.
 
-        :param suggestions: list, suggested points
-        :param data: data object, contains historic performance data
-        :param generators: list, all possible generators
-        :param results: dict, qualities of configurations
-        :param cot: float, cut off time for tournaments
-        :return div_feats: list, computed features of suggested points
+        Parameters
+        ----------
+        suggestions : list
+            Suggested points.
+        data : object
+            Contains historic performance data.
+        generators : list
+            All possible generators.
+        results : dict
+            Qualities of configurations.
+        cot : float
+            Cut off time for tournaments (i.e. time limit).
+
+        Returns
+        -------
+        div_feats : list
+            Computed features of suggested points.
         """
         div_feats = []
         qual_vals = {}
@@ -145,12 +194,21 @@ class FeatureGenerator:
     def diff_pred_real_qual(self, suggestions, data, predicted_quals, results):
         """Difference of predicted & real qual. of relatives evaluated so far.
 
-        :param suggestions: list, suggested points
-        :param data: data object, contains historic performance data
-        :param predicted_quals: nested list, predicted performance/quality for
-            suggested configurations
-        :param results: dict, qualities of configurations
-        :return div_feats: list, computed features of suggested points
+        Parameters
+        ----------
+        suggestions : list
+            Suggested points.
+        data : object
+            Contains historic performance data.
+        predicted_quals : list of lists
+            Predicted performance/quality for suggested configurations.
+        results : dict
+            Qualities of configurations.
+
+        Returns
+        -------
+        div_feats : list
+            Computed features of suggested points.
         """
         if not predicted_quals:
             div_feats = [[0] for _ in suggestions]
@@ -195,11 +253,19 @@ class FeatureGenerator:
     def avg_dist_evals(self, suggests, evals, psetting):
         """Average distance to all points so far evaluated.
 
-        :param suggestions: list, suggested points
-        :param evals: list, already evaluated points
-        :param psetting: scenario.parameter
-        :return div_feats: list, average distances to all already evaluated
-            points
+        Parameters
+        ----------
+        suggestions : list
+            Suggested points.
+        evals : list
+            Already evaluated points.
+        psetting : object
+            Scenario parameters.
+
+        Returns
+        -------
+        div_feats : list
+            Average distances to all already evaluated points.
         """
         if evals:
 
@@ -227,10 +293,17 @@ class FeatureGenerator:
     def avg_dist_sel(self, suggests, psetting):
         """Average distance to points in the current selection.
 
-        :param suggestions: list, suggested points
-        :param psetting: scenario.parameter
-        :return div_feats: list, average distances to points in current
-                                 selection
+        Parameters
+        ----------
+        suggestions : list
+            Suggested points.
+        psetting : object
+            Scenario parameters.
+
+        Returns
+        -------
+        div_feats : list
+            Average distances to points in the current selection.
         """
         suggestions = copy.deepcopy(suggests)
 
@@ -251,11 +324,21 @@ class FeatureGenerator:
     def avg_dist_rel(self, suggests, evals, psetting, generators):
         """Average distances to relatives.
 
-        :param suggests: list, suggested points
-        :param evals: list, already evaluated points
-        :param psetting: scenario.parameter
-        :param generators: list, available generators
-        :return div_feats: list, computed features of suggested points
+        Parameters
+        ----------
+        suggests : list
+            Suggested points.
+        evals : list
+            Already evaluated points.
+        psetting : object
+            Scenario parameters.
+        generators : list
+            Available generators.
+
+        Returns
+        -------
+        div_feats : list
+            Computed features of suggested points.
         """
         if evals:
             suggestions = copy.deepcopy(suggests)
@@ -298,12 +381,23 @@ class FeatureGenerator:
     def expected_qual(self, suggs, sm, cot, surr, next_instance_set):
         """Expected quality of points.
 
-        :param suggests: list, suggested points
-        :param sm: object, surrogates.SurrogateManager()
-        :param cot: int, cut off time
-        :param surr: which surrogate to use
-        :param next_instance_set: next instances that will be run
-        :return dyn_feats: list, computed features of suggested points
+        Parameters
+        ----------
+        suggests : list
+            Suggested points.
+        sm : object
+            Surrogates.SurrogateManager().
+        cot : int
+            Cut off time (i.e. time limit).
+        surr : str
+            Which surrogate to use.
+        next_instance_set : list
+            Next instances that will be run.
+
+        Returns
+        -------
+        dyn_feats : list
+            Computed features of suggested points.
         """
         suggests = copy.deepcopy(suggs)
         dyn_feats = []
@@ -329,12 +423,23 @@ class FeatureGenerator:
                           next_instance_set):
         """Probability of quality of points to improve.
 
-        :param suggests: list, suggested points
-        :param sm: object, surrogates.SurrogateManager()
-        :param cot: int, cut off time
-        :param results: list, results of points evaluated so far
-        :param surr: which surrogate to use
-        :return dyn_feats: list, computed features of suggested points
+        Parameters
+        ----------
+        suggests : list
+            Suggested points.
+        sm : object
+            Surrogates.SurrogateManager().
+        cot : int
+            Cut off time (i.e. time limit).
+        results : list
+            Results of points evaluated so far.
+        surr : str
+            Which surrogate to use.
+
+        Returns
+        -------
+        dyn_feats : list
+            Computed features of suggested points.
         """
         suggests = copy.deepcopy(suggs)
         dyn_feats = []
@@ -357,11 +462,21 @@ class FeatureGenerator:
     def uncertainty_improve(self, suggs, sm, cot, surr, next_instance_set):
         """Probability of quality of points to improve.
 
-        :param suggests: list, suggested points
-        :param sm: object, surrogates.SurrogateManager()
-        :param cot: int, cut off time
-        :param surr: which surrogate to use
-        :return dyn_feats: list, computed features of suggested points
+        Parameters
+        ----------
+        suggests : list
+            Suggested points.
+        sm : object
+            Surrogates.SurrogateManager().
+        cot : int
+            Cut off time (i.e. time limit).
+        surr : str
+            Which surrogate to use.
+
+        Returns
+        -------
+        dyn_feats : list
+            Computed features of suggested points.
         """
         suggests = copy.deepcopy(suggs)
         dyn_feats = []
@@ -385,11 +500,21 @@ class FeatureGenerator:
     def expected_improve(self, suggs, sm, cot, surr, next_instance_set):
         """Probability of quality of points to improve.
 
-        :param suggests: list, suggested points
-        :param sm: object, surrogates.SurrogateManager()
-        :param cot: int, cut off time
-        :param surr: which surrogate to use
-        :return dyn_feats: list, computed features of suggested points
+        Parameters
+        ----------
+        suggests : list
+            Suggested points.
+        sm : object
+            Surrogates.SurrogateManager().
+        cot : int
+            Cut off time (i.e. time limit).
+        surr : str
+            Which surrogate to use.
+
+        Returns
+        -------
+        dyn_feats : list
+            Computed features of suggested points.
         """
         suggests = copy.deepcopy(suggs)
         dyn_feats = []
@@ -411,8 +536,15 @@ class FeatureGenerator:
     def surr_votes(self, dyn_feats):
         """Multiply surr features to get agreement features.
 
-        :param dyn_feats: list of np.ndarray, dynamic features.
-        :return dyn_feats: list of np.ndarray, extended dynamic features.
+        Parameters
+        ----------
+        dyn_feats : list of np.ndarray
+            Dynamic features.
+
+        Returns
+        -------
+        dyn_feats : list of np.ndarray
+            Extended dynamic features.
         """
         nr_surrs = len(Surrogates)
         new_feature_sets = []
@@ -433,10 +565,19 @@ class FeatureGenerator:
     def static_feature_gen(self, suggestions, epoch, max_epoch):
         """Generate static features.
 
-        :param suggestions: list, suggested configurations
-        :param epoch: int, current epoch
-        :param max_epoch: int, total number of epochs
-        :return static_features: list, static features
+        Parameters
+        ----------
+        suggestions : list
+            Suggested configurations.
+        epoch : int
+            Current epoch.
+        max_epoch : int
+            Total number of epochs.
+
+        Returns
+        -------
+        static_features : list
+            Static features.
         """
         if self.logger is not None:
             static_time = time.time()
@@ -464,14 +605,25 @@ class FeatureGenerator:
                             cot, results, next_instance_set):
         """Generate dynamic features.
 
-        :param suggestions: list, suggested configurations
-        :param data: data object, contains historic data
-        :param predicted_quals: nested list, predicted performance/quality for
-            suggested configurations
-        :param sm: object, surrogates.SurrogateManager()
-        :param cot: int, cut off time
-        :param results: list, results of points evaluated so far
-        :return dyn_feats: list, dynamic features
+        Parameters
+        ----------
+        suggestions : list
+            Suggested configurations.
+        data : object
+            Contains historic data.
+        predicted_quals : list of lists
+            Predicted performance/quality for suggested configurations.
+        sm : object
+            Surrogates.SurrogateManager().
+        cot : int
+            Cut off time (i.e. time limit).
+        results : list
+            Results of points evaluated so far.
+
+        Returns
+        -------
+        dyn_feats : list
+            Dynamic features.
         """
         if self.logger is not None:
             all_dyn_time = time.time()
@@ -617,16 +769,29 @@ class FeatureGenerator:
                               psetting, predicted_quals, evaluated):
         """Generate diversity features.
 
-        :param suggestions: list, suggested configurations
-        :param data: data object, contains historic data
-        :param results: dict, qualities of configurations
-        :param cot: float, cut off time for tournaments
-        :param psetting: scenario.parameter
-        :param predicted_quals: list, predicted qualities of
-            points evaluated so far
-        :param evaluated: list, all evaluated points so far
-        :param sm: initialized surrogates.SurrogateManager()
-        :return div_feats: list, diversity features
+        Parameters
+        ----------
+        suggestions : list
+            Suggested configurations.
+        data : object
+            Contains historic data.
+        results : dict
+            Qualities of configurations.
+        cot : float
+            Cut off time for tournaments.
+        psetting : object
+            Scenario parameters.
+        predicted_quals : list
+            Predicted qualities of points evaluated so far.
+        evaluated : list
+            All evaluated points so far.
+        sm : object
+            Initialized Surrogates.SurrogateManager().
+
+        Returns
+        -------
+        div_feats : list
+            Diversity features.
         """
         if self.logger is not None:
             div_time = time.time()
