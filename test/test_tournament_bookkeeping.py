@@ -35,7 +35,7 @@ class TestTournamentBookkeeping(unittest.TestCase):
                   "total_runtime": 1200, "generator_multiple": 3, "set_size": 50, "solve_match": [],
                   "termination_criterion": "total_runtime", "par": 1, "ta_pid_name": "glucose-simp",
                   "memory_limit": 1023 * 3, "log_folder": "run_1", "initial_instance_set_size": 5, "runtime_feedback": ""}
-        self.scenario = Scenario("./test_data/test_example.txt", self.parser)
+        self.scenario = Scenario("./test/test_data/test_example.txt", self.parser)
         self.ta_wrapper = TAP_Work_Wrapper()
         self.global_cache = TargetAlgorithmObserver.remote(self.scenario)
         self.random_generator = PointGen(self.scenario, random_point)
