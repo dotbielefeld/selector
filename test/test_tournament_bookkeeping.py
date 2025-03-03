@@ -22,12 +22,6 @@ class TestTournamentBookkeeping(unittest.TestCase):
     def setUp(self):
 
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        print(dir_path)
-        print(dir_path)
-        print(dir_path)
-        print(dir_path)
-        print(dir_path)
-        print(dir_path)
         self.parser = {"check_path": False, "seed": 42, "ta_run_type": "import_wrapper", "winners_per_tournament": 1,
                   # import_wrapper
                   "initial_instance_set_sideterministicze": 2, "tournament_size": 3, "number_tournaments": 3,
