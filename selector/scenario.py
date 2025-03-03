@@ -136,6 +136,10 @@ class Scenario:
         name_map = {"algo": "ta_cmd"}
         scenario_dict = {}
 
+        print(scenario_path)
+        print(scenario_path)
+        print(scenario_path)
+
         with open(scenario_path, 'r') as sc:
             for line in sc:
                 line = line.strip()

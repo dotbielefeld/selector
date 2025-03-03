@@ -61,6 +61,17 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
         """Set up unittest."""
         file = open('./test/scenario', 'rb')
         self.s = pickle.load(file)
+        self.s.instances_dir = './test/test_data/cadical/'
+        self.s.instance_file = './test_data/cadical/instances_cadical_circuit_fuzz.txt'
+        print(self.s.instance_file)
+        print(self.s.instance_file)
+        print(self.s.instance_file)
+        print(self.s.instance_file)
+        import os
+        os.sys('ls')
+        os.sys('ls')
+        os.sys('ls')
+        os.sys('ls')
         file.close()
         np.random.seed(42)
         self.random_generator = PointGen(self.s, random_point, seed=42)
@@ -78,11 +89,11 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
         for conf in generated_points:
             if generated_points[-1] == conf:
                 self.results[conf.id] = \
-                    {'circuit_fuzz/fuzz_100_367.cnf': np.random.randint(2, 15),
-                     'circuit_fuzz/fuzz_100_367.cnf': np.random.randint(2, 15)}
+                    {'test/test_data/cadical/circuit_fuzz/fuzz_100_367.cnf': np.random.randint(2, 15),
+                     'test/test_data/cadical/circuit_fuzz/fuzz_100_367.cnf': np.random.randint(2, 15)}
             else:
                 self.results[conf.id] = \
-                    {'circuit_fuzz/fuzz_100_367.cnf': np.random.randint(2, 15)}
+                    {'test/test_data/cadical/circuit_fuzz/fuzz_100_367.cnf': np.random.randint(2, 15)}
 
         self.hist = {}
 
@@ -99,7 +110,7 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
             self.hist[tourn_id] = \
                 Tournament(tourn_id, [best_finisher], worst_finisher,
                            [], configuration_ids, {},
-                           ['circuit_fuzz/fuzz_100_367.cnf'],
+                           ['test/test_data/cadical/circuit_fuzz/fuzz_100_367.cnf'],
                            0)
 
         self.default_generator = PointGen(self.s, default_point, seed=42)
@@ -131,13 +142,13 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
 
         sm = SurrogateManager(self.s, seed=42)
         smac_conf = sm.suggest(Surrogates.SMAC, self.s,
-                               5, None, None, ['circuit_fuzz/fuzz_100_367.cnf'])
+                               5, None, None, ['test/test_data/cadical/circuit_fuzz/fuzz_100_367.cnf'])
 
         ggapp_conf = sm.suggest(Surrogates.GGApp, self.s, 5, self.hist,
                                 self.results, None)
         cppl_conf = \
             sm.suggest(Surrogates.CPPL, self.s, 5, None, None,
-                       ['circuit_fuzz/fuzz_100_367.cnf'])[0]
+                       ['test/test_data/cadical/circuit_fuzz/fuzz_100_367.cnf'])[0]
 
         confs = def_conf + ran_conf + var_conf + lhc_conf + smac_conf + \
             ggapp_conf + cppl_conf
@@ -193,7 +204,7 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
                                                            evaluated)),
                                  axis=1)
 
-            instances = ['circuit_fuzz/fuzz_100_367.cnf']
+            instances = ['test/test_data/cadical/circuit_fuzz/fuzz_100_367.cnf']
 
             for surrogate in sm.surrogates.keys():
                 if surrogate is Surrogates.SMAC:
@@ -276,7 +287,7 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
                                                      maximin)
 
             smac_conf = sm.suggest(Surrogates.SMAC, self.s, 5,
-                                   None, None, ['circuit_fuzz/fuzz_100_367.cnf'])
+                                   None, None, ['test/test_data/cadical/circuit_fuzz/fuzz_100_367.cnf'])
 
             ggapp_conf = sm.suggest(Surrogates.GGApp, self.s, 5, self.hist,
                                     self.results, None)

@@ -4,9 +4,9 @@ deterministic = 0
 run_obj = runtime # comment
 overall_obj = mean
 cutoff_time = 300
-instance_file = ./test_data/modular_kcnf/training.txt
-test_instance_file = ./test_data/modular_kcnf/test_small.txt
-feature_file = ./test_data/modular_kcnf/Features_modular_kcnf fakecsv.csv
+instance_file = ./test/test_data/modular_kcnf/training.txt
+test_instance_file = ./test/test_data/modular_kcnf/test_small.txt
+feature_file = ./test/test_data/modular_kcnf/Features_modular_kcnf fakecsv.csv
 paramfile = ./test/test_data/proxies/test_params.pcs
 wallclock_limit = 172800
 
