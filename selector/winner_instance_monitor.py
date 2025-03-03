@@ -1,3 +1,4 @@
+"""In this module the instance monitor is defined."""
 import ray
 import logging
 import time
@@ -6,17 +7,26 @@ import numpy as np
 
 @ray.remote(num_cpus=1)
 class WinnerInstanceMonitor:
-    def __init__(self, sleep_time, cache, delta_cap=1):
-        """
-        Monitor whether the runtime of a configuration on an instance exceeds the worst runtime of a tournament winning
-        configuration on that instance multiplied by a constant (delta_cap).
-        When a runtime exceeds this bound the configuration/instance pair is terminated.
-        The terminated configuration/instance pairs are stored in the termination_history to avoid double killing
-        :param sleep_time: Int. Wake up and check whether runtime is exceeded
-        :param cache: Ray cache
-        :param delta_cap: Int. Constant the current best runtime for each instance is multiplied by
-        :return: conf/instance that are killed.
-        """
+    """
+    Monitor whether the runtime of a configuration on an instance exceeds the
+    worst runtime of a tournament winning configuration on that instance
+    multiplied by a constant (delta_cap). When a runtime exceeds this bound
+    the configuration/instance pair is terminated.
+    The terminated configuration/instance pairs are stored in the
+    termination_history to avoid double killing
+
+    Parameters
+    ----------
+    sleep_time : int
+        Wake up and check whether runtime is exceeded
+    cache : selector.ta_result_store.TargetAlgorithmObserver
+        Stores all tournament related data.
+    scenario : selector.scenario.Scenario
+        AC scenario.
+    delta_cap : int
+        Constant the current best runtime for each instance is multiplied by.
+    """
+    def __init__(self, sleep_time, cache, scenario, delta_cap=1):
         self.sleep_time = sleep_time
         self.cache = cache
         self.tournaments = []
@@ -24,10 +34,15 @@ class WinnerInstanceMonitor:
         self.instance_results = {}
         self.delta_cap = delta_cap
 
-        logging.basicConfig(filename=f'./selector/logs/winner_inst_monitor.log', level=logging.INFO,
+        logging.basicConfig(filename=f'{scenario.log_location}{scenario.log_folder}winner_inst_monitor.log',
+                            level=logging.INFO,
                             format='%(asctime)s %(message)s')
 
     def monitor(self):
+        """
+        Monitors a tournament and terminates a configuration/instance pair if
+        necessary.
+        """
         logging.info("Starting monitor")
 
         while True:
@@ -104,10 +119,20 @@ class WinnerInstanceMonitor:
 
     def termination_check(self, conf_id, instance):
         """
-        Check if we have killed a conf/instance pair already. Return True if we did not.
-        :param conf_id:
-        :param instance:
-        :return:
+        Check if we have killed a conf/instance pair already. Return True if
+        we did not.
+
+        Parameters
+        ----------
+        conf_id : uuid.UUID
+            ID of the configuration to be checked.
+        instance : str
+            Name of instance to be checked.
+
+        Returns
+        -------
+        bool
+            False if configuration/instance pair killed, True else.
         """
         if conf_id not in self.termination_history:
             return True
@@ -117,10 +142,26 @@ class WinnerInstanceMonitor:
             return False
 
     def update_termination_history(self, conf_id, instance_id):
+        """
+        Stores termination events in history.
+
+        Parameters
+        ----------
+        conf_id : uuid.UUID
+            ID of the configuration that was killed.
+        instance_id : str
+            Name of instance the configuration was killed on.
+
+        Returns
+        -------
+        bool
+            False if configuration/instance pair killed, True else.
+        """
         if conf_id not in self.termination_history:
             self.termination_history[conf_id] = []
 
         if instance_id not in self.termination_history[conf_id]:
             self.termination_history[conf_id].append(instance_id)
         else:
-            logging.info(f"This should not happen: we kill something we already killed")
+            logging.info(
+                "This should not happen: we kill something we already killed")

@@ -1,27 +1,45 @@
-import os
-from ta_execution import tae_from_cmd_wrapper_rt, tae_from_cmd_wrapper_quality
+"""This module contains functions for bookkeeping of tournaments."""
+from selector.ta_execution import tae_from_cmd_wrapper_rt, tae_from_cmd_wrapper_quality
 import time
-import logging
+
 
 def get_tournament_membership(tournaments, conf):
     """
-    For a list of tournaments, determine of which a conf is a member.
-    :param tournaments: List
-    :param conf: Conf
-    :return:
+    For a list of tournaments, determine which ones a configuration is a member of.
+
+    Parameters
+    ----------
+    tournaments : list
+        List of tournaments.
+    conf : object
+        Configuration.
+
+    Returns
+    -------
+    list
+        Tournaments the configuration is a member of.
     """
     for t in tournaments:
         if conf.id in t.configuration_ids or conf.id in t.worst_finisher or conf.id in t.best_finisher:
             return t
 
+
 def get_get_tournament_membership_with_ray_id(task_id, tournaments):
     """
-    For a ray task id return the tournament it belongs to
-    :param task_id:
-    :param tournaments:
-    :return:
-    """
+    For a Ray task ID, return the tournament it belongs to.
 
+    Parameters
+    ----------
+    task_id : object
+        The Ray task ID.
+    tournaments : list
+        List of tournaments.
+
+    Returns
+    -------
+    selector.pool.Tournament
+        The tournament the task ID belongs to.
+    """
     ob_t = None
     for t in tournaments:
         t_objects = t.ray_object_store
@@ -32,12 +50,22 @@ def get_get_tournament_membership_with_ray_id(task_id, tournaments):
                     pass
     return ob_t
 
+
 def get_tasks(taskdic, tasks):
     """
-    Map back a ray object to the conf/instance pair.
-    :param taskdic: Nested dic of {conf: {instance: ray object}}
-    :param tasks: List with ray objects that are running
-    :return: List of [conf, instances] pairs that are currently running
+    Map back a Ray object to the configuration/instance pair.
+
+    Parameters
+    ----------
+    taskdic : dict
+        Nested dictionary of the form `{conf: {instance: ray object}}`.
+    tasks : list
+        List of Ray objects that are currently running.
+
+    Returns
+    -------
+    list
+        List of `[conf, instance]` pairs that are currently running.
     """
     running_tasks = []
     for conf, instance in taskdic.items():
@@ -46,16 +74,30 @@ def get_tasks(taskdic, tasks):
                 running_tasks.append([conf, instance_name])
     return running_tasks
 
+
 def update_tasks(tasks, next_task, tournament, global_cache, ta_wrapper, scenario):
     """
+    Update tasks and add new tasks if needed.
 
-    :param tasks: List of ray objects
-    :param next_task: List of [conf, instance] pairs
-    :param tournament: Tournament the next task is part of
-    :param global_cache: Ray cache
-    :param ta_wrapper:
-    :param scenario:
-    :return: Updated list of ray objects
+    Parameters
+    ----------
+    tasks : list
+        List of Ray objects.
+    next_task : list
+        List of `[conf, instance]` pairs.
+    tournament : object
+        Tournament the next task is part of.
+    global_cache : object
+        Ray cache.
+    ta_wrapper : object
+        Target algorithm wrapper.
+    scenario : object
+        Scenario configuration.
+
+    Returns
+    -------
+    list
+        Updated list of Ray objects.
     """
     for t in next_task:
         if t[1] is not None:
@@ -76,15 +118,27 @@ def update_tasks(tasks, next_task, tournament, global_cache, ta_wrapper, scenari
 def termination_check(termination_criterion, main_loop_start, total_runtime, total_tournament_number,
                       tournament_counter):
     """
-    Check what termination criterion for the main tournament loop has been parsed and return true,
+    Check the termination criterion for the main tournament loop and return `True` 
     if the criterion is not met yet.
-    :param termination_criterion: Str. termination criterion for the tournament main loop
-    :param main_loop_start: Int. Time of the start of the tournament main loop
-    :param total_runtime: Int. Total runtime for the main loop, when the termination criterion is "total_runtime"
-    :param total_tournament_number: Int. Total number of tournaments for the main loop,
-                                    when the termination criterion is "total_tournament_number"
-    :param tournament_counter: Int. Number of tournaments, that finished already
-    :return: Bool. True, when the termination criterion is not met, False otherwise
+
+    Parameters
+    ----------
+    termination_criterion : str
+        Termination criterion for the tournament main loop.
+    main_loop_start : int
+        Time of the start of the tournament main loop.
+    total_runtime : int, optional
+        Total runtime for the main loop when the termination criterion is "total_runtime".
+    total_tournament_number : int, optional
+        Total number of tournaments for the main loop when the termination criterion is 
+        "total_tournament_number".
+    tournament_counter : int
+        Number of tournaments that have already finished.
+
+    Returns
+    -------
+    bool
+        `True` if the termination criterion is not met, `False` otherwise.
     """
     if termination_criterion == "total_runtime":
         return time.time() - main_loop_start < total_runtime
@@ -94,6 +148,3 @@ def termination_check(termination_criterion, main_loop_start, total_runtime, tot
 
     else:
         return time.time() - main_loop_start < total_runtime
-
-
-

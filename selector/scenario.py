@@ -1,3 +1,4 @@
+"""In this module the scenario object is constructed."""
 import os
 import warnings
 import argparse
@@ -8,14 +9,18 @@ from selector.read_files import get_ta_arguments_from_pcs, read_instance_paths, 
 
 
 class Scenario:
+    """
+    Scenario class that stores all relevant information for the configuration
 
+    Parameters
+    ----------
+    scenario : dict or str
+        If string, a scenario file will be read in.
+    cmd : dict
+        Command line arguments which augment the scenario file/dict.
+    """
     def __init__(self, scenario, cmd={'check_path': False}):
-        """
-        Scenario class that stores all relevant information for the configuration
-        :param scenario: dic or string. If string, a scenario file will be read in.
-        :param cmd: dic, Command line arguments which augment the scenario file/dic
-        """
-
+            
         if isinstance(scenario, str):
             scenario = self.scenario_from_file(scenario)
 
@@ -45,17 +50,20 @@ class Scenario:
 
         self.verify_scenario()
 
-        # with open(f'./selector/logs/{self.log_folder}/scenario.pkl', 'wb') as out:
-        #    pickle.dump(scenario, out)
-
     def read_scenario_files(self, scenario):
-
         """
         Read in the relevant files needed for a complete scenario
-        :param scenario: dic.
-        :return: scenario: dic.
-        """
 
+        Parameters
+        ----------
+        scenario : dict
+            The scenario dictionary.
+
+        Returns
+        -------
+        scenario : dict
+            The updated scenario dictionary.
+        """
         # read in
         if "paramfile" in scenario:
             scenario["parameter"], scenario["no_goods"], scenario["conditionals"] = get_ta_arguments_from_pcs(scenario["paramfile"])
@@ -113,13 +121,19 @@ class Scenario:
             self.log_folder = "latest"
 
     def scenario_from_file(self, scenario_path):
-
         """
         Read in an ACLib scenario file
-        :param scenario_path: Path to the scenario file
-        :return: dic containing the scenario information
-        """
 
+        Parameters
+        ----------
+        scenario_path : str
+            Path to the scenario file.
+
+        Returns
+        -------
+        dict
+            Dictionary containing the scenario information.
+        """
         name_map = {"algo": "ta_cmd"}
         scenario_dict = {}
 
@@ -144,17 +158,20 @@ class Scenario:
 
 
 class LoadOptionsFromFile (argparse.Action):
-    def __call__ (self, parser, namespace, values, option_string=None):
+    def __call__(self, parser, namespace, values, option_string=None):
         with values as f:
             parser.parse_args(f.read().split(), namespace)
 
 
 def parse_args():
     """
-    Argparser
-    :return: dic. Dic of arguments parsed
-    """
+    Argument parser
 
+    Returns
+    -------
+    dict
+        Dictionary of parsed arguments.
+    """
     parser = argparse.ArgumentParser()
     hp = parser.add_argument_group("Hyperparameters of selector")
     so = parser.add_argument_group("Scenario options")
@@ -165,15 +182,17 @@ def parse_args():
     parser.add_argument('--check_path', default=False, type=lambda x: (str(x).lower() == 'true'))
 
     hp.add_argument('--seed', default=42, type=int)
+    hp.add_argument('--verbosity', default=0, type=int)
     hp.add_argument('--ta_pid_name', type=str, default="")
     hp.add_argument('--log_folder', type=str, default="latest")
+    hp.add_argument('--log_location', type=str, default="./selector/logs/")
     hp.add_argument('--memory_limit', type=int, default=1023*3)
 
     hp.add_argument('--ta_run_type', type=str, default="import_wrapper")
     hp.add_argument('--wrapper_mod_name', type=str, default="")
     hp.add_argument('--wrapper_class_name', type=str, default="")
     hp.add_argument('--quality_match', type=str, default="")
-    hp.add_argument('--solve_match', type=str, default="")
+    hp.add_argument('--solve_match', nargs='+', type=str, default=[])
     hp.add_argument('--quality_extract', type=str, default="")
 
     hp.add_argument('--winners_per_tournament', type=int, default=1)
@@ -184,7 +203,7 @@ def parse_args():
     hp.add_argument('--monitor', type=str, default="tournament_level")
     hp.add_argument('--surrogate_amortized_time', type=int, default=30)
 
-    hp.add_argument('--termination_criterion', type=str, default="runtime")
+    hp.add_argument('--termination_criterion', type=str, default="total_runtime")
     hp.add_argument('--total_tournament_number', type=int, default=10)
     hp.add_argument('--model_update_iteration', type=int, default=3)
 
@@ -192,6 +211,10 @@ def parse_args():
     hp.add_argument('--initial_instance_set_size', type=int, default=5)
     hp.add_argument('--set_size', type=int, default=50)
     hp.add_argument('--instances_dir', type=str, default="")
+    hp.add_argument('--smac_pca_dim', type=int, default=8)
+    hp.add_argument('--tn', type=int, default=100)
+    hp.add_argument('--cleanup', type=bool, default=False)
+    hp.add_argument('--cpu_binding', type=bool, default=False)
 
     so.add_argument('--scenario_file', type=str)
     so.add_argument('--ta_cmd', type=str)
@@ -199,13 +222,13 @@ def parse_args():
     so.add_argument('--run_obj', type=str)
     so.add_argument('--overall_obj', type=str)
     so.add_argument('--cutoff_time', type=str)
+    so.add_argument('--crash_cost', type=float, default='10000000')
     so.add_argument('--wallclock_limit', type=str)
     so.add_argument('--instance_file', type=str)
     so.add_argument('--feature_file', type=str)
     so.add_argument('--paramfile', type=str)
     so.add_argument('--qual_max', type=bool, default=False)
-    so.add_argument('--output_trigger', action='store_true')
-    so.set_defaults(output_trigger=False)
+    so.add_argument('--runtime_feedback', type=str, default='')
 
     so.add_argument('--w_1', type=float, default=-0.8356679356095191)
     so.add_argument('--w_2', type=float, default=0.8572501015854599)

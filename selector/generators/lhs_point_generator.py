@@ -6,11 +6,9 @@ from enum import Enum
 import uuid
 from selector.pool import Configuration, ParamType, Generator
 from selector.generators.default_point_generator import (
-    check_conditionals,
     check_no_goods
 )
-from selector.generators.random_point_generator import reset_no_goods,\
-    reset_conditionals
+from selector.generators.random_point_generator import reset_no_goods
 
 
 class LHSType(Enum):
@@ -30,9 +28,17 @@ class Criterion(Enum):
 
 def generate_space(s):
     """
-    Generating the sampling space for the lhc according to scenario parameters.
+    Generate the sampling space for the Latin Hypercube (LHC) according to scenario parameters.
 
-    : param scenario: scenario object
+    Parameters
+    ----------
+    s : selector.scenario.Scenario
+        AC scenario.
+
+    Returns
+    -------
+    skopt.Space object
+        Latin Hypercube space.
     """
     space_list = []
     for ps in s.parameter:
@@ -52,12 +58,23 @@ def get_n_points(space, n_samples, seed, lhs_type, criterion):
     """
     Generate n samples.
 
-    : param space: sampling space for the lhc
-    : param n_samples: number of samples to generate
-    : param seed: will set random seed, if not False
-    : param lhs_type: sampling type parameter for skopt.sampler.Lhs
-    : param criterion: optimization criterion for skopt.sampler.Lhs
-    return: n samples
+    Parameters
+    ----------
+    space : skopt.Space object
+        Sampling space for the Latin Hypercube (LHC).
+    n_samples : int
+        Number of samples to generate.
+    seed : int
+        Random seed; will be set if not False.
+    lhs_type : 
+        Sampling type parameter for `skopt.sampler.Lhs`.
+    criterion : 
+        Optimization criterion for `skopt.sampler.Lhs`.
+
+    Returns
+    -------
+    list of dict
+        Generated n samples.
     """
     if lhs_type == LHSType.centered:
         lt = 'centered'
@@ -87,12 +104,26 @@ def get_n_points(space, n_samples, seed, lhs_type, criterion):
 def lhc_points(s, identity, n_samples=1, seed=False, lhs_type=LHSType.classic,
                criterion=None):
     """
-    Configuration is generated via variable graph method.
+    Generate configuration using the variable graph method.
 
-    : param s: scenario object
-    : param identity: uuid to identify configuration
-    : param n_samples: int, number of picks from parameter space
-    return: n configurations
+    Parameters
+    ----------
+    s : selector.scenario.Scenario
+        AC scenario.
+    identity : uuid.UUID
+        This UUID is just a placeholder.
+    n_samples : int
+        Number of picks from the parameter space.
+    seed: int
+        Random seed.
+    lhs_type: selector.generators.lhs_point_generator.LHSType
+        Type of LHC sampling.
+    criterion: selector.generators.lhs_point_generator.Criterion
+        Criterions of LHC optimizatio.
+    Returns
+    -------
+    list of selector.pool.Configuration
+        List of generated configurations.
     """
     space = generate_space(s)
 

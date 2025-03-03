@@ -12,7 +12,7 @@ class TestInstanceSets(unittest.TestCase):
     def setUp(self):
         sys.path.append(os.getcwd())
         parser = {"check_path": False, "initial_instance_set_size": 3, "set_size": 6}
-        self.scenario = Scenario("./selector/input/scenarios/test_example.txt", parser)
+        self.scenario = Scenario("./selector/test/test_data/test_example.txt", parser)
         self.instance_selector = InstanceSet(self.scenario.instance_set, self.scenario.initial_instance_set_size,
                                              self.scenario.set_size)
 
@@ -23,8 +23,9 @@ class TestInstanceSets(unittest.TestCase):
         self.assertEqual(self.instance_selector.instance_sets, [])
         self.assertEqual(self.instance_selector.subset_counter, 0)
         self.assertEqual(self.instance_selector.instance_increment_size,
-                         len(self.instance_selector.instance_set) /
-                         np.floor(len(self.instance_selector.instance_set)/self.instance_selector.start_instance_size))
+                         round(len(self.instance_selector.instance_set) /
+                               np.floor(len(self.instance_selector.instance_set) /
+                                        self.instance_selector.start_instance_size), 1))
 
     def test_next_set(self):
         with self.assertRaises(ValueError):

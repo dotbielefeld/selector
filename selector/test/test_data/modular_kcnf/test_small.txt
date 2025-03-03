@@ -1,0 +1,3 @@
+./test_data/modular_kcnf/00004.cnf
+./test_data/modular_kcnf/00005.cnf
+./test_data/modular_kcnf/00006.cnf

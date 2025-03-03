@@ -51,7 +51,10 @@ from threadpoolctl import ThreadpoolController
 controller = ThreadpoolController()
 
 
-#  Adjust SMAC's LocalSearch to only suggest as many points as we actually ask
+__all__ = ['SmacSurr']
+
+
+# Adjust SMAC's LocalSearch to only suggest as many points as we actually ask
 class LocalSearch(LocalSearch):
     """Implementation of SMAC's local search."""
 
@@ -148,15 +151,23 @@ class LocalSearch(LocalSearch):
 
 
 class SmacSurr():
-    """Surrogate from SMAC."""
+    """Surrogate from SMAC.
+
+    Note
+    ----
+    Implementation is using source code of the package smac.
+
+    Parameters
+    ----------
+    scenario : selector.scenario.Scenario
+        AC scenario.
+    seed : int
+        Random seed.
+    pca_dim : int
+        PCA dimension for SMAC surrogates instance feature PCA.
+    """
 
     def __init__(self, scenario, seed=False, pca_dim=8):
-        """Initialize smac surrogate.
-
-        :param scenario: dict, scenario translated for smac
-        :param seed: int, random seed
-        :param pca_dim: int, PCA on instance features (default same as GGApp)
-        """
         if not seed:
             self.seed = False
         else:
@@ -227,8 +238,21 @@ class SmacSurr():
     def transfom_selector_scenario_for_smac(self, scenario):
         """Transform scenario to SMAC formulation.
 
-        :param scenario: scenario object from selector
-        :return scenario: scenario object from SMAC
+        Parameters
+        ----------
+        scenario : selector.scenario.Scenario
+            AC scenario.
+        Returns
+        -------
+        tuple
+            - **s** : smac.scenario,
+              AC scenario in SMAC format.
+            - **config_space** : smac.configspace.ConfigurationSpace,
+              Parameter space definition in SMAC format.
+            - **types** : list,
+              Parameter types.
+            - **bounds** : list of float,
+              Parameter bounds.
         """
         config_space = ConfigurationSpace()
         types = []
@@ -447,8 +471,16 @@ class SmacSurr():
     def transform_values(self, conf, pred=False):
         """Transform configuration values in SMAC format.
 
-        :param conf: object, selector.pool.Configuration
-        :return config: dict, parameter values
+        Parameters
+        ----------
+        conf : selector.pool.Configuration
+            Configuration to be transformed.
+        pred : bool
+            True if configuration is prepared for prediction.
+        Returns
+        -------
+        dict
+            Transformed configuration values.
         """
         config = {}
 
@@ -518,10 +550,18 @@ class SmacSurr():
     def update(self, history, configs, results, terminations, ac_runtime=None):
         """Update SMAC epm.
 
-        :param history: Tournament history
-        :param conf: object, selector.pool.Configuration
-        :param state: object selector.pool.Status, status of this point
-        :param tourn_nr: int, number of tournament, which to update with
+        Parameters
+        ----------
+        history : list of selector.pool.Tournament
+            Tournament history.
+        configs : list of selector.pool.Configuration
+            Configurations that participated in the tournament.
+        results : dict
+            Results of the tournament.
+        terminations : dict
+            Information about terminations of runs that occurred.
+        ac_runtime : int
+            Total AC runtime in seconds so far.
         """
         config_dict = {}
         for c in configs:
@@ -590,11 +630,21 @@ class SmacSurr():
                                              ins, self.seed)
 
     def get_suggestions(self, scenario, n_samples, *args):
-        """Get point suggestions from SMAC.
+        """
+        Suggest configurations to run next based on the next instance set to run on.
 
-        :param scenario: scenario object from selector
-        :param n_samples: int, number of point suggestions to generate
-        :return suggestions: list, list of configurations
+        Parameters
+        ----------
+        scenario : selector.scenario.Scenario
+            AC scenario.
+        n_samples : int
+            Number of configurations to return.
+        *args : Any
+            Catches unneeded arguments due to the implementation of other surrogates.
+        Returns
+        -------
+        list of selector.pool.Configuration
+            Suggested configurations.
         """
         suggestions = []
         added = 0
@@ -611,10 +661,11 @@ class SmacSurr():
         self.surr.scenario.acq_opt_challengers = n_samples
 
         # Tell SMAC features of the next instances
-        next_inst_feats = []
-        for inst in args[2]:
-            next_inst_feats.append(self.pca_inst_feats[self.inst_ids.index(inst)])
-        self.surr.model.instance_features = numpy.array(next_inst_feats)
+        if args[2] is not None:
+            next_inst_feats = []
+            for inst in args[2]:
+                next_inst_feats.append(self.pca_inst_feats[self.inst_ids.index(inst)])
+            self.surr.model.instance_features = numpy.array(next_inst_feats)
         
         while len(suggestions) < n_samples:
             sugg = self.surr.choose_next()
@@ -673,9 +724,16 @@ class SmacSurr():
     def transform_for_epm(self, confs, pred=False):
         """Transform configuration to suit SMAC epm.
 
-        :param confs: list of objects, [selector.pool.Configuration,]
-        :param pred: bool, True if used in predict function
-        :return configs: list, transformed configurations
+        Parameters
+        ----------
+        confs : list selector.pool.Configuration
+            Configurations to be transformed.
+        pred : bool
+            True if prepared for prediction.
+        Returns
+        -------
+        ndarray
+            Transformed configurations.
         """
         configs = []
 
@@ -693,11 +751,22 @@ class SmacSurr():
         return configs
 
     def predict(self, confs, inst):
-        """Predict performance/quality of configurations with SMAC epm.
+        """
+        Predict performance/quality of configurations with GGA++ EPM.
 
-        :param confs: list of objects, [selector.pool.Configuration,]
-        :return [mean, var]: numpy.ndarray, mean and variance of predicted
-            performance/quality
+        Parameters
+        ----------
+        confs : list of selector.pool.Configuration
+            Suggested configurations.
+        inst : list 
+            List of next instances to run the tournament on.
+        Returns
+        -------
+        tuple
+            - ndarray,
+              Mean of predicted performance/quality.
+            - ndarray,
+              Variance of predicted performance/quality.
         """
         all_configs = self.transform_for_epm(confs, pred=True)
 
@@ -742,10 +811,19 @@ class SmacSurr():
             return None
 
     def expected_improvement(self, suggestions, _):
-        """Compute expected improvement via SMAC epm.
+        """
+        Compute expected improvement via SMAC model.
 
-        :param suggestions: list of objects, [selector.pool.Configuration,]
-        :return ei: numpy.ndarray, expected improvements
+        Parameters
+        ----------
+        suggestions : list of selector.pool.Configuration
+            Suggested configurations.
+        _ : list of str
+            List of next instances to be run.
+        Returns
+        -------
+        ndarray
+            **ei**: Expected improvements.
         """
         configs = self.transform_for_epm(suggestions)
 
@@ -763,10 +841,22 @@ class SmacSurr():
             return [[0] for s in suggestions]
 
     def probability_improvement(self, suggestions, results, i):
-        """Compute probability of improvement.
+        """
+        Compute probability of improvement.
 
-        :param suggestions: list of objects, [selector.pool.Configuration,]
-        :return pi: numpy.ndarray, probabilities of improvement
+        Parameters
+        ----------
+        suggestions : list of selector.pool.Configuration
+            Suggested configurations.
+        results : dict
+            Performances of the configuration on the instance set of the tournament.
+        i : list
+            List of next instances to run the tournament on.
+
+        Returns
+        -------
+        ndarray
+            **probimp**: Probabilities of improvement.
         """
         if len(results.values()) == 0:
             import sys
@@ -795,10 +885,25 @@ class SmacSurr():
     def pca_inst_feat_file(self, train_insts, feature_file, insts, pca_feats):
         """Generate instance feature file with PCA features.
 
-        :param train_insts: str, path to training instance file
-        :param feature_file: str, path to original feature file
-        :param insts: list, instance names as strings
-        :param pca_feats: instance features after PCA
+        Parameters
+        ----------
+        train_insts : str
+            Name of instance file.
+        feature_file : str
+            path to file with problem instance features.
+        insts : list of str
+            Complete training instance set.
+        pca_feats : ndarray
+            Problem instance features.
+
+        Returns
+        -------
+        tuple
+            - ndarray,
+              Instance features after PCA.
+            - list,
+              Instance names.
+
         """
         training_instances = []
         with open(f'{train_insts}', 'r') as f:
@@ -809,7 +914,7 @@ class SmacSurr():
             feature_names = f.readline()
 
         self.selector_scenario.feature_file = \
-            './selector/logs/' + self.selector_scenario.log_folder + \
+            self.selector_scenario.log_location + self.selector_scenario.log_folder + \
             '/features_PCA.txt'
 
         with open(self.selector_scenario.feature_file, 'w') as f:

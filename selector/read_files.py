@@ -1,3 +1,4 @@
+"""This module contains functions for reading in files for the scenario."""
 import re
 import warnings
 from selector.pool import Parameter, ParamType
@@ -11,13 +12,22 @@ boolean_options = boolean_no + boolean_yes
 
 def get_ta_arguments_from_pcs(para_file):
     """
-     Read in a file that contains the target algorithm parameters. The file is .pcs and adheres to the structure of
-     AClib.
-    :param para_file: str. Path to the .pcs file
-    :return: list, list. A list containing information on the parameters of the target algorithm & a list containing
-    parameter value assignments that are not possible
-    """
+    Read a file that contains the target algorithm parameters.
 
+    The file follows the `.pcs` format and adheres to the AClib structure.
+
+    Parameters
+    ----------
+    para_file : str
+        Path to the `.pcs` file.
+
+    Returns
+    -------
+    tuple
+        - **parameters**: list, information on the parameters of the target algorithm.
+        - **no_goods**: list, information about forbidden parameter value combinations.
+        - **conditionals**: list, information about conditional parameter value combinations.
+    """
     no_goods = []
     parameters = []
     conditionals = {}
@@ -82,18 +92,31 @@ def get_ta_arguments_from_pcs(para_file):
 def get_categorical(param_name, param_info):
     """
     For a categorical parameter: check if its parsed attributes are valid and extract information on the parameter
-    :param param_name: name of the parameter
-    :param param_info: raw parameter information
-    :return: param_type , bounds, defaults of the parameter
-    """
 
+    Parameters
+    ----------
+    param_name : str
+        Name of the parameter.
+    param_info : dict
+        Raw parameter information.
+
+    Returns
+    -------
+    tuple
+        - **param_type** : str,
+          Type of the parameter.
+        - **bounds** : tuple,
+          Formatted bounds of the parameter.
+        - **defaults** : tuple,
+          Default values of the parameter.
+        - **bounds** : tuple,
+          Original bounds of the parameter.
+    """
     bounds = re.search(r'\{(.*)\}', param_info).group().strip("{ }").split(",")
     bounds = [b.replace(" ","") for b in bounds]
     defaults = re.findall(r'\[(.*)\]*]', param_info)
     original_bound = []
 
-    # When len(bounds) ==1: The parameter can not be configured. Later we have to also raise a warning that conditions
-                                                                # on it are ignored
     if len(bounds) == 1:
         warnings.warn(f"For parameter {param_name} bounds of length 1 were passed. The parameter will "
                       f"be ignored for configuration.")
@@ -128,11 +151,26 @@ def get_categorical(param_name, param_info):
 def get_continuous(param_name, param_info):
     """
     For a continuous parameter: check if its parsed attributes are valid and extract information on the parameter
-    :param param_name: name of the parameter
-    :param param_info: raw parameter information
-    :return: param_type , bounds, defaults,scale of the parameter
-    """
 
+    Parameters
+    ----------
+    param_name : str
+        Name of the parameter.
+    param_info : dict
+        Raw parameter information.
+
+    Returns
+    -------
+    tuple
+        - **param_type** : str,
+          Type of the parameter.
+        - **bounds** : tuple,
+          Formatted bounds of the parameter.
+        - **defaults** : tuple,
+          Default values of the parameter.
+        - **bounds** : tuple,
+          Original bounds of the parameter.
+    """
     scale = re.search(r'[a-zA-Z]+', param_info)
     param_info = re.findall(r'\[[^\]]*]', param_info)
     bounds = param_info[0].strip("[] ").split(",")
@@ -172,9 +210,21 @@ def get_continuous(param_name, param_info):
 def get_conditional(param_name, param_info, parameters):
     """
     For a parameter: get the information on conditionals
-    :param param_name: name of the parameter
-    :param param_info: raw parameter information
-    :return: condition_param, condition
+
+    Parameters
+    ----------
+    param_name : str
+        Name of the parameter.
+    param_info : dict
+        Raw parameter information.
+
+    Returns
+    -------
+    tuple
+        - **condition_param** : str,
+          Conditional parameter.
+        - **condition** : str,
+          The condition.
     """
     param_info = param_info.strip(" | ")
 
@@ -201,11 +251,20 @@ def get_conditional(param_name, param_info, parameters):
 
 def get_no_goods(no_good, parameters):
     """
-    Takes an string of form: {param_1=value_1 , param_2=value_2, ...} and returns a dic of the no good
-    :param no_good: str. Takes an string of form: {param_1=value_1 , param_2=value_2, ...}
-    :return: dic
-    """
+    Takes a string of the form: {param_1=value_1 , param_2=value_2, ...} and returns a dictionary of the no good
 
+    Parameters
+    ----------
+    no_good : str
+        Takes a string of the form: {param_1=value_1 , param_2=value_2, ...}
+    parameters : dict
+        Raw parameter information.
+
+    Returns
+    -------
+    dict
+        A dictionary of the no good.
+    """
     forbidden = {}
     no_good = no_good.strip("{ }").split(",")
 
@@ -239,10 +298,17 @@ def get_no_goods(no_good, parameters):
 def read_instance_paths(instance_set_path):
     """
     Read in instances from an AClib instance file
-    :param instance_set_path: str. Path to the instance file
-    :return: list. List of paths to the instances
-    """
 
+    Parameters
+    ----------
+    instance_set_path : str
+        Path to the instance file.
+
+    Returns
+    -------
+    list
+        List of paths to the instances.
+    """
     instance_set = []
 
     with open(instance_set_path, 'r') as f:
@@ -264,10 +330,20 @@ def read_instance_paths(instance_set_path):
 def read_instance_features(feature_set_path):
     """
     Read in features from an AClib features file
-    :param feature_set_path: str. Path to the feature file
-    :return: dic, list. Dic with the read in features list with the feature names
-    """
 
+    Parameters
+    ----------
+    feature_set_path : str
+        Path to the feature file.
+
+    Returns
+    -------
+    tuple
+        - **features** : dict,
+          Dictionary with the read-in features.
+        - **feature_names** : list,
+          List with the feature names.
+    """
     features = {}
     with open(feature_set_path, 'r') as f:
         lines = f.readlines()

@@ -1,5 +1,4 @@
 """Main module of selector."""
-
 import sys
 import os
 sys.path.append(os.getcwd())
@@ -15,10 +14,10 @@ import logging
 import numpy as np
 import ray
 
-from scenario import Scenario, parse_args
-from log_setup import clear_logs, check_log_folder, save_latest_logs
-from mini_tournaments import offline_mini_tournament_configuration
-from best_conf import safe_best
+from selector.scenario import Scenario, parse_args
+from selector.log_setup import clear_logs, check_log_folder, save_latest_logs
+from selector.mini_tournaments import offline_mini_tournament_configuration
+from selector.best_conf import safe_best
 
 sys.path.append(os.getcwd())
 
@@ -36,14 +35,14 @@ if __name__ == "__main__":
 
     np.random.seed(scenario.seed)
 
-    check_log_folder(scenario.log_folder)
-    clear_logs(scenario.log_folder)
+    check_log_folder(scenario, scenario.log_folder)
+    clear_logs(scenario, scenario.log_folder)
 
     logging.\
         basicConfig(level=logging.INFO,
                     format='%(asctime)s %(message)s',
                     handlers=[logging.FileHandler(
-                        f"./selector/logs/{scenario.log_folder}/main.log"), ])
+                        f"{scenario.log_location}{scenario.log_folder}/main.log"), ])
 
     logger = logging.getLogger(__name__)
 
@@ -60,7 +59,11 @@ if __name__ == "__main__":
 
     offline_mini_tournament_configuration(scenario, ta_wrapper, logger)
 
-    save_latest_logs(scenario.log_folder)
-    safe_best(sys.path[-1] + f'/selector/logs/{scenario.log_folder}/',
-              scenario.cutoff_time)
+    save_latest_logs(scenario.log_folder, scenario)
+    if scenario.run_obj == 'total_runtime':
+        safe_best(f'./selector/logs/{scenario.log_folder}/',
+                  scenario.cutoff_time)
+    elif scenario.run_obj == 'quality':
+        safe_best(f'./selector/logs/{scenario.log_folder}/',
+                  sys.maxsize)
     ray.shutdown()

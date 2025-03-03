@@ -1,3 +1,4 @@
+"""This module contains functions for managing tournaments."""
 import numpy as np
 import ray
 import uuid
@@ -5,18 +6,41 @@ import time
 import copy
 
 from selector.pool import Tournament
-from selector.tournament_performance import get_censored_runtime_for_instance_set, get_instances_no_results, get_conf_time_out, get_runtime_for_instance_set_with_timeout
+from selector.tournament_performance import (
+    get_censored_runtime_for_instance_set,
+    get_instances_no_results,
+    get_conf_time_out,
+    get_runtime_for_instance_set_with_timeout
+)
+
 
 class MiniTournamentDispatcher:
+    """
+    Dispatches tournaments.
+    """
 
     def init_tournament(self, results, configurations, instance_partition, instance_partition_id):
         """
-        Create a new tournament out of the given configurations and list of instances.
-        :param results: Results cache.
-        :param configurations: List. Configurations for the tournament
-        :param instance_partition: List. List of instances
-        :param instance_partition_id: Id of the instance set.
-        :return: Tournament, first conf/instance assignment to run
+        Create a new tournament from the given configurations and list of instances.
+
+        Parameters
+        ----------
+        results : dict
+            Dic of results: {conf_id: {instance: runtime}}.
+        configurations : list
+            Configurations for the tournament.
+        instance_partition : list
+            List of instances.
+        instance_partition_id : int
+            ID of the instance set.
+
+        Returns
+        -------
+        tuple
+            - selector.pool.Tournament,
+              Tournament object
+            - list,
+              The first configuration/instance assignment to run.
         """
         # Get the configuration that has seen the most instances before
         conf_instances_ran = []
@@ -63,14 +87,30 @@ class MiniTournamentDispatcher:
 
     def update_tournament(self, results, tasks, finished_conf, tournament, number_winner, time_out, par_penalty):
         """
-        Given a finishing conf we update the tournament if necessary. I.e the finishing conf has seen all instances of
-        the tournament. In that case, it is moved either to the best or worst finishers. best finishers are ordered.
-        Worst finishers are not
-        :param results: Ray cache object.
-        :param finished_conf: Configuration that finished or was canceled
-        :param tournament: Tournament the finish conf was a member of
-        :param number_winner: Int that determines the number of winners per tournament
-        :return: updated tournament, stopping signal
+        Update the tournament based on a finished configuration.
+
+        If the finished configuration has seen all instances of the tournament, it is moved 
+        either to the best or worst finishers. Best finishers are ordered, while worst 
+        finishers are not.
+
+        Parameters
+        ----------
+        results : dict
+            Dic of results: {conf_id: {instance: runtime}}.
+        finished_conf : selector.pool.Configuration
+            Configuration that finished or was canceled.
+        tournament : selector.pool.Tournament
+            Tournament the finished configuration was a member of.
+        number_winner : int
+            Determines the number of winners per tournament.
+
+        Returns
+        -------
+        tuple
+            - selector.pool.Tournament,
+              Updated tournament 
+            - bool,
+              stopping signal.
         """
         evaluated_instances = results[finished_conf.id].keys()
         bfi_add = False
@@ -85,8 +125,7 @@ class MiniTournamentDispatcher:
             # We can than remove the conf from further consideration
             if finished_conf in tournament.configurations:
                 tournament.configurations.remove(finished_conf)
-            else:
-                print(f"conf not {finished_conf}")
+
             finished_conf_runtime_mean = get_runtime_for_instance_set_with_timeout(results, finished_conf.id,
                                                                                    tournament.instance_set, time_out, par_penalty) / len(tournament.instance_set)
 
@@ -119,7 +158,6 @@ class MiniTournamentDispatcher:
             else:
                 tournament.best_finisher.append(finished_conf)
 
-
         # If there are no configurations left we end the tournament
         if len(tournament.configurations) == 0:
             stop = True
@@ -130,14 +168,27 @@ class MiniTournamentDispatcher:
 
     def next_tournament_run(self, results, tournament, finished_conf):
         """
-        Decided which conf/instance pair to run next. Rule: If the configuration that has just finished was not killed
-        nor saw all instances, it is assigned a new instance at random. Else, the configuration with the lowest runtime
-        so far is selected.
-        :param results: Ray cache
-        :param tournament: The tournament we opt to create a new task for
-        :param finished_conf: Configuration that just finished before
-        :return: configuration, instance pair to run next
+        Decide which configuration/instance pair to run next.
+
+        Rule: If the configuration that has just finished was neither killed nor has seen 
+        all instances, it is assigned a new instance at random. Otherwise, the configuration 
+        with the lowest runtime so far is selected.
+
+        Parameters
+        ----------
+        results : dict
+            Dic of results: {conf_id: {instance: runtime}}.
+        tournament : selector.pool.Tournament
+            The tournament for which a new task is to be created.
+        finished_conf : selector.pool.Configuration
+            Configuration that just finished.
+
+        Returns
+        -------
+        list
+            Configuration and instance pair to run next.
         """
+
         next_possible_conf = {}
 
         # For each conf still in the running we need to figure out on which instances it already ran or is still

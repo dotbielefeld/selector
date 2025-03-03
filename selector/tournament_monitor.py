@@ -1,24 +1,32 @@
+"""In this module the tournament monitor is defined."""
 import ray
 import logging
 import time
 import numpy as np
 
 
-from tournament_performance import get_censored_runtime_for_instance_set,get_conf_time_out, get_runtime_for_instance_set_with_timeout
+from selector.tournament_performance import get_censored_runtime_for_instance_set,get_conf_time_out, get_runtime_for_instance_set_with_timeout
 
 
 @ray.remote(num_cpus=1)
 class Monitor:
+    """
+    Monitor whether the live total runtime of a running conf is exceeding the
+    accumulated runtime of the worst finisher, given that we have already
+    enough finisher. While up the monitor may kill multiple conf/instance
+    pairs. To avoid killing a ta run twice, the monitor stores what it has
+    already killed.
+
+    Parameters
+    ----------
+    sleep_time : int
+        Wake up and check whether runtime is exceeded
+    cache : selector.ta_result_store.TargetAlgorithmObserver
+        Stores all tournament related data.
+    scenario : selector.scenario.Scenario
+        AC scenario.
+    """
     def __init__(self, sleep_time, cache, scenario):
-        """
-        Monitor whether the live total runtime of a running conf is exceeding the accumulated runtime of the worst finisher,
-         given that we have already enough finisher. While up the monitor may kill multiple conf/instance pairs. To avoid
-         killing a ta run twice, the monitor stores what it has already killed.
-        :param sleep_time: Int. Wake up and check whether runtime is exceeded
-        :param cache: Ray cache
-        :param number_of_finisher: Int.
-        :return: conf/instance that are killed.
-        """
         self.sleep_time = sleep_time
         self.cache = cache
         self.number_of_finisher = scenario.winners_per_tournament
@@ -26,10 +34,14 @@ class Monitor:
         self.time_out = scenario.cutoff_time
         self.par = scenario.par
 
-        logging.basicConfig(filename=f'./selector/logs/{scenario.log_folder}/monitor.log', level=logging.INFO,
+        logging.basicConfig(filename=f'{scenario.log_location}{scenario.log_folder}/monitor.log', level=logging.INFO,
                             format='%(asctime)s %(message)s')
 
     def monitor(self):
+        """
+        Monitors a tournament and terminates a configuration/instance pair if
+        necessary.
+        """
         logging.info("Starting monitor")
         while True:
             # Get results that are already available for ta runs
@@ -103,10 +115,22 @@ class Monitor:
 
     def termination_check(self, conf_id, instance, termination_history):
         """
-        Check if we have killed a conf/instance pair already. Return True if we did not.
-        :param conf_id:
-        :param instance:
-        :return:
+        Check if we have killed a conf/instance pair already. Return True if
+        we did not.
+
+        Parameters
+        ----------
+        conf_id : uuid.UUID
+            ID of the configuration to be checked.
+        instance : str
+            Name of instance to be checked.
+        termination_history : dict
+            Record of configuration/instance terminations.
+
+        Returns
+        -------
+        bool
+            False if configuration/instance pair killed, True else.
         """
         if conf_id not in termination_history:
             return True
@@ -114,10 +138,3 @@ class Monitor:
             return True
         else:
             return False
-
-
-
-
-
-
-

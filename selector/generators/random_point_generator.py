@@ -5,19 +5,27 @@ import math
 import sys
 from selector.pool import Configuration, ParamType, Generator
 from selector.generators.default_point_generator import (
-    check_conditionals,
     check_no_goods
 )
 
 
 def reset_no_goods(s, config_setting):
     """
-    Checking for no goods and resetting parameter values if violated.
+    Check for no-goods and reset parameter values if violated.
 
-    : param s: scenario object
-    : param config_setting: parameter configuration
-    return: config_estting adjusted to no goods
+    Parameters
+    ----------
+    s : selector.scenario.Scenario
+        AC scenario.
+    config_setting : dict
+        Parameter configuration.
+
+    Returns
+    -------
+    dict
+        Adjusted parameter configuration.
     """
+
     for ng in s.no_goods:
 
         violation = True
@@ -54,10 +62,19 @@ def reset_conditionals(s, config_setting, cond_vio):
     """
     Checking for conditionals and resetting parameter values if violated.
 
-    : param s: scenario object
-    : param config_setting: parameter configuration
-    : param cond_vio: list of parameters that violate conditionals
-    return: config_estting adjusted to no goods
+    Parameters
+    ----------
+    s : selector.scenario.Scenario
+        AC scenario.
+    config_setting : dict
+        Parameter configuration.
+    cond_vio : list
+        List of parameters that violate conditionals.
+
+    Returns
+    -------
+    dict
+        Adjusted parameter configuration.
     """
     for cv in cond_vio:
         for ps in s.parameter:
@@ -69,10 +86,17 @@ def reset_conditionals(s, config_setting, cond_vio):
 
 def random_set_conf(parameter):
     """
-    Generating random configuration values for given param space.
+    Generating random configuration values for given parameter space.
 
-    : param parameter: dataclass Parameter, filled out with scenario data
-    return: randomly set parameters
+    Parameters
+    ----------
+    parameter : selector.pool.Parameter
+        Dataclass filled out with scenario data.
+
+    Returns
+    -------
+    dict
+        Randomly set parameters.
     """
     config_setting = {}
 
@@ -156,10 +180,17 @@ def random_point(s, identity, seed=False):
     """
     Random parameter setting is generated in Configuration format.
 
-    : param s: scenario object
-    : param identity: uuid to identify configuration
-    return: randomly set configuration, which accounts for no goods
-    and conditionals
+    Parameters
+    ----------
+    s : selector.scenario.Scenario
+        AC scenario.
+    identity : uuid.UUID
+        UUID to identify configuration.
+
+    Returns
+    -------
+    selector.pool.Configuration
+        Randomly generated configuration.
     """
     if seed:
         np.random.seed(seed)

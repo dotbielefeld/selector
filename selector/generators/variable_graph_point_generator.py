@@ -45,8 +45,15 @@ def variable_graph_structure(s):
     """
     General variable graph structure is read from scenario.
 
-    : param s: scenario object
-    return: general variable graph structure
+    Parameters
+    ----------
+    s : selector.scenario.Scenario
+        AC scenario.
+
+    Returns
+    -------
+    dict of lists
+        General variable graph structure.
     """
     parameters = [param.name for param in s.parameter]
     graph_structure = {}
@@ -75,11 +82,21 @@ def decide_for_O(config_label, C, N, cn):
     """
     Decide new label in case of label O.
 
-    : param config_label: current labeling of parameters
-    : param C: first configuration
-    : param N: second configuration
-    : param cn: child node in the graph
-    return: config_label
+    Parameters
+    ----------
+    config_label : dict
+        Current labeling of parameters.
+    C : dict
+        First configuration.
+    N : dict
+        Second configuration.
+    cn : str
+        Child node in the graph.
+
+    Returns
+    -------
+    dict
+        Updated configuration label.
     """
     if config_label[cn] == LabelType.O:
         if cn in C.conf and cn in N.conf:
@@ -106,10 +123,19 @@ def check_valid(config_label, C, N, cn):
     """
     Check if parameter is actually set in Configuration.
 
-    : param config_label: current labeling of parameters
-    : param C: first configuration
-    : param N: second configuration
-    return: config_label
+    Parameters
+    ----------
+    config_label : dict
+        Current labeling of parameters.
+    C : dict
+        First configuration.
+    N : dict
+        Second configuration.
+
+    Returns
+    -------
+    dict
+        Updated configuration label.
     """
     if cn in config_label:
         if config_label[cn] == LabelType.C and cn not in C.conf:
@@ -124,12 +150,23 @@ def set_config_label(paths, config_label, cn, C, N):
     """
     Set label.
 
-    : param paths: nodes visited until current node
-    : param config_label: current labeling
-    : param cn: current node
-    : param C: first Configuration
-    : param N: second configuration
-    return: config_label
+    Parameters
+    ----------
+    paths : dict
+        Nodes visited until the current node.
+    config_label : selector.generators.variable_graph_point_generator.LabelType
+        Current labeling.
+    cn : str
+        Current node.
+    C : dict
+        First configuration.
+    N : dict
+        Second configuration.
+
+    Returns
+    -------
+    dict
+        Updated config_label.
     """
     parent_nodes = copy.copy(paths[cn])
     parent_nodes.remove(cn)
@@ -147,14 +184,25 @@ def set_config_label(paths, config_label, cn, C, N):
 
 def reset_no_goods(s, config_setting, label, C, N):
     """
-    Check if no goods violated and change value if so.
+    Check if no goods are violated and change value if so.
 
-    : param s: scenario
-    : param config_setting: parameter value setting
-    : param label: label
-    : param C: first Configuration
-    : param N: second configuration
-    return: config_setting
+    Parameters
+    ----------
+    s : selector.scenario.Scenario
+        AC scenario.
+    config_setting : dict
+        Parameter value setting.
+    label : str
+        Label.
+    C : dict
+        First configuration.
+    N : dict
+        Second configuration.
+
+    Returns
+    -------
+    dict
+        Updated config_setting.
     """
     for ng in s.no_goods:
         params = list(ng.keys())
@@ -179,11 +227,21 @@ def graph_crossover(graph_structure, C, N, s):
     """
     Crossover according to variable graph.
 
-    : param graph_structure: general variable graph structure
-    : param C: configuration 1
-    : param N: configuration 2
-    : param s: scenario
-    return: new configuration setting
+    Parameters
+    ----------
+    graph_structure : dict of list
+        General variable graph structure.
+    C : dict
+        Configuration 1.
+    N : dict
+        Configuration 2.
+    s : selector.scenario.Scenario
+        AC scenario.
+
+    Returns
+    -------
+    dict
+        New configuration setting.
     """
     params = list(graph_structure.keys())
     curr_node = params[0]
@@ -269,12 +327,24 @@ def graph_crossover(graph_structure, C, N, s):
 
 def choose_parents(mode, data, lookback, results):
     """
-    Pick Configurations according to mode.
+    Pick configurations according to mode.
 
-    : param mode: Enum, mode of parent selection
-    : param data: Tournament data to select parents from
-    : param lookback: int, how many tournaments from the past are included
-    return: configurations C and N
+    Parameters
+    ----------
+    mode : selector.generators.variable_graph_point_generator.Mode
+        Mode of parent selection.
+    data : dict of selector.pool.Tournament
+        Tournament data to select parents from.
+    lookback : int
+        Number of past tournaments included.
+
+    Returns
+    -------
+    tuple
+        - **C** : dict,
+          Configuration C.
+        - **N** : dict,
+          Configuration N.
     """
     if lookback < len(data):
         data = list(data.values())[:len(data) - lookback]
@@ -373,13 +443,25 @@ def variable_graph_point(s, identity, results, mode=Mode.best_and_random,
     """
     Configuration is generated via variable graph method.
 
-    : param s: scenario object
-    : param identity: uuid to identify configuration
-    : param mode: Enum, mode of parent selection
-    : param data: Tournament data to select parents from
-    : param lookback: int, how many tournaments from the past are included
-    : param seed: sets random seed
-    return: configuration
+    Parameters
+    ----------
+    s : selector.scenario.Scenario
+        AC scenario.
+    identity : uuid.UUID
+        UUID to identify configuration.
+    mode : selector.generators.variable_graph_point_generator.Mode
+        Mode of parent selection.
+    data : dict of selector.pool.Tournament
+        Tournament data to select parents from.
+    lookback : int
+        Number of past tournaments included.
+    seed : int
+        Random seed.
+
+    Returns
+    -------
+    selector.pool.Configuration
+        Configuration generated with GGA graph.
     """
     if seed:
         np.random.seed(seed)

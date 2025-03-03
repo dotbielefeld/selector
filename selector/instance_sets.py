@@ -1,16 +1,28 @@
+"""In this module the choice of instance sets for tournaments is handled."""
 import numpy as np
 import math
 
+__all__ = ['TimedInstanceSet']
+
 
 class InstanceSet:
-    def __init__(self, instance_set, start_instance_size, set_size=None, instance_increment_size=None, target_reach=None):
-        """
+    """
+    Selects the next instance set to run a tournament on.
 
-        :param instance_set: set of instances available.
-        :param start_instance_size: size of the first instances se to be created
-        :param set_size: If not set the biggest instance set to be created includes all instances in instance_set. If
-        set the biggest instance set will be of the size of the given int.
-        """
+    Parameters
+    ----------
+    instance_set : list
+        Set of instances available.
+    start_instance_size : int
+        Size of the first instances se to be created.
+    set_size : int
+        If not set, the biggest instance set to be created includes all instances in training instance_set. If set, the biggest instance set will be of the size of the given int.
+    instance_increment_size : int
+        Number of instances to add to the next instance set.
+    target_reach : int
+        If set, Selector will try to reach full instance set size after this many tournaments.
+    """
+    def __init__(self, instance_set, start_instance_size, set_size=None, instance_increment_size=None, target_reach=None):
         self.instance_set = instance_set
         self.start_instance_size = start_instance_size
         self.instance_sets = []
@@ -38,9 +50,9 @@ class InstanceSet:
 
     def next_set(self):
         """
-        Create a new instance set with instances not included in any created set before. This is not thread safe and
-        should only be called from the master node.
-        :param id: int. Id of the new instance set. If it is the first set id will be 1.
+        Create a new instance set with instances not included in any created
+        set before. This is not thread safe and should only be called from the
+        master node.
         """
         # Get instances that were already chosen
         if self.subset_counter == 0:
@@ -72,10 +84,19 @@ class InstanceSet:
 
     def get_subset(self, next_tournament_set_id):
         """
-        Create an instance set for the next tournament. The set contains all instances that were included in the
-        previous sets as well as a new subset of instances.
-        :param next_tournament_set_id: int. Id of the subset to get the next instances for .
-        :return: id of the instances set, list containing instances and previous instances of the subset
+        Create an instance set for the next tournament. The set contains all
+        instances that were included in the previous sets as well as a new
+        subset of instances.
+
+        Parameters
+        ----------
+        next_tournament_set_id : int
+            Id of the subset to get the next instances for .
+        Returns
+        -------
+        tuple
+            - int, id of the instances set.
+            - list, next instance set.
         """
         assert next_tournament_set_id <= self.subset_counter
         # If we have already created the required subset we return it
@@ -95,14 +116,25 @@ class InstanceSet:
 
 
 class FlexInstanceSet(InstanceSet):
-    def __init__(self, instance_set, start_instance_size, set_size=None, instance_increment_size=None, target_reach=None, target_start=None):
-        """
+    """
+    Selects the next instance set to run a tournament on.
 
-        :param instance_set: set of instances available.
-        :param start_instance_size: size of the first instances se to be created
-        :param set_size: If not set the biggest instance set to be created includes all instances in instance_set. If
-        set the biggest instance set will be of the size of the given int.
-        """
+    Parameters
+    ----------
+    instance_set : list
+        Set of instances available.
+    start_instance_size : int
+        Size of the first instances se to be created.
+    set_size : int
+        If not set, the biggest instance set to be created includes all instances in training instance_set. If set, the biggest instance set will be of the size of the given int.
+    instance_increment_size : int
+        Number of instances to add to the next instance set.
+    target_reach : int
+        If set, Selector will try to reach full instance set size after this many tournaments.
+    target_start : int
+        If set, Selector will only start increasing instance size after this number tournament.
+    """
+    def __init__(self, instance_set, start_instance_size, set_size=None, instance_increment_size=None, target_reach=None, target_start=None):
         self.instance_set = instance_set
         self.start_instance_size = start_instance_size
         self.instance_sets = []
@@ -134,9 +166,9 @@ class FlexInstanceSet(InstanceSet):
 
     def next_set(self):
         """
-        Create a new instance set with instances not included in any created set before. This is not thread safe and
-        should only be called from the master node.
-        :param id: int. Id of the new instance set. If it is the first set id will be 1.
+        Create a new instance set with instances not included in any created
+        set before. This is not thread safe and should only be called from the
+        master node.
         """
         # Get instances that were already chosen
         if self.subset_counter == 0:
@@ -174,14 +206,26 @@ class FlexInstanceSet(InstanceSet):
 
 
 class TimedInstanceSet(InstanceSet):
-    def __init__(self, instance_set, start_instance_size, set_size=None, runtime=4, start_time=0.1, end_time=0.7):
-        """
+    """
+    Selects the next instance set to run a tournament on.
 
-        :param instance_set: set of instances available.
-        :param start_instance_size: size of the first instances se to be created
-        :param set_size: If not set the biggest instance set to be created includes all instances in instance_set. If
-        set the biggest instance set will be of the size of the given int.
-        """
+    Parameters
+    ----------
+    instance_set : list
+        Set of instances available.
+    start_instance_size : int
+        Size of the first instances se to be created.
+    set_size : int
+        If not set, the biggest instance set to be created includes all instances in training instance_set. If set, the biggest instance set will be of the size of the given int.
+    runtime : int
+        Maximum runtime of the AC process.
+    start_time : float
+        Fracture of the Maximum runtime when increasing the set size starts.
+    end_time : int
+        Fracture of the Maximum runtime when maximum set size ought to be reached. Depending on the scenario, this cannot be quaranteed.
+    """
+    def __init__(self, instance_set, start_instance_size, set_size=None,
+                 runtime=42, start_time=0.1, end_time=0.7):
         self.instance_set = instance_set
         self.start_instance_size = start_instance_size
         self.instance_sets = []
@@ -199,9 +243,9 @@ class TimedInstanceSet(InstanceSet):
 
     def next_set(self):
         """
-        Create a new instance set with instances not included in any created set before. This is not thread safe and
-        should only be called from the master node.
-        :param id: int. Id of the new instance set. If it is the first set id will be 1.
+        Create a new instance set with instances not included in any created
+        set before. This is not thread safe and should only be called from the
+        master node.
         """
         # Get instances that were already chosen
         if self.subset_counter == 0:
@@ -236,10 +280,23 @@ class TimedInstanceSet(InstanceSet):
 
     def get_subset(self, next_tournament_set_id, time, iteration):
         """
-        Create an instance set for the next tournament. The set contains all instances that were included in the
-        previous sets as well as a new subset of instances.
-        :param next_tournament_set_id: int. Id of the subset to get the next instances for .
-        :return: id of the instances set, list containing instances and previous instances of the subset
+        Create an instance set for the next tournament. The set contains all
+        instances that were included in the previous sets as well as a new
+        subset of instances.
+
+        Parameters
+        ----------
+        next_tournament_set_id : int
+            Id of the subset to get the next instances for.
+        time : int
+            Currently passed time since start of the AC process.
+        iteration : int
+            Last iteration that was finished.
+        Returns
+        -------
+        tuple
+            - int, id of the instance set.
+            - list, next instance set.
         """
         assert next_tournament_set_id <= self.subset_counter
 

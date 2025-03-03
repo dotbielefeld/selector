@@ -1,0 +1,5 @@
+include requirements.txt
+
+exclude test/test_point_generation.py
+exclude test/test_point_selection.py
+exclude test/test_pointselector.py

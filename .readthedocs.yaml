@@ -1,0 +1,25 @@
+# .readthedocs.yaml
+# Read the Docs configuration file
+# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
+
+# Required
+version: 2
+
+# Set the version of Python and other tools you might need
+build:
+  os: ubuntu-20.04
+  tools:
+    python: "3.8"
+  apt_packages:
+    - swig
+
+python:
+  install:
+  - requirements: docutils==0.20.1
+
+python:
+  install:
+  - requirements: rtd_requirements.txt
+
+sphinx:
+  configuration: conf.py

@@ -1,10 +1,21 @@
+"""In this module a function for translating configurations is defined."""
+
 
 def config_translator(s, config):
     """
-    Converts boolean values back to their original representation
-    :param s: scenario class object
-    :param config: configuration class object
-    :return: dic. parameter configuration with converted boolean values
+    Converts boolean values back to their original representation.
+
+    Parameters
+    ----------
+    s : selector.scenario.Scenario
+        AC scenario.
+    config : selector.pool.Configuration
+        Configuration class object.
+
+    Returns
+    -------
+    dict
+        Parameter configuration with converted boolean values.
     """
 
     boolean1 = ["on", "off"]

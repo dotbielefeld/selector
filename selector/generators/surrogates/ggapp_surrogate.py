@@ -63,6 +63,8 @@ import random  # noqa: E402
 from threadpoolctl import ThreadpoolController
 controller = ThreadpoolController()
 
+__all__ = ['GGAppSurr']
+
 
 class GGApp(CostSensitiveDecisionTreeClassifier):
     """GGA++ Decision Tree Regressor."""
@@ -782,14 +784,27 @@ class GGAppRandomForestRegressor(GGAppBaggingRegressor):
 
 
 class GGAppSurr():
-    """Surrogate GGA++."""
+    """Surrogate for GGA++.
+
+    Note
+    ----
+    Implementation based on the paper "Model-Based Genetic Algorithms for
+    Algorithm Configuration, C. Ans{\'o}tegui et al. and using source code of
+    the package costcla.
+
+    Parameters
+    ----------
+    scenario : selector.scenario.Scenario
+        AC scenario.
+    seed : int
+        Random seed.
+    cost : list
+        Cost matrix for cost-sensitive classification. Per default set to neutral to take no effect.
+    logger : logging.Logger
+        Logger from main loop. Default is None, so no Debug infos.
+    """
 
     def __init__(self, scenario, seed=False, cost=[1, 1, 0, 0], logger=None):
-        """Initialize GGA++ surrogate.
-
-        :param scenario: dict, scenario translated for GGA++
-        :param seed: int, random seed
-        """
         if not seed:
             self.seed = False
         else:
@@ -821,9 +836,12 @@ class GGAppSurr():
         threaded_init(scenario, seed, cost)
 
     def transfom_selector_scenario_for_ggapp(self, scenario):
-        """Save parameter types.
+        """Transform scenario from Selector to suit GGAppSurr.
 
-        :param scenario: scenario object from selector
+        Parameters
+        ----------
+        scenario : selector.scenario.Scenario
+            AC scenario.
         """
         paramsecenario = self.scenario.parameter
         self.types = {}
@@ -831,7 +849,19 @@ class GGAppSurr():
             self.types[ps.name] = ps.type
 
     def set_cat(self, c):
-        """Set Cat value to binary."""
+        """
+        Set Cat value to binary.
+
+        Parameters
+        ----------
+        c : bool
+            Any bool value.
+        Returns
+        -------
+        int
+            True will be 0, False will be 1.
+
+        """
         if c is True:
             c = 1
         elif c is False:
@@ -842,8 +872,15 @@ class GGAppSurr():
     def transform_values(self, conf):
         """Transform configuration values in GGA++ format.
 
-        :param conf: object, selector.pool.Configuration
-        :return config: dict, parameter values
+        Parameters
+        ----------
+        conf : selector.pool.Configurator or list of selector.pool.Configuration
+            Configuration(s) to transform for GGAppSurr.
+
+        Returns
+        -------
+        selector.pool.Configurator or list of selector.pool.Configuration
+            Transformed configuration(s).
         """
         config = []
         count = 0
@@ -909,7 +946,19 @@ class GGAppSurr():
         return config
 
     def get_costs(self, y):
-        """Generate cost matrix."""
+        """
+        Generate cost matrix.
+
+        Parameters
+        ----------
+        y : ndarray
+            Configuration performances.
+
+        Returns
+        -------
+        ndarray
+            **costs**: ndarray of mock cost matrices.
+        """
         costs = np.array([self.cost for _ in y])
 
         return costs
@@ -917,8 +966,18 @@ class GGAppSurr():
     def update(self, history, configs, results, terminations, ac_runtime=None):
         """Update GGA++ epm.
 
-        :param results: results of the Tournament
-        :param conf: object, selector.pool.Configuration
+        Parameters
+        ----------
+        history : list of selector.pool.Tournament
+            Tournament history.
+        configs : list of selector.pool.Configuration
+            Configurations that participated in the tournament.
+        results : dict
+            Results of the tournament.
+        terminations : dict
+            Information about terminations of runs that occurred.
+        ac_runtime : int
+            Total AC runtime in seconds so far.
         """
         conf = []
         result = []
@@ -990,11 +1049,27 @@ class GGAppSurr():
 
     def get_suggestions(self, scenario, n_samples, data, results, _,
                         oversampling=10):
-        """Get point suggestions from GGA++.
+        """
+        Suggest configurations to run next based on the next instance set to run on.
 
-        :param scenario: scenario object from selector
-        :param n_samples: int, number of point suggestions to generate
-        :return suggestions: list, list of configurations
+        Parameters
+        ----------
+        scenario : selector.scenario.Scenario
+            AC scenario.
+        n_samples : int
+            Number of configurations to return.
+        data : list of selector.pool.Tournament
+            Tournament history.
+        results : dict
+            Performances of the configuration on the instance set of the tournament.
+        _ : list of str
+            Instance set to run on in the next tournament.
+        oversampling : int
+            Multiplier for generation via GGA graph crossover before filtering with GGApp model.
+        Returns
+        -------
+        list of selector.pool.Configuration
+            Suggested configurations.
         """
         suggestions = []
         for i in range(oversampling * n_samples):
@@ -1051,11 +1126,22 @@ class GGAppSurr():
         return suggestions
 
     def predict(self, confs, _=None):
-        """Predict performance/quality of configurations with GGA++ epm.
+        """
+        Predict performance/quality of configurations with GGA++ EPM.
 
-        :param confs: list of objects, [selector.pool.Configuration,]
-        :return [mean, var]: numpy.ndarray, mean and variance of predicted
-            performance/quality
+        Parameters
+        ----------
+        suggestions : list of selector.pool.Configuration
+            Suggested configurations.
+        _ : list
+            List of next instances to run the tournament on.
+        Returns
+        -------
+        tuple
+            - ndarray,
+              Mean of predicted performance/quality.
+            - ndarray,
+              Variance of predicted performance/quality.
         """
         if type(confs) is not np.ndarray:
             confs = self.transform_values(confs)
@@ -1071,10 +1157,19 @@ class GGAppSurr():
         return np.array(self.regressor.predict(confs)), np.array(variances)
 
     def expected_improvement(self, suggestions, _):
-        """Compute expected improvement via GGA++ model.
+        """
+        Compute expected improvement via CPPL model.
 
-        :param suggestions: list of objects, [selector.pool.Configuration,]
-        :return ei: numpy.ndarray, expected improvements
+        Parameters
+        ----------
+        suggestions : list of selector.pool.Configuration
+            Suggested configurations.
+        _ : list of str
+            List of next instances to be run.
+        Returns
+        -------
+        ndarray
+            **ei**: Expected improvements.
         """
         mean, var = self.predict(suggestions)
         std = np.sqrt(var)
@@ -1093,10 +1188,22 @@ class GGAppSurr():
             return calculate_ei()
 
     def probability_improvement(self, suggestions, r, ni):
-        """Compute probability of improvement.
+        """
+        Compute probability of improvement.
 
-        :param suggestions: list of objects, [selector.pool.Configuration,]
-        :return pi: numpy.ndarray, probabilities of improvement
+        Parameters
+        ----------
+        suggestions : list of selector.pool.Configuration
+            Suggested configurations.
+        r : dict
+            Performances of the configuration on the instance set of the tournament.
+        ni : list
+            List of next instances to run the tournament on.
+
+        Returns
+        -------
+        ndarray
+            **pi_output**: Probabilities of improvement.
         """
         mean, var = self.predict(suggestions)
         std = np.sqrt(var)

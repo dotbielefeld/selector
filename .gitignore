@@ -11,14 +11,15 @@ selector/input/
 selector/output/
 selector/wrapper/
 selector/logs/
+selector/test_todo
 selector/generators/surrogates/cppl_surrogate_BACKUP.py
 wrapper/
 cadical/
 tuned_weights_full_ensemble
 cplex.log
-test_data/
+#test_data/
 pddl_sequential_optimal_from_IPC_2014/
-test/test_data/
+# test/test_data/
 ray_env/
 
 
@@ -86,6 +87,8 @@ instance/
 
 # Sphinx documentation
 docs/_build/
+_build/
+_autosummary
 
 # PyBuilder
 target/
@@ -149,3 +152,8 @@ dmypy.json
 start_ray_env.txt
 run_selector.txt
 test/scenario
+selector/test_instance_sets.py
+selector/test_point_selection.py
+build
+dist
+selector_ac.egg-info
