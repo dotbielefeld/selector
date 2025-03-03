@@ -62,16 +62,19 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
         file = open('./test/scenario', 'rb')
         self.s = pickle.load(file)
         self.s.instances_dir = './test/test_data/cadical/'
-        self.s.instance_file = './test_data/cadical/instances_cadical_circuit_fuzz.txt'
+        self.s.instance_file = 'test_data/instances_cadical_circuit_fuzz.txt'
         print(self.s.instance_file)
         print(self.s.instance_file)
         print(self.s.instance_file)
         print(self.s.instance_file)
-        import os
-        os.sys('ls')
-        os.sys('ls')
-        os.sys('ls')
-        os.sys('ls')
+        import os 
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        print(dir_path)
+        print(dir_path)
+        print(dir_path)
+        print(dir_path)
+        print(dir_path)
+        print(dir_path)
         file.close()
         np.random.seed(42)
         self.random_generator = PointGen(self.s, random_point, seed=42)
