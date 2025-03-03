@@ -56,6 +56,7 @@ exclude_patterns = [
     '_autosummary/selector.wrapper.rst',
     '_autosummary/selector.test_ray.rst',
     '_autosummary/selector.main.rst',
+    '_autosummary/selector.test.rst',
 ]
 autodoc_mock_imports = ["json", "json.JSONEncoder"]
 

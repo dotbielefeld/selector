@@ -22,21 +22,26 @@ class TestTournamentBookkeeping(unittest.TestCase):
 
     def setUp(self):
         script_location = os.path.dirname(__file__)
-        self.parser = {"check_path": False, "seed": 42, "ta_run_type": "import_wrapper", "winners_per_tournament": 1,
-                  # import_wrapper
-                  "initial_instance_set_sideterministicze": 2, "tournament_size": 3, "number_tournaments": 3,
-                  "total_tournament_number": 2, "cpu_binding": False, 'instances_dir': './test/test_data/instances',
-                  "total_runtime": 1200, "generator_multiple": 3, "set_size": 50, "solve_match": [],
-                  "termination_criterion": "total_runtime", "par": 1, "ta_pid_name": "glucose-simp",
-                  "memory_limit": 1023 * 3, "log_folder": "/run_1", "initial_instance_set_size": 5, "runtime_feedback": "",
-                  "log_location": script_location + '/selector/logs'}
+        self.parser = {
+            "check_path": False, "seed": 42, "ta_run_type": "import_wrapper",
+            "winners_per_tournament": 1,
+            "initial_instance_set_sideterministicze": 2, "tournament_size": 3,
+            "number_tournaments": 3, "total_tournament_number": 2,
+            "cpu_binding": False, 'instances_dir': './test/test_data/instances',
+            "total_runtime": 1200, "generator_multiple": 3, "set_size": 50,
+            "solve_match": [], "termination_criterion": "total_runtime",
+            "par": 1, "ta_pid_name": "glucose-simp", "memory_limit": 1023 * 3,
+            "log_folder": "/run_1", "initial_instance_set_size": 5,
+            "runtime_feedback": "", "log_location": script_location + '/selector/logs'}
         self.scenario = Scenario("./selector/test/test_data/test_example.txt", self.parser)
         self.ta_wrapper = TAP_Work_Wrapper()
         self.global_cache = TargetAlgorithmObserver.remote(self.scenario)
         self.random_generator = PointGen(self.scenario, random_point)
         self.point_selector = RandomSelector()
-        self.instance_selector = InstanceSet(self.scenario.instance_set, self.scenario.initial_instance_set_size,
-                                             self.scenario.set_size)
+        self.instance_selector = \
+            InstanceSet(self.scenario.instance_set,
+                        self.scenario.initial_instance_set_size,
+                        self.scenario.set_size)
         self.tournament_dispatcher = MiniTournamentDispatcher()
         self.tournament_counter = 0
         self.tasks = []
@@ -46,20 +51,27 @@ class TestTournamentBookkeeping(unittest.TestCase):
         self.initial_assignments = []
 
         for _ in range(self.scenario.number_tournaments):
-            generated_points = [self.random_generator.point_generator() for _ in range(self.scenario.tournament_size *
-                                                                                  self.scenario.generator_multiple)]
+            generated_points = \
+                [self.random_generator.point_generator()
+                 for _ in range(
+                    self.scenario.tournament_size * self.scenario.generator_multiple)]
 
-            points_to_run = self.point_selector.select_points(generated_points, self.scenario.tournament_size,
-                                                         self.tournament_counter)
+            points_to_run = \
+                self.point_selector.select_points(
+                    generated_points, self.scenario.tournament_size,
+                    self.tournament_counter)
 
             instance_id, instances = self.instance_selector.get_subset(0)
-            tournament, initial_assignments = self.tournament_dispatcher.init_tournament(self.results, points_to_run,
-                                                                                         instances, instance_id)
+            tournament, initial_assignments = \
+                self.tournament_dispatcher.init_tournament(
+                    self.results, points_to_run,
+                    instances, instance_id)
             self.initial_assignments.append(initial_assignments)
             self.tournaments.append(tournament)
             self.global_cache.put_tournament_history.remote(tournament)
             self.global_cache.put_tournament_update.remote(tournament)
-            self.tasks = tb.update_tasks(self.tasks, initial_assignments, tournament, self.global_cache,
+            self.tasks = tb.update_tasks(self.tasks, initial_assignments,
+                                         tournament, self.global_cache,
                                          self.ta_wrapper, self.scenario)
 
     def test_get_tournament_membership(self):

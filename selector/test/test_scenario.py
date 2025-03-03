@@ -11,22 +11,24 @@ class ScenarioTest(unittest.TestCase):
 
     def setUp(self):
         self.scenario_dict = {'ta_cmd': 'echo test',
-                                   'paramfile': './selector/test/test_data/test_params.pcs',
-                                   'execdir': '.',
-                                   'deterministic': 0,
-                                   'run_obj': 'runtime',
-                                   'overall_obj': 'mean10',
-                                   'cutoff_time': 300,
-                                   'wallclock_limit': 172800,
-                                   'instance_file':
-                                       './selector/test/test_data/test_training.txt',
-                                   'test_instance_file':
-                                       './selector/test/test_data/test_test.txt',
-                                   'feature_file':
-                                       './selector/test/test_data/test_features.txt',
-                                   'output_dir':
-                                       'placeholder',
-                                    'instances_dir': './selector/test/test_data/instances'}
+                              'paramfile':
+                                  './selector/test/test_data/test_params.pcs',
+                              'execdir': '.',
+                              'deterministic': 0,
+                              'run_obj': 'runtime',
+                              'overall_obj': 'mean10',
+                              'cutoff_time': 300,
+                              'wallclock_limit': 172800,
+                              'instance_file':
+                                  './selector/test/test_data/test_training.txt',
+                              'test_instance_file':
+                                  './selector/test/test_data/test_test.txt',
+                              'feature_file':
+                                  './selector/test/test_data/test_features.txt',
+                              'output_dir':
+                                  'placeholder',
+                              'instances_dir':
+                                  './selector/test/test_data/instances'}
 
     def test_scenario_type(self):
         with self.assertRaises(TypeError):
@@ -45,8 +47,8 @@ class ScenarioTest(unittest.TestCase):
         self.assertEqual(scenario.instance_file, './selector/test/test_data/test_training.txt')
         self.assertEqual(scenario.test_instance_file, './selector/test/test_data/test_test.txt')
         self.assertEqual(scenario.feature_file, './selector/test/test_data/test_features.txt')
-        self.assertEqual(scenario.paramfile,'./selector/test/test_data/test_params.pcs')
-        self.assertEqual(scenario.instance_set,['./selector/test/test_data/instances/test_instance_1.cnf'])
+        self.assertEqual(scenario.paramfile, './selector/test/test_data/test_params.pcs')
+        self.assertEqual(scenario.instance_set, ['./selector/test/test_data/instances/test_instance_1.cnf'])
         self.assertEqual(scenario.test_instances, ['./selector/test/test_data/instances/test_instance_2.cnf'])
         self.assertEqual(scenario.feature_names, ['feature_1', ' feature_2'])
 
@@ -66,25 +68,25 @@ class ScenarioTest(unittest.TestCase):
         self.assertEqual(scenario.overall_obj, 'mean10')
         self.assertEqual(scenario.cutoff_time, 300)
         self.assertEqual(scenario.wallclock_limit, 172800)
-        self.assertEqual(scenario.instance_file,'./selector/test/test_data/test_training.txt')
-        self.assertEqual(scenario.test_instance_file,'./selector/test/test_data/test_test.txt')
-        self.assertEqual(scenario.feature_file,'./selector/test/test_data/test_features.txt')
-        self.assertEqual(scenario.paramfile,'./selector/test/test_data/test_params.pcs')
-        self.assertEqual(scenario.instance_set,['./selector/test/test_data/instances/test_instance_1.cnf'])
+        self.assertEqual(scenario.instance_file, './selector/test/test_data/test_training.txt')
+        self.assertEqual(scenario.test_instance_file, './selector/test/test_data/test_test.txt')
+        self.assertEqual(scenario.feature_file, './selector/test/test_data/test_features.txt')
+        self.assertEqual(scenario.paramfile, './selector/test/test_data/test_params.pcs')
+        self.assertEqual(scenario.instance_set, ['./selector/test/test_data/instances/test_instance_1.cnf'])
         self.assertEqual(scenario.test_instances, ['./selector/test/test_data/instances/test_instance_2.cnf'])
         self.assertEqual(scenario.feature_names, ['feature_1', ' feature_2'])
 
         features_1 = scenario.features['./selector/test/test_data/instances/test_instance_1.cnf']
-        self.assertTrue(np.allclose(features_1, [  90., 7650.]))
+        self.assertTrue(np.allclose(features_1, [90., 7650.]))
 
         features_2 = scenario.features['./selector/test/test_data/instances/test_instance_2.cnf']
-        self.assertTrue(np.allclose(features_2, [  30., 8045.1]))
+        self.assertTrue(np.allclose(features_2, [30., 8045.1]))
 
     def test_parameter_from_file(self):
         scenario_file = Scenario('./selector/test/test_data/test_scenario.txt')
         scenario_dic = Scenario(self.scenario_dict)
 
-        for scenario in [scenario_file,scenario_dic ]:
+        for scenario in [scenario_file, scenario_dic]:
             test_parameter_list = scenario.parameter
 
             test_no_goods = scenario.no_goods
@@ -132,13 +134,13 @@ class ScenarioTest(unittest.TestCase):
             # test bce-limit
             self.assertEqual(test_parameter_list[5].name, 'bce-limit')
             self.assertEqual(test_parameter_list[5].type, ParamType.integer)
-            self.assertEqual(test_parameter_list[5].bound,[100000,200000000])
+            self.assertEqual(test_parameter_list[5].bound, [100000, 200000000])
             self.assertEqual(test_parameter_list[5].default, 100000000)
             self.assertEqual(test_parameter_list[5].condition, {})
             self.assertEqual(test_parameter_list[5].scale, 'l')
 
             # test no goods
-            self.assertEqual(test_no_goods[0], {"luby": True , "rinc": 3})
+            self.assertEqual(test_no_goods[0], {"luby": True, "rinc": 3})
 
     def test_instance_file_avail(self):
         with self.assertRaises(FileExistsError):
@@ -147,4 +149,3 @@ class ScenarioTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
