@@ -5,6 +5,7 @@ import os
 import numpy as np
 import time
 import copy
+import psutil
 sys.path.append(os.getcwd())
 from selector.test.test_data.tap_work_wrapper import TAP_Work_Wrapper
 from selector.scenario import Scenario
@@ -21,6 +22,10 @@ import selector.tournament_bookkeeping as tb
 class TestTournamentBookkeeping(unittest.TestCase):
 
     def setUp(self):
+
+        p = psutil.Process()
+        p.cpu_affinity([0, 1])  # Restrict to CPUs 0 and 1
+
         script_location = os.path.dirname(__file__)
         self.parser = {
             "check_path": False, "seed": 42, "ta_run_type": "import_wrapper",

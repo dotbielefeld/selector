@@ -13,10 +13,13 @@ build:
   apt_packages:
     - swig
 
-sphinx:
-  configuration: conf.py
+python:
+  install:
+  - requirements: docutils==0.20.1
 
 python:
   install:
   - requirements: rtd_requirements.txt
 
+sphinx:
+  configuration: conf.py
