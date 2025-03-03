@@ -11,6 +11,7 @@ selector/input/
 selector/output/
 selector/wrapper/
 selector/logs/
+selector/test_todo
 selector/generators/surrogates/cppl_surrogate_BACKUP.py
 wrapper/
 cadical/

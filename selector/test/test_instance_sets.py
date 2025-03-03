@@ -12,7 +12,7 @@ class TestInstanceSets(unittest.TestCase):
     def setUp(self):
         sys.path.append(os.getcwd())
         parser = {"check_path": False, "initial_instance_set_size": 3, "set_size": 6}
-        self.scenario = Scenario("./test/test_data/test_example.txt", parser)
+        self.scenario = Scenario("./selector/test/test_data/test_example.txt", parser)
         self.instance_selector = InstanceSet(self.scenario.instance_set, self.scenario.initial_instance_set_size,
                                              self.scenario.set_size)
 

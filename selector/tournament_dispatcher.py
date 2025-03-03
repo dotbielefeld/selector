@@ -15,7 +15,9 @@ from selector.tournament_performance import (
 
 
 class MiniTournamentDispatcher:
-    """Dispatches tournaments."""
+    """
+    Dispatches tournaments.
+    """
 
     def init_tournament(self, results, configurations, instance_partition, instance_partition_id):
         """

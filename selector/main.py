@@ -35,14 +35,14 @@ if __name__ == "__main__":
 
     np.random.seed(scenario.seed)
 
-    check_log_folder(scenario.log_folder)
-    clear_logs(scenario.log_folder)
+    check_log_folder(scenario, scenario.log_folder)
+    clear_logs(scenario, scenario.log_folder)
 
     logging.\
         basicConfig(level=logging.INFO,
                     format='%(asctime)s %(message)s',
                     handlers=[logging.FileHandler(
-                        f"./selector/logs/{scenario.log_folder}/main.log"), ])
+                        f"{scenario.log_location}{scenario.log_folder}/main.log"), ])
 
     logger = logging.getLogger(__name__)
 
@@ -59,7 +59,7 @@ if __name__ == "__main__":
 
     offline_mini_tournament_configuration(scenario, ta_wrapper, logger)
 
-    save_latest_logs(scenario.log_folder)
+    save_latest_logs(scenario.log_folder, scenario)
     if scenario.run_obj == 'total_runtime':
         safe_best(f'./selector/logs/{scenario.log_folder}/',
                   scenario.cutoff_time)

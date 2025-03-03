@@ -11,7 +11,7 @@ class ScenarioTest(unittest.TestCase):
 
     def setUp(self):
         self.scenario_dict = {'ta_cmd': 'echo test',
-                                   'paramfile': './test/test_data/test_params.pcs',
+                                   'paramfile': './selector/test/test_data/test_params.pcs',
                                    'execdir': '.',
                                    'deterministic': 0,
                                    'run_obj': 'runtime',
@@ -19,21 +19,21 @@ class ScenarioTest(unittest.TestCase):
                                    'cutoff_time': 300,
                                    'wallclock_limit': 172800,
                                    'instance_file':
-                                       './test/test_data/test_training.txt',
+                                       './selector/test/test_data/test_training.txt',
                                    'test_instance_file':
-                                       './test/test_data/test_test.txt',
+                                       './selector/test/test_data/test_test.txt',
                                    'feature_file':
-                                       './test/test_data/test_features.txt',
+                                       './selector/test/test_data/test_features.txt',
                                    'output_dir':
                                        'placeholder',
-                                    'instances_dir': './test/test_data/instances'}
+                                    'instances_dir': './selector/test/test_data/instances'}
 
     def test_scenario_type(self):
         with self.assertRaises(TypeError):
             _ = Scenario(scenario=2)
 
     def test_scenario_from_sting(self):
-        scenario = Scenario('./test/test_data/test_scenario.txt')
+        scenario = Scenario('./selector/test/test_data/test_scenario.txt')
 
         self.assertEqual(scenario.ta_cmd, 'echo test')
         self.assertEqual(scenario.execdir, '.')
@@ -42,18 +42,18 @@ class ScenarioTest(unittest.TestCase):
         self.assertEqual(scenario.overall_obj, 'mean10')
         self.assertEqual(scenario.cutoff_time, 300.0)
         self.assertEqual(scenario.wallclock_limit, 172800)
-        self.assertEqual(scenario.instance_file, './test/test_data/test_training.txt')
-        self.assertEqual(scenario.test_instance_file, './test/test_data/test_test.txt')
-        self.assertEqual(scenario.feature_file, './test/test_data/test_features.txt')
-        self.assertEqual(scenario.paramfile,'./test/test_data/test_params.pcs')
-        self.assertEqual(scenario.instance_set,['./test/test_data/instances/test_instance_1.cnf'])
-        self.assertEqual(scenario.test_instances, ['./test/test_data/instances/test_instance_2.cnf'])
+        self.assertEqual(scenario.instance_file, './selector/test/test_data/test_training.txt')
+        self.assertEqual(scenario.test_instance_file, './selector/test/test_data/test_test.txt')
+        self.assertEqual(scenario.feature_file, './selector/test/test_data/test_features.txt')
+        self.assertEqual(scenario.paramfile,'./selector/test/test_data/test_params.pcs')
+        self.assertEqual(scenario.instance_set,['./selector/test/test_data/instances/test_instance_1.cnf'])
+        self.assertEqual(scenario.test_instances, ['./selector/test/test_data/instances/test_instance_2.cnf'])
         self.assertEqual(scenario.feature_names, ['feature_1', ' feature_2'])
 
-        features_1 = scenario.features['./test/test_data/instances/test_instance_1.cnf']
+        features_1 = scenario.features['./selector/test/test_data/instances/test_instance_1.cnf']
         self.assertTrue(np.allclose(features_1, [90., 7650.]))
 
-        features_2 = scenario.features['./test/test_data/instances/test_instance_2.cnf']
+        features_2 = scenario.features['./selector/test/test_data/instances/test_instance_2.cnf']
         self.assertTrue(np.allclose(features_2, [30., 8045.1]))
 
     def test_scenario_from_dic(self):
@@ -66,22 +66,22 @@ class ScenarioTest(unittest.TestCase):
         self.assertEqual(scenario.overall_obj, 'mean10')
         self.assertEqual(scenario.cutoff_time, 300)
         self.assertEqual(scenario.wallclock_limit, 172800)
-        self.assertEqual(scenario.instance_file,'./test/test_data/test_training.txt')
-        self.assertEqual(scenario.test_instance_file,'./test/test_data/test_test.txt')
-        self.assertEqual(scenario.feature_file,'./test/test_data/test_features.txt')
-        self.assertEqual(scenario.paramfile,'./test/test_data/test_params.pcs')
-        self.assertEqual(scenario.instance_set,['./test/test_data/instances/test_instance_1.cnf'])
-        self.assertEqual(scenario.test_instances, ['./test/test_data/instances/test_instance_2.cnf'])
+        self.assertEqual(scenario.instance_file,'./selector/test/test_data/test_training.txt')
+        self.assertEqual(scenario.test_instance_file,'./selector/test/test_data/test_test.txt')
+        self.assertEqual(scenario.feature_file,'./selector/test/test_data/test_features.txt')
+        self.assertEqual(scenario.paramfile,'./selector/test/test_data/test_params.pcs')
+        self.assertEqual(scenario.instance_set,['./selector/test/test_data/instances/test_instance_1.cnf'])
+        self.assertEqual(scenario.test_instances, ['./selector/test/test_data/instances/test_instance_2.cnf'])
         self.assertEqual(scenario.feature_names, ['feature_1', ' feature_2'])
 
-        features_1 = scenario.features['./test/test_data/instances/test_instance_1.cnf']
+        features_1 = scenario.features['./selector/test/test_data/instances/test_instance_1.cnf']
         self.assertTrue(np.allclose(features_1, [  90., 7650.]))
 
-        features_2 = scenario.features['./test/test_data/instances/test_instance_2.cnf']
+        features_2 = scenario.features['./selector/test/test_data/instances/test_instance_2.cnf']
         self.assertTrue(np.allclose(features_2, [  30., 8045.1]))
 
     def test_parameter_from_file(self):
-        scenario_file = Scenario('./test/test_data/test_scenario.txt')
+        scenario_file = Scenario('./selector/test/test_data/test_scenario.txt')
         scenario_dic = Scenario(self.scenario_dict)
 
         for scenario in [scenario_file,scenario_dic ]:

@@ -20,6 +20,7 @@ class Scenario:
         Command line arguments which augment the scenario file/dict.
     """
     def __init__(self, scenario, cmd={'check_path': False}):
+            
         if isinstance(scenario, str):
             scenario = self.scenario_from_file(scenario)
 
@@ -136,10 +137,6 @@ class Scenario:
         name_map = {"algo": "ta_cmd"}
         scenario_dict = {}
 
-        print(scenario_path)
-        print(scenario_path)
-        print(scenario_path)
-
         with open(scenario_path, 'r') as sc:
             for line in sc:
                 line = line.strip()
@@ -188,6 +185,7 @@ def parse_args():
     hp.add_argument('--verbosity', default=0, type=int)
     hp.add_argument('--ta_pid_name', type=str, default="")
     hp.add_argument('--log_folder', type=str, default="latest")
+    hp.add_argument('--log_location', type=str, default="./selector/logs/")
     hp.add_argument('--memory_limit', type=int, default=1023*3)
 
     hp.add_argument('--ta_run_type', type=str, default="import_wrapper")

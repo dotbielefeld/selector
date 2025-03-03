@@ -1,0 +1,3 @@
+INSTANCE_ID,feature_1, feature_2
+./selector/test/test_data/instances/test_instance_1.cnf, 90.0, 7650.0
+./selector/test/test_data/instances/test_instance_2.cnf, 30.0, 8045.1

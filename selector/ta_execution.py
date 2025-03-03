@@ -220,7 +220,7 @@ def tae_from_cmd_wrapper_rt(conf, instance_path, cache, ta_command_creator,
 
     # todo logging dic should be provided somewhere else -> DOTAC-37
     logging.basicConfig(
-        filename=f'./selector/logs/{scenario.log_folder}/wrapper_log_for{conf.id}.log',
+        filename=f'{scenario.log_location}{scenario.log_folder}/wrapper_log_for{conf.id}.log',
         level=logging.INFO, format='%(asctime)s %(message)s')
 
     try:
@@ -418,7 +418,7 @@ def tae_from_cmd_wrapper_quality(conf, instance_path, cache,
         - **terminated** : bool,
           Whether the process was terminated.
     """
-    logging.basicConfig(filename=f'''./selector/logs/{scenario.log_folder}/wrapper_log_for{conf.id}.log''',
+    logging.basicConfig(filename=f'''{scenario.log_location}{scenario.log_folder}/wrapper_log_for{conf.id}.log''',
                         level=logging.INFO,
                         format='%(asctime)s %(message)s')
 

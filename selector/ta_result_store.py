@@ -30,7 +30,7 @@ class TargetAlgorithmObserver:
             self.core_affinities[c] = None
 
         # todo logging dic should be provided somewhere else -> DOTAC-37
-        logging.basicConfig(filename=f'./selector/logs/{self.scenario.log_folder}/Target_Algorithm_Cache.logger', level=logging.INFO,
+        logging.basicConfig(filename=f'{self.scenario.log_location}{self.scenario.log_folder}/Target_Algorithm_Cache.logger', level=logging.INFO,
                             format='%(asctime)s %(message)s')
 
     def get_free_core(self):

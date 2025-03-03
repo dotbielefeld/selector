@@ -434,8 +434,8 @@ if __name__ == "__main__":
 
     scenario = Scenario("./selector/input/scenarios/test_example.txt", parser)#my_glucose_example #my_cadical_example
 
-    check_log_folder(scenario.log_folder)
-    clear_logs(scenario.log_folder)
+    check_log_folder(scenario, scenario.log_folder)
+    clear_logs(scenario, scenario.log_folder)
 
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s %(message)s', handlers=[
@@ -460,7 +460,7 @@ if __name__ == "__main__":
 
     offline_mini_tournament_configuration(scenario, ta_wrapper, logger)
 
-    save_latest_logs(scenario.log_folder)
+    save_latest_logs(scenario.log_folder, scenario)
     safe_best(sys.path[-1] + f'/selector/logs/{scenario.log_folder}/',
               scenario.cutoff_time)
     ray.shutdown()

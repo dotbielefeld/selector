@@ -914,7 +914,7 @@ class SmacSurr():
             feature_names = f.readline()
 
         self.selector_scenario.feature_file = \
-            './selector/logs/' + self.selector_scenario.log_folder + \
+            self.selector_scenario.log_location + self.selector_scenario.log_folder + \
             '/features_PCA.txt'
 
         with open(self.selector_scenario.feature_file, 'w') as f:

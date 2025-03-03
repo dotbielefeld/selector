@@ -27,4 +27,4 @@ jobs:
       run: |
         pwd
         ls
-        python -m unittest discover test
+        python -m unittest discover selector/test

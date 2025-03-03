@@ -34,7 +34,7 @@ class Monitor:
         self.time_out = scenario.cutoff_time
         self.par = scenario.par
 
-        logging.basicConfig(filename=f'./selector/logs/{scenario.log_folder}/monitor.log', level=logging.INFO,
+        logging.basicConfig(filename=f'{scenario.log_location}{scenario.log_folder}/monitor.log', level=logging.INFO,
                             format='%(asctime)s %(message)s')
 
     def monitor(self):

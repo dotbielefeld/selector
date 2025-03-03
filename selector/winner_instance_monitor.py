@@ -21,10 +21,12 @@ class WinnerInstanceMonitor:
         Wake up and check whether runtime is exceeded
     cache : selector.ta_result_store.TargetAlgorithmObserver
         Stores all tournament related data.
+    scenario : selector.scenario.Scenario
+        AC scenario.
     delta_cap : int
         Constant the current best runtime for each instance is multiplied by.
     """
-    def __init__(self, sleep_time, cache, delta_cap=1):
+    def __init__(self, sleep_time, cache, scenario, delta_cap=1):
         self.sleep_time = sleep_time
         self.cache = cache
         self.tournaments = []
@@ -32,7 +34,7 @@ class WinnerInstanceMonitor:
         self.instance_results = {}
         self.delta_cap = delta_cap
 
-        logging.basicConfig(filename='./selector/logs/winner_inst_monitor.log',
+        logging.basicConfig(filename=f'{scenario.log_location}{scenario.log_folder}winner_inst_monitor.log',
                             level=logging.INFO,
                             format='%(asctime)s %(message)s')
 

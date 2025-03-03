@@ -34,7 +34,7 @@ class InstanceMonitor:
         self.last_t_check = 0
         self.scenario = scenario
 
-        logging.basicConfig(filename=f'./selector/logs/{scenario.log_folder}/inst_monitor.log', level=logging.INFO,
+        logging.basicConfig(filename=f'{scenario.log_location}{scenario.log_folder}/inst_monitor.log', level=logging.INFO,
                             format='%(asctime)s %(message)s')
 
     def monitor(self):

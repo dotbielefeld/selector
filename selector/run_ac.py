@@ -58,8 +58,8 @@ def ac(scen_files, ray_mode, **kwargs):
 
     np.random.seed(scenario.seed)
 
-    check_log_folder(scenario.log_folder)
-    clear_logs(scenario.log_folder)
+    check_log_folder(scenario, scenario.log_folder)
+    clear_logs(scenario, scenario.log_folder)
 
     # Set up logger
     logger = logging.getLogger(__name__)
@@ -75,7 +75,7 @@ def ac(scen_files, ray_mode, **kwargs):
 
     handler = \
         logging.FileHandler(
-            f"./selector/logs/{scenario.log_folder}/main.log")
+            f"{scenario.log_location}{scenario.log_folder}/main.log")
     handler.setLevel(logging.INFO)
 
     formatter = logging.Formatter('%(asctime)s %(message)s')
@@ -103,7 +103,7 @@ def ac(scen_files, ray_mode, **kwargs):
     print('\n')
 
     # Process results
-    save_latest_logs(scenario.log_folder)
+    save_latest_logs(scenario.log_folder, scenario)
     if scenario.run_obj == 'runtime':
         best = safe_best(f'./selector/logs/{scenario.log_folder}/',
                          scenario.cutoff_time)
