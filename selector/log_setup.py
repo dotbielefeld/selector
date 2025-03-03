@@ -92,8 +92,8 @@ class TournamentEncoder(json.JSONEncoder):
     """
     Encodes selector.pool.Tournament for logging.
     """
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def default(self, o):
         """
@@ -134,8 +134,8 @@ class ConfEncoder(json.JSONEncoder):
     """
     Encodes selector.pool.Configuration object for logging.
     """
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def default(self, obj):
         if isinstance(obj, np.integer):
