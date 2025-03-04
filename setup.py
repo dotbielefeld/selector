@@ -15,7 +15,7 @@ install_requires = [line.strip() for line in open('requirements.txt')]
 # This call to setup() does all the work
 setup(
     name="selector-ac",
-    version="0.1.0.5",
+    version="0.1.0.8",
     description="Selector: Ensemble-Based Automated Algorithm Configuration",
     long_description=README,
     long_description_content_type="text/markdown",

@@ -268,10 +268,10 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
 
             for conf in selected_ids:
                 if selected_ids[-1] == conf:
-                    self.results[conf.id] = {1: np.random.randint(2, 15),
-                                             0: np.random.randint(2, 15)}
+                    self.results[conf.id] = {1: 2 + epoch,
+                                             0: 3 + epoch}
                 else:
-                    self.results[conf.id] = {1: np.random.randint(2, 15)}
+                    self.results[conf.id] = {1: 2 + epoch}
 
             ran_conf = []
             for i in range(5):
@@ -303,10 +303,12 @@ class HyperparameterizedSelectorTest(unittest.TestCase):
             confs = ran_conf + var_conf + lhc_conf + smac_conf + \
                 ggapp_conf + cppl_conf
 
-        if selected_ids[0].generator == Generator.ggapp:
+        print(selected_ids[0])
+
+        if selected_ids[0].generator in (Generator.ggapp, Generator.cppl):
             self.assertEqual(int(selected_ids[0].conf['arena']), 3)
-        elif selected_ids[0].generator == Generator.cppl:
-            self.assertEqual(int(selected_ids[0].conf['arena']), 2)
+        elif selected_ids[0].generator == Generator.smac:
+            self.assertEqual(int(selected_ids[0].conf['arena']), 1)
 
 
 if __name__ == '__main__':
