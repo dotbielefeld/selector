@@ -23,10 +23,3 @@ For information about how to use it and what general functions there are look at
    :caption: API Reference
 
    selector  # module name
-
-..Indices and tables
-..==================
-
-..* :ref:`genindex`
-..* :ref:`modindex`
-..* :ref:`search`
